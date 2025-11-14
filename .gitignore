@@ -1,0 +1,317 @@
+# ============================================
+# CareLinkMN - .gitignore
+# ============================================
+# This file ignores files and directories that should not be committed to version control.
+# Patterns are applied recursively from the root directory.
+
+# ============================================
+# Dependencies
+# ============================================
+# Node modules (matches at any level: root, apps/*, packages/*)
+node_modules/
+**/node_modules/
+
+# Package manager lock files (keep pnpm-lock.yaml, ignore others)
+package-lock.json
+yarn.lock
+
+# ============================================
+# Build Outputs
+# ============================================
+# TypeScript build outputs (matches at any level)
+dist/
+**/dist/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Next.js build outputs (matches at any level)
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+
+# Turbo build cache
+.turbo/
+**/.turbo/
+
+# ============================================
+# Environment Variables
+# ============================================
+# Environment files (keep .env.example and env.example, ignore others)
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+
+# ============================================
+# Database
+# ============================================
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Prisma generated client (if generated outside node_modules)
+packages/database/prisma/generated/
+**/prisma/generated/
+
+# ============================================
+# Logs
+# ============================================
+# Log files
+*.log
+logs/
+**/logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ============================================
+# IDE / Editor
+# ============================================
+# VS Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs (WebStorm, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============================================
+# OS Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Testing
+# ============================================
+# Coverage reports
+coverage/
+**/coverage/
+*.lcov
+.nyc_output/
+.coverage/
+*.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+
+# Jest
+.jest/
+**/.jest/
+
+# Playwright
+playwright-report/
+**/playwright-report/
+test-results/
+**/test-results/
+
+# ============================================
+# Temporary Files
+# ============================================
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+.temp/
+tmp/
+temp/
+
+# ============================================
+# Next.js
+# ============================================
+# Next.js specific (already covered above, but explicit for clarity)
+# .next/ is already ignored above
+# .vercel/ deployment files
+.vercel/
+**/.vercel/
+
+# ============================================
+# Supabase
+# ============================================
+# Supabase local development
+.branches/
+**/.branches/
+supabase/.branches/
+supabase/.temp/
+
+# ============================================
+# Docker
+# ============================================
+# Docker override files (keep docker-compose.yml, ignore overrides)
+docker-compose.override.yml
+**/docker-compose.override.yml
+
+# ============================================
+# Railway / Deployment
+# ============================================
+# Railway
+.railway/
+**/.railway/
+
+# Vercel
+.vercel/
+**/.vercel/
+
+# ============================================
+# Security & Secrets
+# ============================================
+# Certificates and keys
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Sentry
+.sentryclirc
+**/.sentryclirc
+
+# ============================================
+# Storybook
+# ============================================
+storybook-static/
+**/storybook-static/
+
+# ============================================
+# CareLinkMN Specific
+# ============================================
+# Uploads and user-generated content
+uploads/
+**/uploads/
+apps/web/public/uploads/
+packages/api/uploads/
+
+# Generated documentation (if any)
+docs/generated/
+**/docs/generated/
+
+# Local test files (optional - uncomment if you don't want to track these)
+# test-api.js
+# test-provider-endpoints.js
+
+# Local setup scripts (optional - uncomment if you don't want to track these)
+# setup-env.sh
+
+# ============================================
+# Keep These Important Files
+# ============================================
+# Keep example files
+!.env.example
+!env.example
+!*.example
+
+# Keep documentation
+!docs/
+!*.md
+!**/*.md
+
+# Keep configuration files
+!package.json
+!**/package.json
+!tsconfig.json
+!**/tsconfig.json
+!turbo.json
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+
+# Keep Prisma schema and migrations
+!packages/database/prisma/schema.prisma
+!packages/database/prisma/migrations/
+!packages/database/prisma/seed.ts
+
+# Keep Docker files
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+
+# Keep deployment configs
+!railway.json
+!nixpacks.toml
+!.github/
+
+# Keep test files (if you want to track them)
+# !test-api.js
+# !test-provider-endpoints.js
+
+# Keep setup scripts (if you want to track them)
+# !setup-env.sh

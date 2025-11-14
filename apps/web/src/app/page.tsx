@@ -1,0 +1,853 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Users,
+  Building2,
+  Heart,
+  Shield,
+  Zap,
+  LogIn,
+  UserPlus,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  MapPin,
+  Star,
+  BarChart3,
+  Smartphone,
+  Globe,
+  Lock,
+  Award,
+  Target,
+  TrendingUp,
+  MessageSquare,
+  Calendar,
+  FileText,
+  Activity,
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { getDashboardPath } from "@/lib/routing";
+
+export default function HomePage() {
+  const { user, isAuthenticated } = useAuth();
+
+  return (
+    <main className="min-h-screen bg-background">
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
+        <div className="healthcare-container py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Heart className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">CareLinkMN</h1>
+            </div>
+            <nav className="hidden md:flex items-center space-x-8">
+              <Link
+                href="#features"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Features
+              </Link>
+              <Link
+                href="#solutions"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Solutions
+              </Link>
+              <Link
+                href="#about"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                About
+              </Link>
+              <Link
+                href="#contact"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Contact
+              </Link>
+            </nav>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              {isAuthenticated ? (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    Welcome, {user?.firstName}!
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={user ? getDashboardPath(user.role) : "/search"}>Dashboard</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/auth/signin">Sign In</Link>
+                  </Button>
+                  <Button size="sm" variant="healthcare" asChild>
+                    <Link href="/auth/signup">Get Started</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative py-20 lg:py-32 overflow-hidden">
+        <div className="healthcare-container">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <Badge
+                  variant="healthcareInfo"
+                  className="inline-flex items-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  Sub-1 Second Search Performance
+                </Badge>
+                <h1 className="text-4xl lg:text-6xl font-bold text-foreground leading-tight">
+                  Minnesota's Premier
+                  <span className="text-primary"> Care Coordination</span>
+                  Platform
+                </h1>
+                <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
+                  Connect families, case managers, and licensed care providers
+                  through intelligent, payer-aware search with real-time
+                  availability tracking and AI-powered matching.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                {isAuthenticated ? (
+                  <>
+                    <Button
+                      size="lg"
+                      variant="healthcare"
+                      asChild
+                      className="text-lg px-8 py-6"
+                    >
+                      <Link href={user ? getDashboardPath(user.role) : "/search"}>
+                        <Search className="w-5 h-5 mr-2" />
+                        Go to Dashboard
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      asChild
+                      className="text-lg px-8 py-6"
+                    >
+                      <Link href="/search">Search Providers</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="lg"
+                      variant="healthcare"
+                      asChild
+                      className="text-lg px-8 py-6"
+                    >
+                      <Link href="/auth/signup">
+                        <UserPlus className="w-5 h-5 mr-2" />
+                        Get Started Free
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      asChild
+                      className="text-lg px-8 py-6"
+                    >
+                      <Link href="/auth/signin">
+                        <LogIn className="w-5 h-5 mr-2" />
+                        Sign In
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <span>HIPAA Compliant</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <span>Real-time Updates</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <span>AI-Powered</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="grid grid-cols-2 gap-4">
+                <Card variant="healthcare" className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Search className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Search</h3>
+                      <p className="text-sm text-muted-foreground">Find care</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2 bg-primary/20 rounded-full">
+                      <div className="h-2 bg-primary rounded-full w-3/4"></div>
+                    </div>
+                    <div className="h-2 bg-secondary/20 rounded-full">
+                      <div className="h-2 bg-secondary rounded-full w-1/2"></div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card variant="healthcareSuccess" className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                      <Users className="w-5 h-5 text-success" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Match</h3>
+                      <p className="text-sm text-muted-foreground">
+                        AI powered
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="w-4 h-4 text-warning fill-current"
+                      />
+                    ))}
+                  </div>
+                </Card>
+
+                <Card variant="healthcareInfo" className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-info/10 rounded-lg flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-info" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Connect</h3>
+                      <p className="text-sm text-muted-foreground">Real-time</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                    <span className="text-xs text-muted-foreground">
+                      Live updates
+                    </span>
+                  </div>
+                </Card>
+
+                <Card variant="healthcare" className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                      <Heart className="w-5 h-5 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Care</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Coordinated
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Progress</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-muted/30">
+        <div className="healthcare-container">
+          <div className="text-center mb-16">
+            <Badge variant="healthcarePrimary" className="mb-4">
+              <Award className="w-4 h-4 mr-2" />
+              Trusted by 500+ Organizations
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Powerful Features for Every User
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Built specifically for Minnesota's care coordination needs with
+              cutting-edge technology and compliance-first design.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <Card variant="healthcare" className="p-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+                <Search className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Lightning-Fast Search
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Sub-1 second search results with advanced filtering, real-time
+                availability, and payer compatibility matching.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Advanced search filters
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Real-time availability
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Payer compatibility
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareSuccess" className="p-8">
+              <div className="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center mb-6">
+                <Shield className="w-6 h-6 text-success" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                HIPAA Compliant
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Enterprise-grade security with end-to-end encryption, audit
+                logging, and compliance monitoring.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  End-to-end encryption
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Audit logging
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Compliance monitoring
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareInfo" className="p-8">
+              <div className="w-12 h-12 bg-info/10 rounded-xl flex items-center justify-center mb-6">
+                <Target className="w-6 h-6 text-info" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                AI-Powered Matching
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Intelligent matching algorithms that consider care needs,
+                location, availability, and payer requirements.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Smart algorithms
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Care needs analysis
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Optimal placement
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareWarning" className="p-8">
+              <div className="w-12 h-12 bg-warning/10 rounded-xl flex items-center justify-center mb-6">
+                <Activity className="w-6 h-6 text-warning" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Real-Time Updates
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Live availability tracking, instant notifications, and seamless
+                coordination between all parties.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Live availability
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Instant notifications
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Seamless coordination
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center mb-6">
+                <BarChart3 className="w-6 h-6 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Analytics Dashboard
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Comprehensive analytics and reporting tools for data-driven
+                decision making and performance tracking.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Performance metrics
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Custom reports
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Data insights
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareError" className="p-8">
+              <div className="w-12 h-12 bg-destructive/10 rounded-xl flex items-center justify-center mb-6">
+                <MessageSquare className="w-6 h-6 text-destructive" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Communication Hub
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Integrated messaging and collaboration tools for seamless
+                communication between all stakeholders.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Secure messaging
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  File sharing
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Collaboration tools
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Solutions Section */}
+      <section id="solutions" className="py-20">
+        <div className="healthcare-container">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Solutions for Every Role
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Tailored experiences designed for families, case managers, and
+              care providers
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            <Card variant="healthcare" className="p-8 text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Families
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Find the perfect care facility for your loved one with advanced
+                search, real-time availability, and comprehensive facility
+                information.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Advanced search with filters</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">
+                    Real-time availability updates
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Payer compatibility checking</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">
+                    Location-based recommendations
+                  </span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full">
+                Learn More
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Card>
+
+            <Card variant="healthcareSuccess" className="p-8 text-center">
+              <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Heart className="w-8 h-8 text-success" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Case Managers
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Streamline care coordination with AI-assisted search, referral
+                management, and comprehensive tracking tools.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">
+                    AI-powered matching algorithms
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Referral management system</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Compliance tracking</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Progress monitoring</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full">
+                Learn More
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Card>
+
+            <Card variant="healthcareInfo" className="p-8 text-center">
+              <div className="w-16 h-16 bg-info/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Building2 className="w-8 h-8 text-info" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Care Providers
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Manage multiple facilities, update availability in real-time,
+                and receive qualified referrals from case managers.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Multi-facility management</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">
+                    Real-time availability updates
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Qualified referral system</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Analytics and reporting</span>
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full">
+                Learn More
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="healthcare-container">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="text-4xl lg:text-5xl font-bold text-primary mb-2">
+                500+
+              </div>
+              <div className="text-muted-foreground">Organizations</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl lg:text-5xl font-bold text-success mb-2">
+                10K+
+              </div>
+              <div className="text-muted-foreground">Care Providers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl lg:text-5xl font-bold text-accent mb-2">
+                50K+
+              </div>
+              <div className="text-muted-foreground">Successful Placements</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl lg:text-5xl font-bold text-info mb-2">
+                &lt;1s
+              </div>
+              <div className="text-muted-foreground">Search Response Time</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="healthcare-container">
+          <Card variant="healthcare" className="p-12 text-center">
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Ready to Transform Care Coordination?
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Join hundreds of organizations already using CareLinkMN to
+              streamline care coordination and improve patient outcomes.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {isAuthenticated ? (
+                <Button
+                  size="lg"
+                  variant="healthcare"
+                  asChild
+                  className="text-lg px-8 py-6"
+                >
+                  <Link href={user ? getDashboardPath(user.role) : "/search"}>
+                    <Search className="w-5 h-5 mr-2" />
+                    Go to Dashboard
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    variant="healthcare"
+                    asChild
+                    className="text-lg px-8 py-6"
+                  >
+                    <Link href="/auth/signup">
+                      <UserPlus className="w-5 h-5 mr-2" />
+                      Start Free Trial
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    asChild
+                    className="text-lg px-8 py-6"
+                  >
+                    <Link href="/auth/signin">
+                      <LogIn className="w-5 h-5 mr-2" />
+                      Sign In
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-muted/50 border-t border-border/50 py-12">
+        <div className="healthcare-container">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">
+                  CareLinkMN
+                </h3>
+              </div>
+              <p className="text-muted-foreground">
+                Minnesota's premier care coordination platform connecting
+                families, case managers, and care providers.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    href="#features"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Features
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#solutions"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Solutions
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    API
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground">Company</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    href="#about"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Careers
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#contact"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground">Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Documentation
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Status
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Security
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-border/50 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              © 2024 CareLinkMN. All rights reserved.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <Link
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                HIPAA Compliance
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}

@@ -1,0 +1,230 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* CareLinkMN Professional Healthcare Theme */
+
+    /* Primary Colors - Trust & Professionalism */
+    --background: 0 0% 100%; /* Pure white for cleanliness */
+    --foreground: 220 13% 18%; /* Dark blue-gray for text */
+    --card: 0 0% 100%; /* White cards */
+    --card-foreground: 220 13% 18%; /* Dark blue-gray text */
+    --popover: 0 0% 100%; /* White popovers */
+    --popover-foreground: 220 13% 18%; /* Dark blue-gray text */
+
+    /* Primary - Deep Healthcare Blue */
+    --primary: 217 91% 60%; /* Professional blue */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+
+    /* Secondary - Soft Healthcare Green */
+    --secondary: 142 76% 36%; /* Healthcare green */
+    --secondary-foreground: 0 0% 100%; /* White text on secondary */
+
+    /* Muted - Light Gray-Blue */
+    --muted: 220 13% 96%; /* Very light blue-gray */
+    --muted-foreground: 220 9% 46%; /* Medium blue-gray */
+
+    /* Accent - Warm Healthcare Orange */
+    --accent: 25 95% 53%; /* Healthcare orange */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
+
+    /* Status Colors */
+    --destructive: 0 84% 60%; /* Red for errors */
+    --destructive-foreground: 0 0% 100%; /* White text on destructive */
+
+    /* Success - Healthcare Green */
+    --success: 142 76% 36%; /* Healthcare green */
+    --success-foreground: 0 0% 100%; /* White text on success */
+
+    /* Warning - Healthcare Yellow */
+    --warning: 45 93% 58%; /* Healthcare yellow */
+    --warning-foreground: 220 13% 18%; /* Dark text on warning */
+
+    /* Info - Healthcare Blue */
+    --info: 217 91% 60%; /* Healthcare blue */
+    --info-foreground: 0 0% 100%; /* White text on info */
+
+    /* UI Elements */
+    --border: 220 13% 88%; /* Light blue-gray borders */
+    --input: 220 13% 88%; /* Light blue-gray inputs */
+    --ring: 217 91% 60%; /* Blue focus rings */
+    --radius: 0.5rem; /* Consistent border radius */
+
+    /* Chart Colors - Healthcare Palette */
+    --chart-1: 217 91% 60%; /* Primary blue */
+    --chart-2: 142 76% 36%; /* Healthcare green */
+    --chart-3: 25 95% 53%; /* Healthcare orange */
+    --chart-4: 280 65% 60%; /* Purple for variety */
+    --chart-5: 45 93% 58%; /* Yellow for highlights */
+
+    /* Sidebar Colors */
+    --sidebar-background: 220 13% 98%; /* Very light blue-gray */
+    --sidebar-foreground: 220 13% 18%; /* Dark blue-gray */
+    --sidebar-primary: 217 91% 60%; /* Primary blue */
+    --sidebar-primary-foreground: 0 0% 100%; /* White text */
+    --sidebar-accent: 220 13% 94%; /* Light blue-gray */
+    --sidebar-accent-foreground: 220 13% 18%; /* Dark blue-gray */
+    --sidebar-border: 220 13% 88%; /* Light blue-gray border */
+    --sidebar-ring: 217 91% 60%; /* Blue focus ring */
+  }
+
+  .dark {
+    /* Dark Mode - Professional Healthcare Dark Theme */
+
+    /* Background Colors */
+    --background: 220 13% 9%; /* Very dark blue-gray */
+    --foreground: 220 13% 95%; /* Light blue-gray text */
+    --card: 220 13% 12%; /* Dark blue-gray cards */
+    --card-foreground: 220 13% 95%; /* Light blue-gray text */
+    --popover: 220 13% 12%; /* Dark blue-gray popovers */
+    --popover-foreground: 220 13% 95%; /* Light blue-gray text */
+
+    /* Primary - Brighter Blue for Dark Mode */
+    --primary: 217 91% 70%; /* Brighter blue */
+    --primary-foreground: 220 13% 9%; /* Dark text on primary */
+
+    /* Secondary - Brighter Green for Dark Mode */
+    --secondary: 142 76% 46%; /* Brighter green */
+    --secondary-foreground: 220 13% 9%; /* Dark text on secondary */
+
+    /* Muted - Dark Blue-Gray */
+    --muted: 220 13% 15%; /* Dark blue-gray */
+    --muted-foreground: 220 9% 65%; /* Medium light blue-gray */
+
+    /* Accent - Brighter Orange for Dark Mode */
+    --accent: 25 95% 63%; /* Brighter orange */
+    --accent-foreground: 220 13% 9%; /* Dark text on accent */
+
+    /* Status Colors - Dark Mode */
+    --destructive: 0 84% 70%; /* Brighter red */
+    --destructive-foreground: 220 13% 9%; /* Dark text on destructive */
+
+    --success: 142 76% 46%; /* Brighter green */
+    --success-foreground: 220 13% 9%; /* Dark text on success */
+
+    --warning: 45 93% 68%; /* Brighter yellow */
+    --warning-foreground: 220 13% 9%; /* Dark text on warning */
+
+    --info: 217 91% 70%; /* Brighter blue */
+    --info-foreground: 220 13% 9%; /* Dark text on info */
+
+    /* UI Elements - Dark Mode */
+    --border: 220 13% 20%; /* Dark blue-gray borders */
+    --input: 220 13% 20%; /* Dark blue-gray inputs */
+    --ring: 217 91% 70%; /* Brighter blue focus rings */
+
+    /* Chart Colors - Dark Mode */
+    --chart-1: 217 91% 70%; /* Brighter blue */
+    --chart-2: 142 76% 46%; /* Brighter green */
+    --chart-3: 25 95% 63%; /* Brighter orange */
+    --chart-4: 280 65% 70%; /* Brighter purple */
+    --chart-5: 45 93% 68%; /* Brighter yellow */
+
+    /* Sidebar Colors - Dark Mode */
+    --sidebar-background: 220 13% 6%; /* Very dark blue-gray */
+    --sidebar-foreground: 220 13% 95%; /* Light blue-gray */
+    --sidebar-primary: 217 91% 70%; /* Brighter blue */
+    --sidebar-primary-foreground: 220 13% 9%; /* Dark text */
+    --sidebar-accent: 220 13% 15%; /* Dark blue-gray */
+    --sidebar-accent-foreground: 220 13% 95%; /* Light blue-gray */
+    --sidebar-border: 220 13% 20%; /* Dark blue-gray border */
+    --sidebar-ring: 217 91% 70%; /* Brighter blue focus ring */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Healthcare-specific gradients and backgrounds */
+  .healthcare-gradient {
+    @apply bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10;
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar for healthcare theme */
+  .healthcare-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .healthcare-scrollbar::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  .healthcare-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .healthcare-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Healthcare-specific spacing */
+  .healthcare-section {
+    @apply py-16 px-4;
+  }
+
+  .healthcare-container {
+    @apply max-w-7xl mx-auto;
+  }
+
+  /* Professional shadows */
+  .healthcare-shadow-sm {
+    @apply shadow-sm;
+  }
+
+  .healthcare-shadow-md {
+    @apply shadow-md;
+  }
+
+  .healthcare-shadow-lg {
+    @apply shadow-lg;
+  }
+
+  .healthcare-shadow-xl {
+    @apply shadow-xl;
+  }
+}
+
+/* Sonner Toast Description Fix */
+@layer components {
+  [data-sonner-toaster] [data-description] {
+    color: hsl(var(--foreground) / 0.7) !important;
+    opacity: 1 !important;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+  }
+  
+  /* Ensure error descriptions are visible */
+  [data-sonner-toaster] [data-type="error"] [data-description] {
+    color: hsl(var(--destructive) / 0.9) !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Ensure success descriptions are visible */
+  [data-sonner-toaster] [data-type="success"] [data-description] {
+    color: hsl(var(--success) / 0.9) !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Ensure warning descriptions are visible */
+  [data-sonner-toaster] [data-type="warning"] [data-description] {
+    color: hsl(var(--warning) / 0.9) !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Ensure info descriptions are visible */
+  [data-sonner-toaster] [data-type="info"] [data-description] {
+    color: hsl(var(--info) / 0.9) !important;
+    font-weight: 500 !important;
+  }
+}

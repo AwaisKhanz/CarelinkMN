@@ -1,0 +1,118 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: carelink
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: carelink_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup test database
+        run: |
+          cd packages/database
+          pnpm db:generate
+          pnpm db:migrate
+          pnpm db:seed
+        env:
+          DATABASE_URL: postgresql://carelink:testpassword@localhost:5432/carelink_perf
+
+      - name: Build application
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://carelink:testpassword@localhost:5432/carelink_perf
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: test-secret
+          JWT_SECRET: test-jwt-secret
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret
+
+      - name: Start application
+        run: |
+          cd apps/web
+          pnpm start &
+          sleep 15
+        env:
+          DATABASE_URL: postgresql://carelink:testpassword@localhost:5432/carelink_perf
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: test-secret
+          JWT_SECRET: test-jwt-secret
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret
+          NEXTAUTH_URL: http://localhost:3000
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './.lighthouserc.json'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Run K6 performance tests
+        run: |
+          # Install k6
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+          
+          # Run performance tests
+          k6 run scripts/performance/search-load-test.js
+          k6 run scripts/performance/api-load-test.js
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            .lighthouseci/
+            k6-results/
+          retention-days: 30

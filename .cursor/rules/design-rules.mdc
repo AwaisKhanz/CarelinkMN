@@ -1,0 +1,154 @@
+---
+alwaysApply: true
+---
+
+# CareLinkMN Color System Rules
+
+## 🚨 CRITICAL RULE: No Hardcoded Colors Allowed
+
+For the CareLinkMN healthcare platform, **ALL colors must use the global color system** defined in `apps/web/src/app/globals.css`.
+
+## ❌ FORBIDDEN
+
+### Hardcoded Color Values
+
+- **Hex colors**: `#ffffff`, `#000000`, `#3b82f6`, `#10b981`, etc.
+- **RGB/RGBA**: `rgb(255, 255, 255)`, `rgba(0, 0, 0, 0.5)`, etc.
+- **HSL**: `hsl(0, 0%, 100%)`, `hsl(217, 91%, 60%)`, etc.
+
+### Hardcoded Tailwind Color Names
+
+- **Color names with numbers**: `bg-blue-500`, `text-red-600`, `border-green-200`, etc.
+- **Gradient colors**: `bg-gradient-to-r from-blue-500 to-purple-600`
+- **Any Tailwind color**: `white`, `black`, `red-500`, `blue-100`, etc.
+
+## ✅ REQUIRED
+
+### CSS Custom Properties
+
+```css
+/* Use global color variables */
+hsl(var(--primary))
+hsl(var(--background))
+hsl(var(--foreground))
+```
+
+### Semantic Color Names
+
+```css
+/* Use semantic color classes */
+text-foreground
+bg-background
+border-border
+text-muted-foreground
+```
+
+### Healthcare Variants
+
+```tsx
+// Use component variants
+<Button variant="healthcare" />
+<Card variant="healthcareSuccess" />
+<Badge variant="healthcareWarning" />
+```
+
+### Opacity Modifiers
+
+```css
+/* Use opacity with global colors */
+bg-primary/10
+text-success/80
+border-warning/20
+```
+
+## 🎨 Global Color Palette
+
+### Primary Colors
+
+- **Primary**: `--primary` (Healthcare blue)
+- **Secondary**: `--secondary` (Healthcare green)
+- **Accent**: `--accent` (Healthcare orange)
+
+### Status Colors
+
+- **Success**: `--success` (Healthcare green)
+- **Warning**: `--warning` (Healthcare yellow)
+- **Error**: `--destructive` (Healthcare red)
+- **Info**: `--info` (Healthcare blue)
+
+### Semantic Colors
+
+- **Foreground**: `--foreground` (Text color)
+- **Background**: `--background` (Page background)
+- **Muted**: `--muted-foreground` (Secondary text)
+- **Border**: `--border` (Border color)
+- **Input**: `--input` (Input border)
+- **Ring**: `--ring` (Focus ring)
+
+## 🔍 Verification Commands
+
+Run these commands to ensure no hardcoded colors exist:
+
+```bash
+# Check for hex colors
+grep -r "#[0-9a-fA-F]\{3,6\}" apps/web/src
+
+# Check for RGB/RGBA/HSL
+grep -r "rgb(\|rgba(\|hsl([^v]" apps/web/src
+
+# Check for hardcoded Tailwind colors
+grep -r "\(white\|black\|red\|blue\|green\|yellow\|orange\|purple\|pink\|indigo\|gray\|slate\|zinc\|neutral\|stone\|amber\|emerald\|teal\|cyan\|sky\|violet\|fuchsia\|rose\)-[0-9]" apps/web/src
+```
+
+All commands should return **empty results**.
+
+## 🏥 Healthcare Theme Benefits
+
+1. **Consistent Branding** - Professional healthcare appearance
+2. **Accessibility** - Proper contrast ratios maintained
+3. **Maintainability** - Centralized color management
+4. **Theming** - Easy light/dark mode switching
+5. **Professional** - Healthcare-appropriate color palette
+
+## 📝 Examples
+
+### ✅ Correct Usage
+
+```tsx
+// Using global colors
+<div className="bg-background text-foreground border-border">
+  <Button variant="healthcare">Submit</Button>
+  <Card variant="healthcareSuccess">Success message</Card>
+</div>
+
+// Using opacity modifiers
+<div className="bg-primary/10 text-primary border-primary/20">
+  Primary content
+</div>
+```
+
+### ❌ Incorrect Usage
+
+```tsx
+// Hardcoded colors - FORBIDDEN
+<div className="bg-blue-50 text-gray-900 border-green-200">
+  <button className="bg-blue-500 text-white">Submit</button>
+</div>
+
+// Hardcoded gradients - FORBIDDEN
+<div className="bg-gradient-to-r from-blue-500 to-purple-600">
+  Content
+</div>
+```
+
+## 🚀 Implementation
+
+This rule ensures:
+
+- **Consistent healthcare branding** across all components
+- **Proper theming** for light and dark modes
+- **Maintainable code** with centralized color management
+- **Professional appearance** suitable for healthcare applications
+- **Accessibility compliance** with proper contrast ratios
+
+**Remember**: When in doubt, always use the global color system defined in `globals.css`!
