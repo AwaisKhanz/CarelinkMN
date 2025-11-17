@@ -89,10 +89,16 @@ export class AuthRepository {
   }
 
   // Password reset operations
-  async createPasswordResetToken(userId: string): Promise<string> {
+  async createPasswordResetToken(
+    userId: string,
+    options?: {
+      expiresInMs?: number;
+    }
+  ): Promise<string> {
     // Generate secure token
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const ttl = options?.expiresInMs ?? 60 * 60 * 1000; // default 1 hour
+    const expiresAt = new Date(Date.now() + ttl);
 
     // Delete any existing reset tokens for this user
     await db.passwordResetToken.deleteMany({

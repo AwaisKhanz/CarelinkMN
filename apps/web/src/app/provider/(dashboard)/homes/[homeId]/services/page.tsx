@@ -52,9 +52,15 @@ export default function HomeServicesPage() {
   useEffect(() => {
     if (homeId) {
       fetchHomeData();
-      fetchAvailableServices();
     }
   }, [homeId]);
+
+  // Fetch available services after home data is loaded (so we have providerId)
+  useEffect(() => {
+    if (home?.providerId) {
+      fetchAvailableServices();
+    }
+  }, [home?.providerId]);
 
   useEffect(() => {
     if (home) {
@@ -104,7 +110,13 @@ export default function HomeServicesPage() {
 
   const fetchAvailableServices = async () => {
     try {
-      const response = await homeService.getAvailableServices();
+      // Get providerId from home data
+      const providerId = home?.providerId;
+      if (!providerId) {
+        // If home data not loaded yet, wait for it
+        return;
+      }
+      const response = await homeService.getAvailableServices(providerId);
       if (response.success) {
         setAvailableServices(response.data || []);
       }

@@ -32,6 +32,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
@@ -39,7 +41,11 @@ import { providerService, StaffMember } from "@/lib/api";
 import { usePageMetadata } from "../use-page-metadata";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import {
+  format,
+  formatDistanceToNow,
+  differenceInHours,
+} from "date-fns";
 import { useProvider } from "@/contexts/provider-context";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
@@ -55,6 +61,7 @@ export default function ProviderStaffPage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [staffToRemove, setStaffToRemove] = useState<StaffMember | null>(null);
   const [isInviting, setIsInviting] = useState(false);
+  const [resendingStaffId, setResendingStaffId] = useState<string | null>(null);
   const [inviteForm, setInviteForm] = useState({
     email: "",
     firstName: "",
@@ -151,6 +158,32 @@ export default function ProviderStaffPage() {
       );
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  const handleResendInvite = async (member: StaffMember) => {
+    if (!provider?.id) return;
+
+    setResendingStaffId(member.id);
+    try {
+      const response = await providerService.resendStaffInvite(
+        provider.id,
+        member.id
+      );
+
+      if (response.success) {
+        toast.success("Invitation resent successfully.");
+        await fetchStaff();
+      } else {
+        toast.error(response.message || "Failed to resend invitation.");
+      }
+    } catch (err) {
+      console.error("Error resending invitation:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to resend invitation."
+      );
+    } finally {
+      setResendingStaffId(null);
     }
   };
 
@@ -253,8 +286,20 @@ export default function ProviderStaffPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {staff.map((member) => (
-            <Card key={member.id} variant="healthcare">
+          {staff.map((member) => {
+            const lastInviteDate = new Date(
+              member.updatedAt || member.createdAt
+            );
+            const hoursSinceInvite = differenceInHours(
+              new Date(),
+              lastInviteDate
+            );
+            const canResendInvite =
+              member.status === "PENDING_VERIFICATION" &&
+              hoursSinceInvite >= 24;
+
+            return (
+              <Card key={member.id} variant="healthcare">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -284,7 +329,9 @@ export default function ProviderStaffPage() {
                       )}
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        Joined{" "}
+                        {member.status === "PENDING_VERIFICATION"
+                          ? "Invited"
+                          : "Joined"}{" "}
                         {format(new Date(member.createdAt), "MMM dd, yyyy")}
                       </div>
                       {member.lastLoginAt && (
@@ -296,20 +343,85 @@ export default function ProviderStaffPage() {
                       )}
                     </div>
                   </div>
-                  {canManageStaff && member.status !== "DEACTIVATED" && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setStaffToRemove(member)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
-                    </Button>
-                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {member.status === "PENDING_VERIFICATION" &&
+                      canManageStaff && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleResendInvite(member)}
+                          disabled={
+                            resendingStaffId === member.id || !canResendInvite
+                          }
+                        >
+                          {resendingStaffId === member.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              {canResendInvite
+                                ? "Resend Invite"
+                                : "Resend in 24h"}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    {canManageStaff && member.status !== "DEACTIVATED" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setStaffToRemove(member)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                {member.status === "PENDING_VERIFICATION" && (
+                  <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        <Info className="h-4 w-4 text-warning" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">
+                          Waiting for activation
+                        </p>
+                        <p>
+                          Invitation links remain valid for 24 hours. If they
+                          miss it, send a fresh link once the current link
+                          expires.
+                        </p>
+                        {!canResendInvite && (
+                          <p className="text-xs">
+                            You can resend this invitation after{" "}
+                            {formatDistanceToNow(
+                              new Date(
+                                lastInviteDate.getTime() + 24 * 60 * 60 * 1000
+                              ),
+                              { addSuffix: true }
+                            )}
+                            .
+                          </p>
+                        )}
+                        <p className="text-xs">
+                          Last invitation sent{" "}
+                          {formatDistanceToNow(lastInviteDate, {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

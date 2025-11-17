@@ -1,5 +1,9 @@
-import { apiService } from '../config';
-import { Service, HomeService as HomeServiceType, ApiResponse } from '@carelink/types';
+import { apiService } from "../config";
+import {
+  Service,
+  HomeService as HomeServiceType,
+  ApiResponse,
+} from "@carelink/types";
 
 export interface HomePhoto {
   id: string;
@@ -69,7 +73,12 @@ export interface CreateHomeData {
   hasRollInShower?: boolean;
   // Media
   virtualTourUrl?: string;
-  photos?: Array<{ url: string; caption?: string; isPrimary?: boolean; order?: number }>;
+  photos?: Array<{
+    url: string;
+    caption?: string;
+    isPrimary?: boolean;
+    order?: number;
+  }>;
   // Amenities
   amenities?: Array<{ amenityType: string; description?: string }>;
   // Settings
@@ -104,16 +113,16 @@ export class HomeService {
   // Get provider homes
   async getProviderHomes(providerId: string, params: GetHomesParams = {}) {
     const { page = 1, limit = 10, search, status, city, state } = params;
-    
+
     const searchParams = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    
-    if (search) searchParams.append('search', search);
-    if (status) searchParams.append('status', status);
-    if (city) searchParams.append('city', city);
-    if (state) searchParams.append('state', state);
+
+    if (search) searchParams.append("search", search);
+    if (status) searchParams.append("status", status);
+    if (city) searchParams.append("city", city);
+    if (state) searchParams.append("state", state);
 
     return await apiService.get<ProviderHomesResponse>(
       `/api/providers/${providerId}/homes?${searchParams}`
@@ -128,7 +137,10 @@ export class HomeService {
 
   // Create home
   async createHome(providerId: string, data: CreateHomeData): Promise<Home> {
-    const response = await apiService.post<Home>(`/api/providers/${providerId}/homes`, data);
+    const response = await apiService.post<Home>(
+      `/api/providers/${providerId}/homes`,
+      data
+    );
     return response.data!;
   }
 
@@ -149,13 +161,21 @@ export class HomeService {
   }
 
   // Update home services
-  async updateHomeServices(homeId: string, serviceIds: string[]): Promise<void> {
+  async updateHomeServices(
+    homeId: string,
+    serviceIds: string[]
+  ): Promise<void> {
     await apiService.put(`/api/homes/${homeId}/services`, { serviceIds });
   }
 
   // Get available services
-  async getAvailableServices(): Promise<ApiResponse<Service[]>> {
-    return await apiService.get<Service[]>('/api/services');
+  async getAvailableServices(
+    providerId?: string
+  ): Promise<ApiResponse<Service[]>> {
+    const url = providerId
+      ? `/api/services?providerId=${providerId}`
+      : "/api/services";
+    return await apiService.get<Service[]>(url);
   }
 
   // Get home analytics

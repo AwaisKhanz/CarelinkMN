@@ -147,7 +147,8 @@ router.post(
       .isISO8601()
       .withMessage("Valid expiration date is required"),
     body("documentUrl")
-      .optional()
+      .notEmpty()
+      .withMessage("License document is required")
       .isURL()
       .withMessage("Document URL must be a valid URL"),
   ],
@@ -319,6 +320,14 @@ router.delete(
   param("staffUserId").isUUID().withMessage("Invalid staff user ID"),
   validate([]),
   providerController.removeStaff
+);
+
+router.post(
+  "/providers/:providerId/staff/:staffUserId/resend-invite",
+  param("providerId").isUUID().withMessage("Invalid provider ID"),
+  param("staffUserId").isUUID().withMessage("Invalid staff user ID"),
+  validate([]),
+  providerController.resendStaffInvite
 );
 
 // Get provider statistics

@@ -26,13 +26,15 @@ export class ProviderController {
     this.updateLicense = this.updateLicense.bind(this);
     this.deleteLicense = this.deleteLicense.bind(this);
     this.getProviderByUserId = this.getProviderByUserId.bind(this);
-    this.getProviderByOrganizationId = this.getProviderByOrganizationId.bind(this);
+    this.getProviderByOrganizationId =
+      this.getProviderByOrganizationId.bind(this);
     this.getProviderReferrals = this.getProviderReferrals.bind(this);
     this.getProviderServices = this.getProviderServices.bind(this);
     this.updateProviderServices = this.updateProviderServices.bind(this);
     this.getOrganizationStaff = this.getOrganizationStaff.bind(this);
     this.inviteStaff = this.inviteStaff.bind(this);
     this.removeStaff = this.removeStaff.bind(this);
+    this.resendStaffInvite = this.resendStaffInvite.bind(this);
     this.getProviderStats = this.getProviderStats.bind(this);
   }
 
@@ -91,12 +93,16 @@ export class ProviderController {
   async getProvider(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { includeHomes = false, includeServices = false, includeOpenings = false } = req.query;
+      const {
+        includeHomes = false,
+        includeServices = false,
+        includeOpenings = false,
+      } = req.query;
 
       const provider = await this.providerService.getProvider(id, {
-        includeHomes: includeHomes === 'true',
-        includeServices: includeServices === 'true',
-        includeOpenings: includeOpenings === 'true',
+        includeHomes: includeHomes === "true",
+        includeServices: includeServices === "true",
+        includeOpenings: includeOpenings === "true",
       });
 
       if (!provider) {
@@ -160,7 +166,11 @@ export class ProviderController {
       }
 
       const updateData = req.body;
-      const result = await this.providerService.updateProvider(id, updateData, user.id);
+      const result = await this.providerService.updateProvider(
+        id,
+        updateData,
+        user.id
+      );
 
       res.status(200).json({
         success: true,
@@ -245,7 +255,11 @@ export class ProviderController {
       }
 
       const profileData = req.body;
-      const result = await this.providerService.updateProviderProfile(id, profileData, user.id);
+      const result = await this.providerService.updateProviderProfile(
+        id,
+        profileData,
+        user.id
+      );
 
       res.status(200).json({
         success: true,
@@ -314,7 +328,11 @@ export class ProviderController {
         documentUrl: documentUrl,
       };
 
-      const result = await this.licenseService.createLicense(providerId, licenseData, user.id);
+      const result = await this.licenseService.createLicense(
+        providerId,
+        licenseData,
+        user.id
+      );
 
       res.status(201).json({
         success: true,
@@ -347,7 +365,9 @@ export class ProviderController {
       }
 
       // Only admins can verify licenses
-      if (![UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role as UserRole)) {
+      if (
+        ![UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role as UserRole)
+      ) {
         res.status(403).json({
           success: false,
           error: "Forbidden",
@@ -385,9 +405,12 @@ export class ProviderController {
       const { providerId } = req.params;
       const { status } = req.query;
 
-      const licenses = await this.licenseService.getProviderLicenses(providerId, {
-        status: status as string,
-      });
+      const licenses = await this.licenseService.getProviderLicenses(
+        providerId,
+        {
+          status: status as string,
+        }
+      );
 
       res.status(200).json({
         success: true,
@@ -452,7 +475,10 @@ export class ProviderController {
       }
 
       // Verify user has access to this provider
-      const hasAccess = await this.providerService.verifyProviderAccess(user.id, license.providerId);
+      const hasAccess = await this.providerService.verifyProviderAccess(
+        user.id,
+        license.providerId
+      );
       if (!hasAccess) {
         res.status(403).json({
           success: false,
@@ -477,7 +503,11 @@ export class ProviderController {
       if (expirationDate) updateData.expirationDate = new Date(expirationDate);
       if (documentUrl) updateData.documentUrl = documentUrl;
 
-      const result = await this.licenseService.updateLicense(licenseId, updateData, user.id);
+      const result = await this.licenseService.updateLicense(
+        licenseId,
+        updateData,
+        user.id
+      );
 
       res.status(200).json({
         success: true,
@@ -490,8 +520,8 @@ export class ProviderController {
         error instanceof Error && error.message === "License not found"
           ? 404
           : error instanceof Error && error.message === "Access denied"
-          ? 403
-          : 500;
+            ? 403
+            : 500;
       res.status(statusCode).json({
         success: false,
         error: "License update failed",
@@ -551,8 +581,8 @@ export class ProviderController {
         error instanceof Error && error.message === "License not found"
           ? 404
           : error instanceof Error && error.message === "Access denied"
-          ? 403
-          : 500;
+            ? 403
+            : 500;
       res.status(statusCode).json({
         success: false,
         error: "License deletion failed",
@@ -616,7 +646,10 @@ export class ProviderController {
   }
 
   // Get provider by organization ID
-  async getProviderByOrganizationId(req: Request, res: Response): Promise<void> {
+  async getProviderByOrganizationId(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { organizationId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
@@ -640,7 +673,8 @@ export class ProviderController {
         return;
       }
 
-      const provider = await this.providerService.getProviderByOrganizationId(organizationId);
+      const provider =
+        await this.providerService.getProviderByOrganizationId(organizationId);
 
       if (!provider) {
         res.status(404).json({
@@ -681,7 +715,10 @@ export class ProviderController {
         return;
       }
 
-      const services = await this.providerService.getProviderServices(providerId, user.id);
+      const services = await this.providerService.getProviderServices(
+        providerId,
+        user.id
+      );
 
       res.status(200).json({
         success: true,
@@ -693,7 +730,10 @@ export class ProviderController {
       res.status(500).json({
         success: false,
         error: "Service retrieval failed",
-        message: error instanceof Error ? error.message : "An error occurred while retrieving provider services",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving provider services",
       } as ApiResponse);
     }
   }
@@ -754,13 +794,15 @@ export class ProviderController {
       } as ApiResponse);
     } catch (error) {
       console.error("Update provider services error:", error);
-      
+
       // Handle validation errors with 400 status (bad request)
       if (error instanceof Error) {
         const errorMessage = error.message;
         if (
           errorMessage.includes("not allowed by provider licenses") ||
-          errorMessage.includes("require licenses that your provider does not have") ||
+          errorMessage.includes(
+            "require licenses that your provider does not have"
+          ) ||
           errorMessage.includes("invalid or inactive")
         ) {
           res.status(400).json({
@@ -771,12 +813,15 @@ export class ProviderController {
           return;
         }
       }
-      
+
       // Handle other errors with 500 status
       res.status(500).json({
         success: false,
         error: "Service update failed",
-        message: error instanceof Error ? error.message : "An error occurred while updating provider services",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while updating provider services",
       } as ApiResponse);
     }
   }
@@ -798,7 +843,10 @@ export class ProviderController {
       }
 
       // Verify user has access to this provider
-      const hasAccess = await this.providerService.verifyProviderAccess(user.id, providerId);
+      const hasAccess = await this.providerService.verifyProviderAccess(
+        user.id,
+        providerId
+      );
       if (!hasAccess) {
         res.status(403).json({
           success: false,
@@ -827,7 +875,10 @@ export class ProviderController {
       res.status(500).json({
         success: false,
         error: "Referral retrieval failed",
-        message: error instanceof Error ? error.message : "An error occurred while retrieving provider referrals",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving provider referrals",
       } as ApiResponse);
     }
   }
@@ -999,6 +1050,64 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while removing staff member",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Resend a staff invitation
+   * POST /api/providers/:providerId/staff/:staffUserId/resend-invite
+   */
+  async resendStaffInvite(req: Request, res: Response): Promise<void> {
+    try {
+      const { providerId, staffUserId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      if (user.role !== UserRole.PROVIDER_OWNER) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "Only provider owners can resend invitations",
+        } as ApiResponse);
+        return;
+      }
+
+      await this.providerService.resendStaffInvite(
+        providerId,
+        user.id,
+        staffUserId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Invitation resent successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Resend staff invite error:", error);
+      const statusCode =
+        error instanceof Error &&
+        (error.message.includes("Only provider owners") ||
+          error.message.includes("Access denied") ||
+          error.message.includes("already activated") ||
+          error.message.includes("not found"))
+          ? 400
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Resend invitation failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while resending the invitation",
       } as ApiResponse);
     }
   }

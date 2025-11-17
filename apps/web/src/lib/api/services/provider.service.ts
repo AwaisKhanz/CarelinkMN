@@ -301,6 +301,16 @@ export class ProviderService {
   async removeStaff(providerId: string, staffUserId: string): Promise<ApiResponse<void>> {
     return await apiService.delete<void>(`/api/providers/${providerId}/staff/${staffUserId}`);
   }
+
+  async resendStaffInvite(
+    providerId: string,
+    staffUserId: string
+  ): Promise<ApiResponse<void>> {
+    return await apiService.post<void>(
+      `/api/providers/${providerId}/staff/${staffUserId}/resend-invite`,
+      {}
+    );
+  }
 }
 
 export interface StaffMember {
@@ -312,6 +322,7 @@ export interface StaffMember {
   status: string;
   createdAt: string;
   lastLoginAt?: string | null;
+  updatedAt?: string;
 }
 
 // Export singleton instance

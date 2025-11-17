@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,8 +30,6 @@ import {
   Trash2,
   Eye,
   AlertCircle,
-  LayoutGrid,
-  Table,
   Loader2,
   XCircle,
   CheckCircle,
@@ -58,8 +56,6 @@ import { useProviderHomes } from "@/hooks/use-provider-homes";
 import { calculateHoursUntilExpiry } from "@/lib/utils/provider";
 import { DataTable } from "@/components/ui/data-table";
 import { StatsCard } from "@/components/ui/stats-card";
-import { KanbanBoard } from "@/components/ui/kanban-board";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -70,21 +66,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PAYER_LABELS, OPENING_STATUS_CONFIG } from "@/lib/constants";
 import { ProviderDeleteDialog } from "@/components/provider";
 
-export default function OpeningsPage() {
+function OpeningsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Use provider ID from context hook directly
   const providerId = useProviderId();
-  
+
   // Use provider homes hook for homes data
   const { homes: homesData, isLoading: homesLoading } = useProviderHomes();
-  
+
   // Transform homes data for filter dropdown
   const homes = useMemo(() => {
     return homesData.map((home) => ({
@@ -92,11 +89,14 @@ export default function OpeningsPage() {
       name: home.name,
     }));
   }, [homesData]);
-  
-  const [selectedHomeId, setSelectedHomeId] = useState<string>("all");
+
+  // Initialize selectedHomeId from query params if present
+  const [selectedHomeId, setSelectedHomeId] = useState<string>(() => {
+    const homeIdFromQuery = searchParams?.get("homeId");
+    return homeIdFromQuery || "all";
+  });
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [selectedOpenings, setSelectedOpenings] = useState<string[]>([]);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [openingToDelete, setOpeningToDelete] = useState<Opening | null>(null);
@@ -623,177 +623,131 @@ export default function OpeningsPage() {
       {/* View Toggle and Data Display */}
       <Card variant="healthcare">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Openings</CardTitle>
-              <CardDescription>
-                Manage and track all bed openings and availability
-              </CardDescription>
-            </div>
-            <Tabs
-              value={viewMode}
-              onValueChange={(v) => setViewMode(v as "table" | "kanban")}
-            >
-              <TabsList variant="healthcare">
-                <TabsTrigger value="table">
-                  <Table className="h-4 w-4 mr-2" />
-                  Table
-                </TabsTrigger>
-                <TabsTrigger value="kanban">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Kanban
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div>
+            <CardTitle>Openings</CardTitle>
+            <CardDescription>
+              Manage and track all bed openings and availability
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs
-            value={viewMode}
-            onValueChange={(v) => setViewMode(v as "table" | "kanban")}
-          >
-            <TabsContent value="table" className="mt-0">
-              <div className="space-y-4">
-                {/* Bulk Actions Toolbar */}
-                {selectedOpenings.length > 0 && (
-                  <BulkActionsToolbar
-                    selectedCount={selectedOpenings.length}
-                    totalCount={openings.length}
-                    onSelectAll={handleSelectAll}
-                    onDeselectAll={handleDeselectAll}
-                    actions={[
-                      {
-                        label: "Refresh",
-                        icon: <RefreshCw className="h-4 w-4" />,
-                        onClick: handleBulkRefresh,
-                        variant: "outline",
-                        disabled: isBulkUpdating,
-                      },
-                      {
-                        label: "Mark as Open",
-                        icon: <CheckCircle className="h-4 w-4" />,
-                        onClick: () =>
-                          handleBulkStatusUpdate(OpeningStatus.OPEN),
-                        variant: "outline",
-                        disabled: isBulkUpdating,
-                      },
-                      {
-                        label: "Mark as Filled",
-                        icon: <CheckCircle className="h-4 w-4" />,
-                        onClick: () =>
-                          handleBulkStatusUpdate(OpeningStatus.FILLED),
-                        variant: "outline",
-                        disabled: isBulkUpdating,
-                      },
-                      {
-                        label: "Mark as Expired",
-                        icon: <XCircle className="h-4 w-4" />,
-                        onClick: () =>
-                          handleBulkStatusUpdate(OpeningStatus.EXPIRED),
-                        variant: "outline",
-                        disabled: isBulkUpdating,
-                      },
-                    ]}
-                  />
-                )}
-                {/* Filters */}
-                <div className="flex flex-wrap gap-4">
-                  <Select
-                    value={selectedHomeId}
-                    onValueChange={(value) => {
-                      setSelectedHomeId(value);
-                      setPagination((prev) => ({ ...prev, page: 1 }));
-                      setSelectedOpenings([]); // Clear selection on filter change
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-64">
-                      <SelectValue placeholder="Filter by home" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Homes</SelectItem>
-                      {homes.map((home: { id: string; name: string }) => (
-                        <SelectItem key={home.id} value={home.id}>
-                          {home.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={selectedStatus}
-                    onValueChange={(value) => {
-                      setSelectedStatus(value);
-                      setPagination((prev) => ({ ...prev, page: 1 }));
-                      setSelectedOpenings([]); // Clear selection on filter change
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-64">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      {Object.entries(OPENING_STATUS_CONFIG).map(([status, config]) => (
-                        <SelectItem key={status} value={status}>
-                          <Badge
-                            variant={config.color}
-                            className="flex items-center gap-1.5"
-                          >
-                            <config.icon className="h-3 w-3" />
-                            {config.label}
-                          </Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DataTable
-                  columns={columns}
-                  data={openings}
-                  isLoading={isLoading}
-                  searchKey="global"
-                  searchPlaceholder="Search openings..."
-                  searchValue={searchQuery}
-                  onSearchChange={(value) => {
-                    setSearchQuery(value);
-                    setPagination((prev) => ({ ...prev, page: 1 }));
-                    setSelectedOpenings([]); // Clear selection on search change
-                  }}
-                  enablePagination={true}
-                  pageSize={pagination.limit}
-                  currentPage={pagination.page}
-                  totalPages={pagination.pages}
-                  totalItems={pagination.total}
-                  onPageChange={handlePageChange}
-                  variant="healthcare"
-                  onRowClick={(opening) =>
-                    router.push(`/provider/openings/${opening.id}`)
-                  }
-                  emptyMessage="No openings found. Create a new opening to get started."
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="kanban" className="mt-0">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center space-y-4">
-                    <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Loading openings...</p>
-                  </div>
-                </div>
-              ) : (
-                <KanbanBoard
-                  openings={openings}
-                  onStatusChange={handleStatusChange}
-                  onRefresh={handleRefreshOpening}
-                  onView={(openingId) =>
-                    router.push(`/provider/openings/${openingId}`)
-                  }
-                  onEdit={(openingId) =>
-                    router.push(`/provider/openings/${openingId}/edit`)
-                  }
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-4">
+            {/* Bulk Actions Toolbar */}
+            {selectedOpenings.length > 0 && (
+              <BulkActionsToolbar
+                selectedCount={selectedOpenings.length}
+                totalCount={openings.length}
+                onSelectAll={handleSelectAll}
+                onDeselectAll={handleDeselectAll}
+                actions={[
+                  {
+                    label: "Refresh",
+                    icon: <RefreshCw className="h-4 w-4" />,
+                    onClick: handleBulkRefresh,
+                    variant: "outline",
+                    disabled: isBulkUpdating,
+                  },
+                  {
+                    label: "Mark as Open",
+                    icon: <CheckCircle className="h-4 w-4" />,
+                    onClick: () => handleBulkStatusUpdate(OpeningStatus.OPEN),
+                    variant: "outline",
+                    disabled: isBulkUpdating,
+                  },
+                  {
+                    label: "Mark as Filled",
+                    icon: <CheckCircle className="h-4 w-4" />,
+                    onClick: () => handleBulkStatusUpdate(OpeningStatus.FILLED),
+                    variant: "outline",
+                    disabled: isBulkUpdating,
+                  },
+                  {
+                    label: "Mark as Expired",
+                    icon: <XCircle className="h-4 w-4" />,
+                    onClick: () =>
+                      handleBulkStatusUpdate(OpeningStatus.EXPIRED),
+                    variant: "outline",
+                    disabled: isBulkUpdating,
+                  },
+                ]}
+              />
+            )}
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4">
+              <Select
+                value={selectedHomeId}
+                onValueChange={(value) => {
+                  setSelectedHomeId(value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                  setSelectedOpenings([]); // Clear selection on filter change
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-64">
+                  <SelectValue placeholder="Filter by home" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Homes</SelectItem>
+                  {homes.map((home: { id: string; name: string }) => (
+                    <SelectItem key={home.id} value={home.id}>
+                      {home.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedStatus}
+                onValueChange={(value) => {
+                  setSelectedStatus(value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                  setSelectedOpenings([]); // Clear selection on filter change
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-64">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {Object.entries(OPENING_STATUS_CONFIG).map(
+                    ([status, config]) => (
+                      <SelectItem key={status} value={status}>
+                        <Badge
+                          variant={config.color}
+                          className="flex items-center gap-1.5"
+                        >
+                          <config.icon className="h-3 w-3" />
+                          {config.label}
+                        </Badge>
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <DataTable
+              columns={columns}
+              data={openings}
+              isLoading={isLoading}
+              searchKey="global"
+              searchPlaceholder="Search openings..."
+              searchValue={searchQuery}
+              onSearchChange={(value) => {
+                setSearchQuery(value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+                setSelectedOpenings([]); // Clear selection on search change
+              }}
+              enablePagination={true}
+              pageSize={pagination.limit}
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              onPageChange={handlePageChange}
+              variant="healthcare"
+              onRowClick={(opening) =>
+                router.push(`/provider/openings/${opening.id}`)
+              }
+              emptyMessage="No openings found. Create a new opening to get started."
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -816,5 +770,22 @@ export default function OpeningsPage() {
         variant="delete"
       />
     </div>
+  );
+}
+
+export default function OpeningsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-muted-foreground">Loading openings...</p>
+          </div>
+        </div>
+      }
+    >
+      <OpeningsPageContent />
+    </Suspense>
   );
 }

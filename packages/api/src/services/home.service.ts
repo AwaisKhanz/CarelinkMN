@@ -516,14 +516,26 @@ export class HomeService {
       }
 
       // Enforce license constraints for the provider that owns this home
+      // Only consider ACTIVE licenses for validation (PENDING licenses can view but not select services)
       if (uniqueServiceIds.length > 0) {
         const services = await db.service.findMany({
           where: { id: { in: uniqueServiceIds } },
           select: { id: true, licenseTypes: true, name: true },
         });
-        const providerLicenseTypes = new Set(
-          (existingHome.provider?.licenses || []).map((l) => l.licenseType)
+        const activeLicenses = (existingHome.provider?.licenses || []).filter(
+          (l) => l.status === "ACTIVE"
         );
+        const providerLicenseTypes = new Set(
+          activeLicenses.map((l) => l.licenseType)
+        );
+        
+        // Check if provider has any active licenses
+        if (providerLicenseTypes.size === 0) {
+          throw new Error(
+            "Cannot add services: Provider must have at least one ACTIVE license. Please ensure your licenses are verified and active."
+          );
+        }
+        
         const invalidServices = services.filter((s) => {
           // Use the centralized license matching utility for consistency
           return !isServiceAllowedForProvider(
@@ -533,8 +545,9 @@ export class HomeService {
         });
         if (invalidServices.length > 0) {
           const names = invalidServices.map((s) => s.name || s.id).join(", ");
+          const licenseTypes = Array.from(providerLicenseTypes).join(", ");
           throw new Error(
-            `Selected services not allowed by provider licenses: ${names}`
+            `Selected services not allowed by provider licenses: ${names}. Your active license types (${licenseTypes}) do not permit these services.`
           );
         }
       }

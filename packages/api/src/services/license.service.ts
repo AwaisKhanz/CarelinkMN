@@ -20,7 +20,11 @@ export interface VerifyLicenseData {
 
 export class LicenseService {
   // Create a new license
-  async createLicense(providerId: string, data: CreateLicenseData, userId: string): Promise<any> {
+  async createLicense(
+    providerId: string,
+    data: CreateLicenseData,
+    userId: string
+  ): Promise<any> {
     try {
       // Check if license already exists
       const existingLicense = await db.license.findFirst({
@@ -31,7 +35,9 @@ export class LicenseService {
       });
 
       if (existingLicense) {
-        throw new Error("License with this number already exists for this provider");
+        throw new Error(
+          "License with this number already exists for this provider"
+        );
       }
 
       const license = await db.license.create({
@@ -99,7 +105,11 @@ export class LicenseService {
   }
 
   // Update license
-  async updateLicense(id: string, data: Partial<CreateLicenseData>, userId: string): Promise<any> {
+  async updateLicense(
+    id: string,
+    data: Partial<CreateLicenseData>,
+    userId: string
+  ): Promise<any> {
     try {
       const license = await db.license.update({
         where: { id },
@@ -184,7 +194,10 @@ export class LicenseService {
   }
 
   // Get provider licenses
-  async getProviderLicenses(providerId: string, filters: { status?: string } = {}): Promise<any[]> {
+  async getProviderLicenses(
+    providerId: string,
+    filters: { status?: string } = {}
+  ): Promise<any[]> {
     try {
       const where: Prisma.LicenseWhereInput = {
         providerId,
@@ -197,7 +210,7 @@ export class LicenseService {
       const licenses = await db.license.findMany({
         where,
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       });
 
@@ -278,7 +291,7 @@ export class LicenseService {
           },
         },
         orderBy: {
-          expirationDate: 'asc',
+          expirationDate: "asc",
         },
       });
 
@@ -307,7 +320,7 @@ export class LicenseService {
           },
         },
         orderBy: {
-          expirationDate: 'desc',
+          expirationDate: "desc",
         },
       });
 
@@ -316,7 +329,7 @@ export class LicenseService {
         await db.license.updateMany({
           where: {
             id: {
-              in: licenses.map(l => l.id),
+              in: licenses.map((l) => l.id),
             },
           },
           data: {
@@ -343,13 +356,13 @@ export class LicenseService {
     try {
       // This would integrate with Minnesota state licensing system
       // For now, return a mock response
-      
+
       // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Mock validation logic
       const isValid = licenseNumber.length >= 6;
-      
+
       if (isValid) {
         return {
           valid: true,

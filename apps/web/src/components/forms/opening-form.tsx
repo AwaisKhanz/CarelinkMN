@@ -1,7 +1,12 @@
 "use client";
 
 import React from "react";
-import { useForm, type FieldErrors, type FieldError } from "react-hook-form";
+import {
+  useForm,
+  type FieldErrors,
+  type FieldError,
+  Controller,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -50,69 +55,155 @@ export const STATUS_OPTIONS: Array<{ value: OpeningStatus; label: string }> = [
 
 // Base schema object (without refinements)
 const baseOpeningSchema = z.object({
-  homeId: z.string().min(1, "Home is required"),
-  spotsAvailable: z
-    .number({
-      required_error: "Spots available is required",
-      invalid_type_error: "Spots available must be a number",
+  homeId: z.string().min(1, "Home is required").uuid("Invalid home ID format"),
+  spotsAvailable: z.preprocess(
+    (val) => {
+      if (
+        val === "" ||
+        val === null ||
+        val === undefined ||
+        (typeof val === "number" && isNaN(val))
+      ) {
+        return undefined;
+      }
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z
+      .number({
+        required_error: "Spots available is required",
+        invalid_type_error: "Spots available must be a number",
+      })
+      .int("Spots available must be a whole number")
+      .min(1, "At least 1 spot is required")
+      .max(100, "Maximum 100 spots allowed")
+  ),
+  availableFrom: z
+    .date({
+      required_error: "Available from date is required",
+      invalid_type_error: "Please select a valid date",
     })
-    .int("Spots available must be a whole number")
-    .min(1, "At least 1 spot is required")
-    .max(100, "Maximum 100 spots allowed"),
-  availableFrom: z.date({
-    required_error: "Available from date is required",
-    invalid_type_error: "Please select a valid date",
-  }),
+    .refine(
+      (date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date >= today;
+      },
+      {
+        message: "Available from date cannot be in the past",
+      }
+    ),
   availableUntil: z
     .date({
       invalid_type_error: "Please select a valid date",
     })
     .optional()
-    .nullable(),
+    .nullable()
+    .refine(
+      (date) => {
+        if (!date) return true;
+        const maxDate = new Date();
+        maxDate.setFullYear(maxDate.getFullYear() + 10);
+        return date <= maxDate;
+      },
+      {
+        message:
+          "Available until date cannot be more than 10 years in the future",
+      }
+    ),
   ageMin: z
     .union([
-      z.number({
-        invalid_type_error: "Minimum age must be a number",
-      }).int("Minimum age must be a whole number").min(0, "Minimum age cannot be negative").max(150, "Minimum age cannot exceed 150"),
+      z
+        .number({
+          invalid_type_error: "Minimum age must be a number",
+        })
+        .int("Minimum age must be a whole number")
+        .min(0, "Minimum age cannot be negative")
+        .max(150, "Minimum age cannot exceed 150"),
+      z.nan(),
       z.literal(""),
       z.null(),
       z.undefined(),
     ])
     .optional()
     .nullable()
-    .transform((val) => (val === "" ? undefined : val)),
+    .transform((val) => {
+      if (
+        val === "" ||
+        val === null ||
+        val === undefined ||
+        isNaN(val as number)
+      ) {
+        return undefined;
+      }
+      return val;
+    }),
   ageMax: z
     .union([
-      z.number({
-        invalid_type_error: "Maximum age must be a number",
-      }).int("Maximum age must be a whole number").min(0, "Maximum age cannot be negative").max(150, "Maximum age cannot exceed 150"),
+      z
+        .number({
+          invalid_type_error: "Maximum age must be a number",
+        })
+        .int("Maximum age must be a whole number")
+        .min(0, "Maximum age cannot be negative")
+        .max(150, "Maximum age cannot exceed 150"),
+      z.nan(),
       z.literal(""),
       z.null(),
       z.undefined(),
     ])
     .optional()
     .nullable()
-    .transform((val) => (val === "" ? undefined : val)),
+    .transform((val) => {
+      if (
+        val === "" ||
+        val === null ||
+        val === undefined ||
+        isNaN(val as number)
+      ) {
+        return undefined;
+      }
+      return val;
+    }),
   genderPreference: z
     .nativeEnum(Gender, {
       errorMap: () => ({ message: "Please select a valid gender preference" }),
     })
     .optional()
     .default(Gender.NO_PREFERENCE),
-  careLevels: z.array(z.string()).default([]),
-  supportedNeeds: z.array(z.string()).default([]),
+  careLevels: z
+    .array(z.string().min(1, "Care level cannot be empty"))
+    .min(1, "At least one care level is required")
+    .default([]),
+  supportedNeeds: z
+    .array(z.string().min(1, "Supported need cannot be empty"))
+    .default([]),
   acceptedPayers: z
     .array(
       z.nativeEnum(Payer, {
         errorMap: () => ({ message: "Invalid payer type selected" }),
       })
     )
-    .min(1, "At least one accepted payer is required"),
+    .min(1, "At least one accepted payer is required")
+    .max(10, "Maximum 10 payers allowed"),
   privatePayRate: z
     .union([
-      z.number({
-        invalid_type_error: "Private pay rate must be a number",
-      }).min(0, "Private pay rate cannot be negative").max(999999.99, "Private pay rate is too high"),
+      z
+        .number({
+          invalid_type_error: "Private pay rate must be a number",
+        })
+        .min(0, "Private pay rate cannot be negative")
+        .max(999999.99, "Private pay rate is too high")
+        .refine(
+          (val) => {
+            // Check if it has more than 2 decimal places
+            const decimalPlaces = (val.toString().split(".")[1] || "").length;
+            return decimalPlaces <= 2;
+          },
+          {
+            message: "Private pay rate can have at most 2 decimal places",
+          }
+        ),
       z.literal(""),
       z.null(),
       z.undefined(),
@@ -143,8 +234,13 @@ const createOpeningSchema = baseOpeningSchema
   )
   .refine(
     (data) => {
-      if (data.availableUntil) {
-        return data.availableUntil >= data.availableFrom;
+      if (data.availableUntil && data.availableFrom) {
+        // Compare dates without time
+        const until = new Date(data.availableUntil);
+        until.setHours(0, 0, 0, 0);
+        const from = new Date(data.availableFrom);
+        from.setHours(0, 0, 0, 0);
+        return until >= from;
       }
       return true;
     },
@@ -184,8 +280,13 @@ const editOpeningSchema = baseOpeningSchema
   )
   .refine(
     (data) => {
-      if (data.availableUntil) {
-        return data.availableUntil >= data.availableFrom;
+      if (data.availableUntil && data.availableFrom) {
+        // Compare dates without time
+        const until = new Date(data.availableUntil);
+        until.setHours(0, 0, 0, 0);
+        const from = new Date(data.availableFrom);
+        from.setHours(0, 0, 0, 0);
+        return until >= from;
       }
       return true;
     },
@@ -227,6 +328,7 @@ export function OpeningForm({
   const schema = mode === "create" ? createOpeningSchema : editOpeningSchema;
   const formData = useForm<OpeningFormFields>({
     resolver: zodResolver(schema),
+    mode: "onChange", // Enable real-time validation
     defaultValues: {
       genderPreference: Gender.NO_PREFERENCE,
       careLevels: [],
@@ -248,6 +350,8 @@ export function OpeningForm({
     setValue,
     watch,
     reset,
+    control,
+    trigger,
   } = formData;
 
   // Update form when initialData changes (for edit mode)
@@ -340,31 +444,36 @@ export function OpeningForm({
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
-                value={watch("status") || OpeningStatus.OPEN}
-                onValueChange={(value) =>
-                  setValue("status", value as OpeningStatus, {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger
-                  className={cn(
-                    mode === "edit" &&
-                      getError("status") &&
-                      "border-destructive"
-                  )}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || OpeningStatus.OPEN}
+                    onValueChange={(value) => {
+                      field.onChange(value as OpeningStatus);
+                      trigger("status");
+                    }}
+                  >
+                    <SelectTrigger
+                      className={cn(
+                        mode === "edit" &&
+                          getError("status") &&
+                          "border-destructive"
+                      )}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {mode === "edit" && <FormError error={getError("status")} />}
             </div>
           </CardContent>
@@ -386,27 +495,36 @@ export function OpeningForm({
           {mode === "create" ? (
             <div className="space-y-2">
               <Label htmlFor="homeId">Home *</Label>
-              <Select
-                value={watch("homeId") || ""}
-                onValueChange={(value) => setValue("homeId", value)}
-              >
-                <SelectTrigger
-                  className={cn(
-                    mode === "create" &&
-                      getError("homeId") &&
-                      "border-destructive"
-                  )}
-                >
-                  <SelectValue placeholder="Select a home" />
-                </SelectTrigger>
-                <SelectContent>
-                  {homes.map((home) => (
-                    <SelectItem key={home.id} value={home.id}>
-                      {home.name} - {home.city}, {home.state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="homeId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      trigger("homeId");
+                    }}
+                  >
+                    <SelectTrigger
+                      className={cn(
+                        mode === "create" &&
+                          getError("homeId") &&
+                          "border-destructive"
+                      )}
+                    >
+                      <SelectValue placeholder="Select a home" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {homes.map((home) => (
+                        <SelectItem key={home.id} value={home.id}>
+                          {home.name} - {home.city}, {home.state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {mode === "create" && <FormError error={getError("homeId")} />}
             </div>
           ) : (
@@ -433,7 +551,15 @@ export function OpeningForm({
               type="number"
               min="1"
               max="100"
-              {...register("spotsAvailable", { valueAsNumber: true })}
+              {...register("spotsAvailable", {
+                valueAsNumber: true,
+                validate: (value) => {
+                  if (value === undefined || value === null || isNaN(value)) {
+                    return "Spots available is required";
+                  }
+                  return true;
+                },
+              })}
               className={cn(getError("spotsAvailable") && "border-destructive")}
             />
             <FormError error={getError("spotsAvailable")} />
@@ -469,6 +595,24 @@ export function OpeningForm({
                       setValue("availableFrom", date, {
                         shouldValidate: true,
                       });
+
+                      // If availableUntil is set and is now invalid, clear it
+                      if (availableUntil) {
+                        const untilDate = new Date(availableUntil);
+                        untilDate.setHours(0, 0, 0, 0);
+                        const fromDate = new Date(date);
+                        fromDate.setHours(0, 0, 0, 0);
+
+                        if (untilDate < fromDate) {
+                          setValue("availableUntil", null, {
+                            shouldValidate: true,
+                          });
+                          toast.error(
+                            "Available until date was cleared because it was before the new available from date"
+                          );
+                        }
+                      }
+
                       // Trigger validation for availableUntil when availableFrom changes
                       formData.trigger("availableUntil");
                     }
@@ -505,10 +649,40 @@ export function OpeningForm({
                 <Calendar
                   mode="single"
                   selected={availableUntil || undefined}
+                  fromDate={availableFrom || undefined}
+                  disabled={(date) => {
+                    if (!availableFrom) return false;
+                    const checkDate = new Date(date);
+                    checkDate.setHours(0, 0, 0, 0);
+                    const fromDate = new Date(availableFrom);
+                    fromDate.setHours(0, 0, 0, 0);
+                    return checkDate < fromDate;
+                  }}
                   onSelect={(date) => {
-                    setValue("availableUntil", date || null, {
-                      shouldValidate: true,
-                    });
+                    if (date) {
+                      // Validate that the selected date is not before availableFrom
+                      if (availableFrom) {
+                        const selectedDate = new Date(date);
+                        selectedDate.setHours(0, 0, 0, 0);
+                        const fromDate = new Date(availableFrom);
+                        fromDate.setHours(0, 0, 0, 0);
+
+                        if (selectedDate < fromDate) {
+                          // Don't set the value if it's invalid
+                          toast.error(
+                            "Available until date must be after or equal to available from date"
+                          );
+                          return;
+                        }
+                      }
+                      setValue("availableUntil", date, {
+                        shouldValidate: true,
+                      });
+                    } else {
+                      setValue("availableUntil", null, {
+                        shouldValidate: true,
+                      });
+                    }
                     // Trigger validation for availableFrom when availableUntil changes
                     formData.trigger("availableFrom");
                   }}
@@ -541,7 +715,12 @@ export function OpeningForm({
                 max="150"
                 {...register("ageMin", {
                   valueAsNumber: true,
-                  setValueAs: (v) => (v === "" ? null : Number(v)),
+                  setValueAs: (v) => {
+                    if (v === "" || v === null || v === undefined)
+                      return undefined;
+                    const num = Number(v);
+                    return isNaN(num) ? undefined : num;
+                  },
                   onChange: () => {
                     // Trigger validation for ageMax when ageMin changes
                     formData.trigger("ageMax");
@@ -563,7 +742,12 @@ export function OpeningForm({
                 max="150"
                 {...register("ageMax", {
                   valueAsNumber: true,
-                  setValueAs: (v) => (v === "" ? null : Number(v)),
+                  setValueAs: (v) => {
+                    if (v === "" || v === null || v === undefined)
+                      return undefined;
+                    const num = Number(v);
+                    return isNaN(num) ? undefined : num;
+                  },
                   onChange: () => {
                     // Trigger validation for ageMin when ageMax changes
                     formData.trigger("ageMin");
@@ -578,23 +762,30 @@ export function OpeningForm({
             {/* Gender Preference */}
             <div className="space-y-2">
               <Label htmlFor="genderPreference">Gender Preference</Label>
-              <Select
-                value={watch("genderPreference") || Gender.NO_PREFERENCE}
-                onValueChange={(value) =>
-                  setValue("genderPreference", value as Gender)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDER_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="genderPreference"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || Gender.NO_PREFERENCE}
+                    onValueChange={(value) => {
+                      field.onChange(value as Gender);
+                      trigger("genderPreference");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
         </CardContent>
@@ -629,6 +820,7 @@ export function OpeningForm({
               </div>
             ))}
           </div>
+          <FormError error={getError("careLevels")} className="mt-2" />
         </CardContent>
       </Card>
 

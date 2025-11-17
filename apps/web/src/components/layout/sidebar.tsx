@@ -36,6 +36,8 @@ import { getDashboardPath } from "@/lib/routing";
 import { useProvider } from "@/contexts/provider-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useProviderId } from "@/hooks/use-provider-data";
+import { providerService } from "@/lib/api";
 
 interface SidebarProps {
   className?: string;
@@ -46,11 +48,21 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  variant?: "default" | "healthcareSecondary" | "healthcareSuccess" | "healthcareWarning" | "healthcareError" | "healthcareInfo";
+  variant?:
+    | "default"
+    | "healthcareSecondary"
+    | "healthcareSuccess"
+    | "healthcareWarning"
+    | "healthcareError"
+    | "healthcareInfo";
   requiresPlan?: "PRO" | "PREMIUM" | "ENTERPRISE";
 }
 
-const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManageStaff: boolean = true): NavItem[] => {
+const getNavItems = (
+  role: UserRole,
+  canManageSettings: boolean = true,
+  canManageStaff: boolean = true
+): NavItem[] => {
   const baseItems: NavItem[] = [
     {
       title: "Dashboard",
@@ -143,8 +155,6 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           title: "Referrals",
           href: "/provider/referrals",
           icon: FileText,
-          badge: "8",
-          variant: "healthcareWarning",
         },
         {
           title: "Availability",
@@ -153,7 +163,7 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           requiresPlan: PROVIDER_FEATURE_GATES.availability.requiredPlan,
         },
       ];
-      
+
       // Only show Staff and Settings for owners
       if (canManageStaff) {
         providerItems.push({
@@ -162,7 +172,7 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           icon: Users,
         });
       }
-      
+
       if (canManageSettings) {
         providerItems.push({
           title: "Settings",
@@ -170,7 +180,7 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           icon: Settings,
         });
       }
-      
+
       return providerItems;
 
     case UserRole.CASE_MANAGER:
@@ -195,8 +205,6 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           title: "Urgent Cases",
           href: "/case-manager/urgent",
           icon: AlertTriangle,
-          badge: "4",
-          variant: "healthcareError",
         },
         {
           title: "Messages",
@@ -252,8 +260,6 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           title: "Pending Reviews",
           href: "/vrs/pending",
           icon: Clock,
-          badge: "6",
-          variant: "healthcareWarning",
         },
         {
           title: "Settings",
@@ -314,7 +320,10 @@ export function Sidebar({ className }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { canManageSettings, canManageStaff, isOwner, isStaff } = usePermissions();
+  const { canManageSettings, canManageStaff, isOwner, isStaff } =
+    usePermissions();
+  const providerId = useProviderId();
+  const [referralCount, setReferralCount] = useState<number | null>(null);
 
   // Get provider from context (if available)
   let providerLogo: string | undefined = undefined;
@@ -326,9 +335,50 @@ export function Sidebar({ className }: SidebarProps) {
     // This is fine, providerLogo will remain undefined
   }
 
+  // Fetch referral count for provider users
+  useEffect(() => {
+    if (
+      providerId &&
+      (user?.role === UserRole.PROVIDER_OWNER ||
+        user?.role === UserRole.PROVIDER_STAFF)
+    ) {
+      const fetchReferralCount = async () => {
+        try {
+          const response = await providerService.getProviderReferrals(
+            providerId,
+            { page: 1, limit: 1 }
+          );
+          if (response.success && response.data) {
+            setReferralCount(response.data.pagination.total);
+          }
+        } catch (error) {
+          console.error("Error fetching referral count:", error);
+          // Don't show error to user, just don't show badge
+        }
+      };
+      fetchReferralCount();
+    }
+  }, [providerId, user?.role]);
+
   if (!user) return null;
 
   const navItems = getNavItems(user.role, canManageSettings, canManageStaff);
+
+  // Update referrals nav item with dynamic count
+  const updatedNavItems = navItems.map((item) => {
+    if (
+      item.href === "/provider/referrals" &&
+      referralCount !== null &&
+      referralCount > 0
+    ) {
+      return {
+        ...item,
+        badge: referralCount > 99 ? "99+" : referralCount.toString(),
+        variant: "healthcareWarning" as const,
+      };
+    }
+    return item;
+  });
 
   return (
     <>
@@ -363,11 +413,15 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="p-6 border-b border-border">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">CL</span>
+                <span className="text-primary-foreground font-bold text-sm">
+                  CL
+                </span>
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">CareLinkMN</h2>
-                <p className="text-xs text-muted-foreground">Care Coordination</p>
+                <p className="text-xs text-muted-foreground">
+                  Care Coordination
+                </p>
               </div>
             </div>
           </div>
@@ -400,7 +454,9 @@ export function Sidebar({ className }: SidebarProps) {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.email}
+                </p>
               </div>
             </div>
           </div>
@@ -408,7 +464,7 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Navigation */}
           <ScrollArea className="flex-1 px-4 py-4">
             <nav className="space-y-2">
-              {navItems.map((item) => {
+              {updatedNavItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
@@ -426,12 +482,18 @@ export function Sidebar({ className }: SidebarProps) {
                     <span className="flex-1">{item.title}</span>
                     <div className="flex items-center gap-2">
                       {item.badge && (
-                        <Badge variant={item.variant || "default"} className="text-xs">
+                        <Badge
+                          variant={item.variant || "default"}
+                          className="text-xs"
+                        >
                           {item.badge}
                         </Badge>
                       )}
                       {item.requiresPlan && (
-                        <Badge variant="healthcarePrimary" className="text-xs capitalize">
+                        <Badge
+                          variant="healthcarePrimary"
+                          className="text-xs capitalize"
+                        >
                           {item.requiresPlan}
                         </Badge>
                       )}

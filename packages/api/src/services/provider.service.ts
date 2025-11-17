@@ -859,31 +859,47 @@ export class ProviderService {
       let providerLicenseTypes: Set<string> | null = null;
 
       // If providerId is provided, fetch provider licenses to filter services
-      if (providerId && userId) {
-        const provider = await db.provider.findFirst({
-          where: {
-            id: providerId,
-            organization: {
-              users: {
-                some: {
-                  id: userId,
-                },
-              },
-            },
-          },
-          include: {
-            licenses: {
-              // Include both ACTIVE and PENDING licenses
-              // PENDING licenses are allowed for service selection, but services may require ACTIVE status for actual use
-              // ACTIVE licenses are required for validation when updating services
+      if (providerId) {
+        // Try to find provider - if userId is provided, verify access, otherwise just get provider
+        const provider = userId
+          ? await db.provider.findFirst({
               where: {
-                status: {
-                  in: ["ACTIVE", "PENDING"],
+                id: providerId,
+                organization: {
+                  users: {
+                    some: {
+                      id: userId,
+                    },
+                  },
                 },
               },
-            },
-          },
-        });
+              include: {
+                licenses: {
+                  // Include both ACTIVE and PENDING licenses
+                  // PENDING licenses are allowed for service selection, but services may require ACTIVE status for actual use
+                  // ACTIVE licenses are required for validation when updating services
+                  where: {
+                    status: {
+                      in: ["ACTIVE", "PENDING"],
+                    },
+                  },
+                },
+              },
+            })
+          : await db.provider.findFirst({
+              where: {
+                id: providerId,
+              },
+              include: {
+                licenses: {
+                  where: {
+                    status: {
+                      in: ["ACTIVE", "PENDING"],
+                    },
+                  },
+                },
+              },
+            });
 
         if (provider) {
           providerLicenseTypes = new Set(
@@ -1069,6 +1085,7 @@ export class ProviderService {
           status: true,
           createdAt: true,
           lastLoginAt: true,
+          updatedAt: true,
         },
         orderBy: { createdAt: "desc" },
       });
@@ -1101,7 +1118,12 @@ export class ProviderService {
       // Verify user is PROVIDER_OWNER and has access
       const currentUser = await db.user.findUnique({
         where: { id: userId },
-        select: { role: true, organizationId: true },
+        select: {
+          role: true,
+          organizationId: true,
+          firstName: true,
+          lastName: true,
+        },
       });
 
       if (!currentUser || currentUser.role !== UserRole.PROVIDER_OWNER) {
@@ -1116,7 +1138,14 @@ export class ProviderService {
       // Get provider to find organization
       const provider = await db.provider.findUnique({
         where: { id: providerId },
-        select: { organizationId: true },
+        select: {
+          organizationId: true,
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
 
       if (!provider) {
@@ -1155,19 +1184,28 @@ export class ProviderService {
         },
       });
 
-      // Create password reset token for invitation
+      // Create password reset token for invitation (used for account setup)
       const { AuthRepository } = await import(
         "../repositories/auth.repository"
       );
       const authRepository = new AuthRepository();
       const resetToken = await authRepository.createPasswordResetToken(
-        staffUser.id
+        staffUser.id,
+        { expiresInMs: 24 * 60 * 60 * 1000 } // 24 hours for staff invites
       );
 
-      // Send invitation email using password reset email (they'll set password via reset link)
+      // Send staff invitation email
       const { EmailService } = await import("./email.service");
       const emailService = new EmailService();
-      await emailService.sendPasswordResetEmail(staffUser, resetToken);
+      const inviterName = `${currentUser.firstName} ${currentUser.lastName}`;
+      const organizationName =
+        provider.organization?.name || "your organization";
+      await emailService.sendStaffInvitationEmail(
+        staffUser,
+        inviterName,
+        organizationName,
+        resetToken
+      );
 
       // Log audit event
       await auditService.logAuditEvent(
@@ -1190,6 +1228,7 @@ export class ProviderService {
         phone: staffUser.phone,
         status: staffUser.status,
         createdAt: staffUser.createdAt,
+        updatedAt: staffUser.updatedAt,
       };
     } catch (error) {
       console.error("Invite staff error:", error);
@@ -1259,6 +1298,125 @@ export class ProviderService {
       console.error("Remove staff error:", error);
       throw new Error(
         error instanceof Error ? error.message : "Failed to remove staff"
+      );
+    }
+  }
+
+  /**
+   * Resend invitation email to a pending staff member
+   */
+  async resendStaffInvite(
+    providerId: string,
+    userId: string,
+    staffUserId: string
+  ): Promise<boolean> {
+    try {
+      // Verify user is PROVIDER_OWNER and has access
+      const currentUser = await db.user.findUnique({
+        where: { id: userId },
+        select: {
+          role: true,
+          organizationId: true,
+          firstName: true,
+          lastName: true,
+        },
+      });
+
+      if (!currentUser || currentUser.role !== UserRole.PROVIDER_OWNER) {
+        throw new Error("Only provider owners can resend invitations");
+      }
+
+      const hasAccess = await this.verifyProviderAccess(userId, providerId);
+      if (!hasAccess) {
+        throw new Error("Access denied");
+      }
+
+      // Load provider for organization context
+      const provider = await db.provider.findUnique({
+        where: { id: providerId },
+        select: {
+          organizationId: true,
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!provider) {
+        throw new Error("Provider not found");
+      }
+
+      if (provider.organizationId !== currentUser.organizationId) {
+        throw new Error("Access denied");
+      }
+
+      // Load staff user
+      const staffUser = await db.user.findUnique({
+        where: { id: staffUserId },
+      });
+
+      if (!staffUser || staffUser.role !== UserRole.PROVIDER_STAFF) {
+        throw new Error("Staff member not found");
+      }
+
+      if (staffUser.organizationId !== currentUser.organizationId) {
+        throw new Error("Access denied");
+      }
+
+      if (staffUser.status === UserStatus.ACTIVE) {
+        throw new Error("Staff member has already activated their account");
+      }
+
+      // Generate new token and send invitation email
+      const { AuthRepository } = await import(
+        "../repositories/auth.repository"
+      );
+      const authRepository = new AuthRepository();
+      const resetToken = await authRepository.createPasswordResetToken(
+        staffUser.id,
+        { expiresInMs: 24 * 60 * 60 * 1000 }
+      );
+
+      const { EmailService } = await import("./email.service");
+      const emailService = new EmailService();
+      const inviterName = `${currentUser.firstName} ${currentUser.lastName}`;
+      const organizationName =
+        provider.organization?.name || "your organization";
+      await emailService.sendStaffInvitationEmail(
+        staffUser,
+        inviterName,
+        organizationName,
+        resetToken
+      );
+
+      // Ensure status remains pending and updatedAt reflects resend
+      await db.user.update({
+        where: { id: staffUserId },
+        data: {
+          status: UserStatus.PENDING_VERIFICATION,
+        },
+      });
+
+      await auditService.logAuditEvent(
+        userId,
+        "STAFF_INVITE_RESENT",
+        "Staff",
+        staffUserId,
+        {
+          providerId,
+          staffEmail: staffUser.email,
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Resend staff invite error:", error);
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "Failed to resend staff invitation"
       );
     }
   }

@@ -141,13 +141,13 @@ export default function EditOpeningPage() {
             availableUntil: opening.availableUntil
               ? new Date(opening.availableUntil)
               : null,
-            ageMin: opening.ageMin || null,
-            ageMax: opening.ageMax || null,
+            ageMin: opening.ageMin ?? undefined,
+            ageMax: opening.ageMax ?? undefined,
             genderPreference: opening.genderPreference || Gender.NO_PREFERENCE,
             careLevels: opening.careLevels || [],
             supportedNeeds: opening.supportedNeeds || [],
             acceptedPayers: opening.acceptedPayers,
-            privatePayRate: opening.privatePayRate || null,
+            privatePayRate: opening.privatePayRate ?? undefined,
             status: opening.status,
           }}
           onSubmit={handleSubmit}

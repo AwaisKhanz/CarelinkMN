@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -74,31 +74,9 @@ const licenseSchema = z
         }
       ),
     documentUrl: z
-      .union([
-        z.string().url("Document URL must be a valid URL"),
-        z.literal(""),
-        z.null(),
-        z.undefined(),
-      ])
-      .optional()
-      .nullable()
-      .refine(
-        (url) => {
-          // If URL is provided, it must be a valid URL
-          if (url && url !== "") {
-            try {
-              new URL(url);
-              return true;
-            } catch {
-              return false;
-            }
-          }
-          return true; // Empty/null/undefined is allowed
-        },
-        {
-          message: "Document URL must be a valid URL",
-        }
-      ),
+      .string()
+      .min(1, "License document is required")
+      .url("Document URL must be a valid URL"),
   })
   .refine(
     (data) => {
@@ -136,11 +114,14 @@ export function LicenseForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     setValue,
     watch,
+    trigger,
   } = useForm<LicenseFormData>({
     resolver: zodResolver(licenseSchema),
+    mode: "onChange",
     defaultValues: initialData
       ? {
           licenseType: initialData.licenseType || "",
@@ -154,6 +135,10 @@ export function LicenseForm({
           documentUrl: initialData.documentUrl || "",
         }
       : {
+          licenseType: "",
+          licenseNumber: "",
+          issueDate: "",
+          expirationDate: "",
           documentUrl: "",
         },
   });
@@ -172,9 +157,11 @@ export function LicenseForm({
   const handleFilesChange = (files: UploadedFile[]) => {
     setUploadedFiles(files);
     if (files.length > 0 && files[0].url) {
-      setValue("documentUrl", files[0].url);
+      setValue("documentUrl", files[0].url, { shouldValidate: true });
+      trigger("documentUrl");
     } else {
-      setValue("documentUrl", "");
+      setValue("documentUrl", "", { shouldValidate: true });
+      trigger("documentUrl");
     }
   };
 
@@ -184,7 +171,7 @@ export function LicenseForm({
       licenseNumber: data.licenseNumber,
       issueDate: data.issueDate,
       expirationDate: data.expirationDate,
-      documentUrl: data.documentUrl || "",
+      documentUrl: data.documentUrl,
     };
 
     await onSubmit(submitData);
@@ -213,24 +200,33 @@ export function LicenseForm({
             <Label htmlFor="licenseType">
               License Type <span className="text-destructive">*</span>
             </Label>
-            <Select
-              value={licenseType}
-              onValueChange={(value) => setValue("licenseType", value)}
-            >
-              <SelectTrigger
-                id="licenseType"
-                className={cn(errors.licenseType && "border-destructive")}
-              >
-                <SelectValue placeholder="Select license type" />
-              </SelectTrigger>
-              <SelectContent>
-                {LICENSE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="licenseType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value || ""}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    trigger("licenseType");
+                  }}
+                >
+                  <SelectTrigger
+                    id="licenseType"
+                    className={cn(errors.licenseType && "border-destructive")}
+                  >
+                    <SelectValue placeholder="Select license type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LICENSE_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.licenseType && (
               <p className="text-sm text-destructive">
                 {errors.licenseType.message}

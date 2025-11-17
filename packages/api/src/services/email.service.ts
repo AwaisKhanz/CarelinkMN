@@ -125,19 +125,27 @@ export class EmailService {
   }): Promise<void> {
     // Skip email sending in development mode
     const isDevelopment = process.env.NODE_ENV === "development";
-    
+
     // Check for RFC 2606 reserved domains (example.com, example.org, example.net, test.com, etc.)
-    const reservedDomains = ['example.com', 'example.org', 'example.net', 'test.com', 'localhost'];
-    const emailDomain = options.to.split('@')[1]?.toLowerCase();
-    const isReservedDomain = emailDomain && reservedDomains.some(domain => emailDomain.includes(domain));
-    
+    const reservedDomains = [
+      "example.com",
+      "example.org",
+      "example.net",
+      "test.com",
+      "localhost",
+    ];
+    const emailDomain = options.to.split("@")[1]?.toLowerCase();
+    const isReservedDomain =
+      emailDomain &&
+      reservedDomains.some((domain) => emailDomain.includes(domain));
+
     // Skip if: development mode AND (no email host OR localhost OR reserved domain)
-    const skipEmail = isDevelopment && (
-      !process.env.EMAIL_HOST || 
-      process.env.EMAIL_HOST === "localhost" ||
-      isReservedDomain
-    );
-    
+    const skipEmail =
+      isDevelopment &&
+      (!process.env.EMAIL_HOST ||
+        process.env.EMAIL_HOST === "localhost" ||
+        isReservedDomain);
+
     if (skipEmail) {
       console.log("📧 [DEV MODE] Email sending skipped:");
       console.log(`   To: ${options.to}`);
@@ -938,6 +946,31 @@ This is an automated reminder.
   }
 
   /**
+   * Send staff invitation email
+   */
+  async sendStaffInvitationEmail(
+    staffUser: User,
+    inviterName: string,
+    organizationName: string,
+    resetToken: string
+  ): Promise<void> {
+    const invitationUrl = `${this.baseUrl}/auth/reset-password?token=${resetToken}`;
+    const template = this.getStaffInvitationTemplate(
+      staffUser,
+      inviterName,
+      organizationName,
+      invitationUrl
+    );
+
+    await this.sendEmail({
+      to: staffUser.email,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    });
+  }
+
+  /**
    * Send notification email
    */
   async sendNotificationEmail(data: {
@@ -954,6 +987,109 @@ This is an automated reminder.
       html: template.html,
       text: template.text,
     });
+  }
+
+  /**
+   * Staff invitation email template
+   */
+  private getStaffInvitationTemplate(
+    staffUser: User,
+    inviterName: string,
+    organizationName: string,
+    invitationUrl: string
+  ): EmailTemplate {
+    const subject = `You've been invited to join ${organizationName} on CareLinkMN`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Staff Invitation - CareLinkMN</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8fafc; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #0891b2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b; }
+          .info-box { background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #0891b2; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>You've Been Invited!</h1>
+          <p>Join your team on CareLinkMN</p>
+        </div>
+
+        <div class="content">
+          <h2>Hello ${staffUser.firstName},</h2>
+
+          <p><strong>${inviterName}</strong> has invited you to join <strong>${organizationName}</strong> as a staff member on CareLinkMN, Minnesota's premier care coordination platform.</p>
+
+          <div class="info-box">
+            <h3>What you'll be able to do:</h3>
+            <ul>
+              <li>Update facility openings and availability</li>
+              <li>Respond to referral inquiries</li>
+              <li>Communicate with case managers</li>
+              <li>Track placement status</li>
+              <li>Access provider dashboard features</li>
+            </ul>
+          </div>
+
+          <p>To get started, please set up your account by clicking the button below. You'll be asked to create a password for your account.</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${invitationUrl}" class="button">Accept Invitation & Set Up Account</a>
+          </div>
+
+          <p><strong>Important:</strong></p>
+          <ul>
+            <li>This invitation link will expire in 24 hours</li>
+            <li>You must accept this invitation to access the provider dashboard</li>
+            <li>If you didn't expect this invitation, you can safely ignore this email</li>
+          </ul>
+
+          <div class="footer">
+            <p>If you're having trouble clicking the button, copy and paste this link into your browser:<br>
+            <span style="word-break: break-all;">${invitationUrl}</span></p>
+            <p>Questions? Contact your organization administrator or our support team at <a href="mailto:support@carelinkMN.com">support@carelinkMN.com</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      You've Been Invited to Join ${organizationName} on CareLinkMN
+
+      Hello ${staffUser.firstName},
+
+      ${inviterName} has invited you to join ${organizationName} as a staff member on CareLinkMN, Minnesota's premier care coordination platform.
+
+      What you'll be able to do:
+      - Update facility openings and availability
+      - Respond to referral inquiries
+      - Communicate with case managers
+      - Track placement status
+      - Access provider dashboard features
+
+      To get started, please set up your account by visiting:
+      ${invitationUrl}
+
+      IMPORTANT:
+      - This invitation link will expire in 24 hours
+      - You must accept this invitation to access the provider dashboard
+      - If you didn't expect this invitation, you can safely ignore this email
+
+      Questions? Contact your organization administrator or our support team at support@carelinkMN.com
+
+      Best regards,
+      The CareLinkMN Team
+    `;
+
+    return { subject, html, text };
   }
 
   /**

@@ -31,7 +31,7 @@ async function main() {
       description:
         "Assistance with basic daily activities such as eating, dressing, and personal hygiene",
       category: "Daily Living",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
     {
@@ -40,7 +40,7 @@ async function main() {
       description:
         "Intensive assistance with daily activities requiring more support",
       category: "Daily Living",
-      licenseTypes: ["245D"],
+      licenseTypes: ["245D", "CRS"],
       isActive: true,
     },
     {
@@ -49,7 +49,7 @@ async function main() {
       description:
         "Assistance with complex daily tasks like meal preparation, housekeeping, and transportation",
       category: "Daily Living",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
 
@@ -59,7 +59,7 @@ async function main() {
       name: "Medication Management",
       description: "Assistance with medication administration and monitoring",
       category: "Medical",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -68,7 +68,7 @@ async function main() {
       description:
         "Professional nursing services including wound care, health monitoring, and medical procedures",
       category: "Medical",
-      licenseTypes: ["245D", "ALF"],
+      licenseTypes: ["245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -77,7 +77,7 @@ async function main() {
       description:
         "Regular monitoring of vital signs, health status, and coordination with healthcare providers",
       category: "Medical",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
 
@@ -97,7 +97,7 @@ async function main() {
       description:
         "Support for individuals with behavioral health needs and mental health conditions",
       category: "Specialized Care",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
     {
@@ -106,7 +106,7 @@ async function main() {
       description:
         "Temporary care services to provide relief for primary caregivers",
       category: "Specialized Care",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
 
@@ -116,7 +116,7 @@ async function main() {
       name: "Mobility Assistance",
       description: "Help with walking, transfers, and mobility aids",
       category: "Physical Support",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -125,7 +125,7 @@ async function main() {
       description:
         "Therapeutic exercises and treatments to improve mobility and physical function",
       category: "Physical Support",
-      licenseTypes: ["245D", "ALF"],
+      licenseTypes: ["245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -134,7 +134,7 @@ async function main() {
       description:
         "Programs and interventions to reduce fall risk and improve safety",
       category: "Physical Support",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
 
@@ -145,7 +145,7 @@ async function main() {
       description:
         "Assistance with bathing, dressing, grooming, and personal hygiene",
       category: "Personal Care",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -154,7 +154,7 @@ async function main() {
       description:
         "Help with toileting, incontinence care, and bathroom safety",
       category: "Personal Care",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
 
@@ -165,7 +165,7 @@ async function main() {
       description:
         "Meal planning, dietary assistance, and nutrition monitoring",
       category: "Health Support",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -174,7 +174,7 @@ async function main() {
       description:
         "Specialized care for individuals with diabetes including blood sugar monitoring",
       category: "Health Support",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -182,7 +182,7 @@ async function main() {
       name: "Weight Management",
       description: "Programs to help maintain healthy weight and nutrition",
       category: "Health Support",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
 
@@ -192,7 +192,7 @@ async function main() {
       name: "Transportation",
       description: "Medical and non-medical transportation services",
       category: "Support Services",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
     {
@@ -201,7 +201,7 @@ async function main() {
       description:
         "Organized social events, outings, and recreational activities",
       category: "Support Services",
-      licenseTypes: ["144D", "245D", "ALF"],
+      licenseTypes: ["144D", "245D", "CRS", "ALF"],
       isActive: true,
     },
     {
@@ -209,7 +209,7 @@ async function main() {
       name: "Housekeeping",
       description: "Light housekeeping and home maintenance services",
       category: "Support Services",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
     {
@@ -217,7 +217,7 @@ async function main() {
       name: "Laundry Services",
       description: "Assistance with laundry and clothing care",
       category: "Support Services",
-      licenseTypes: ["144D", "245D"],
+      licenseTypes: ["144D", "245D", "CRS"],
       isActive: true,
     },
   ];

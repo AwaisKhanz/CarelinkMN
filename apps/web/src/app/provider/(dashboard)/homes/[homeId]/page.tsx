@@ -497,7 +497,7 @@ export default function HomeDetailPage() {
                 variant="outline"
                 className="w-full justify-start"
                 onClick={() =>
-                  router.push(`/provider/homes/${homeId}/openings`)
+                  router.push(`/provider/openings?homeId=${homeId}`)
                 }
               >
                 <BarChart3 className="w-4 h-4 mr-2" />

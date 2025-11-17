@@ -170,11 +170,11 @@ export default function ProviderLicensesPage() {
         const query = debouncedSearchQuery.toLowerCase();
         filteredLicenses = filteredLicenses.filter(
           (license) =>
-            license.licenseNumber.toLowerCase().includes(query) ||
+            license.licenseNumber?.toLowerCase().includes(query) ||
             LICENSE_TYPES_MAP[license.licenseType]
               ?.toLowerCase()
               .includes(query) ||
-            license.issuingState.toLowerCase().includes(query)
+            license.issuingState?.toLowerCase().includes(query)
         );
       }
 
@@ -778,13 +778,15 @@ export default function ProviderLicensesPage() {
                           <span className="font-medium">License #:</span>
                           <span>{license.licenseNumber}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">State:</span>
-                          <span>
-                            {STATES_MAP[license.issuingState] ||
-                              license.issuingState}
-                          </span>
-                        </div>
+                        {license.issuingState && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">State:</span>
+                            <span>
+                              {STATES_MAP[license.issuingState] ||
+                                license.issuingState}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           <span className="font-medium">Issue Date:</span>
