@@ -40,8 +40,10 @@ import { ProviderLoadingState } from "@/components/provider/provider-loading-sta
 import { ProviderErrorState } from "@/components/provider/provider-error-state";
 import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
 import { SubscriptionTier } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function ProviderServicesPage() {
+function ProviderServicesPageContent() {
   const router = useRouter();
   const { setTitle, setDescription } = usePageMetadata();
   const { tier, limits, canAddServices } = useSubscription();
@@ -592,5 +594,22 @@ export default function ProviderServicesPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function ProviderServicesPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.SERVICES_MANAGE}
+      title="Access Restricted"
+      description="Only provider owners can manage services. Please contact your organization administrator if you require access."
+      action={
+        <Button onClick={() => (window.location.href = "/provider/dashboard")}>
+          Return to dashboard
+        </Button>
+      }
+    >
+      <ProviderServicesPageContent />
+    </RequirePermission>
   );
 }

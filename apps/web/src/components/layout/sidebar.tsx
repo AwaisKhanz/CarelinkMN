@@ -58,10 +58,23 @@ interface NavItem {
   requiresPlan?: "PRO" | "PREMIUM" | "ENTERPRISE";
 }
 
+interface ProviderNavPermissions {
+  canManageSettings: boolean;
+  canManageStaff: boolean;
+  canManageHomes: boolean;
+  canManageOpenings: boolean;
+  canManageServices: boolean;
+  canManagePlacements: boolean;
+  canViewAnalytics: boolean;
+  canManageMessages: boolean;
+  canManageLicenses: boolean;
+  canViewResidents: boolean;
+  canViewReferrals: boolean;
+}
+
 const getNavItems = (
   role: UserRole,
-  canManageSettings: boolean = true,
-  canManageStaff: boolean = true
+  providerPerms?: ProviderNavPermissions
 ): NavItem[] => {
   const baseItems: NavItem[] = [
     {
@@ -104,68 +117,108 @@ const getNavItems = (
       ];
 
     case UserRole.PROVIDER_OWNER:
-    case UserRole.PROVIDER_STAFF:
-      const providerItems: NavItem[] = [
-        ...baseItems,
-        {
+    case UserRole.PROVIDER_STAFF: {
+      const perms = providerPerms || {
+        canManageSettings: true,
+        canManageStaff: true,
+        canManageHomes: true,
+        canManageOpenings: true,
+        canManageServices: true,
+        canManagePlacements: true,
+        canViewAnalytics: true,
+        canManageMessages: true,
+        canManageLicenses: true,
+        canViewResidents: true,
+        canViewReferrals: true,
+      };
+      const providerItems: NavItem[] = [...baseItems];
+
+      if (perms.canManageHomes) {
+        providerItems.push({
           title: "Homes",
           href: "/provider/homes",
           icon: Building,
-        },
-        {
+        });
+      }
+
+      if (perms.canManageOpenings) {
+        providerItems.push({
           title: "Bed Management",
           href: "/provider/openings",
           icon: Bed,
-        },
-        {
+        });
+      }
+
+      if (perms.canManageServices) {
+        providerItems.push({
           title: "Services",
           href: "/provider/services",
           icon: Package,
-        },
-        {
+        });
+      }
+
+      if (perms.canManagePlacements) {
+        providerItems.push({
           title: "Placements",
           href: "/provider/placements",
           icon: CheckCircle,
           requiresPlan: PROVIDER_FEATURE_GATES.placements.requiredPlan,
-        },
-        {
+        });
+      }
+
+      if (perms.canViewAnalytics) {
+        providerItems.push({
           title: "Analytics",
           href: "/provider/analytics",
           icon: BarChart3,
           requiresPlan: PROVIDER_FEATURE_GATES.analytics.requiredPlan,
-        },
-        {
+        });
+      }
+
+      if (perms.canManageMessages) {
+        providerItems.push({
           title: "Messages",
           href: "/provider/messages",
           icon: MessageSquare,
           requiresPlan: PROVIDER_FEATURE_GATES.messages.requiredPlan,
-        },
-        {
+        });
+      }
+
+      if (perms.canManageLicenses) {
+        providerItems.push({
           title: "Licenses",
           href: "/provider/licenses",
           icon: ShieldCheck,
-        },
-        {
+        });
+      }
+
+      if (perms.canViewResidents) {
+        providerItems.push({
           title: "Residents",
           href: "/provider/residents",
           icon: Users,
           requiresPlan: PROVIDER_FEATURE_GATES.residents.requiredPlan,
-        },
-        {
+        });
+      }
+
+      if (perms.canViewReferrals) {
+        providerItems.push({
           title: "Referrals",
           href: "/provider/referrals",
           icon: FileText,
-        },
-        {
+        });
+      }
+
+      if (perms.canManageOpenings) {
+        providerItems.push({
           title: "Availability",
           href: "/provider/availability",
           icon: Clock,
           requiresPlan: PROVIDER_FEATURE_GATES.availability.requiredPlan,
-        },
-      ];
+        });
+      }
 
-      // Only show Staff and Settings for owners
-      if (canManageStaff) {
+      if (perms.canManageStaff) {
         providerItems.push({
           title: "Staff",
           href: "/provider/staff",
@@ -173,7 +226,7 @@ const getNavItems = (
         });
       }
 
-      if (canManageSettings) {
+      if (perms.canManageSettings) {
         providerItems.push({
           title: "Settings",
           href: "/provider/settings",
@@ -182,6 +235,7 @@ const getNavItems = (
       }
 
       return providerItems;
+    }
 
     case UserRole.CASE_MANAGER:
       return [
@@ -320,8 +374,21 @@ export function Sidebar({ className }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { canManageSettings, canManageStaff, isOwner, isStaff } =
-    usePermissions();
+  const {
+    canManageSettings,
+    canManageStaff,
+    canManageHomes,
+    canManageOpenings,
+    canManageServices,
+    canManagePlacements,
+    canViewAnalytics,
+    canManageMessages,
+    canManageLicenses,
+    canViewResidents,
+    canViewReferrals,
+    isOwner,
+    isStaff,
+  } = usePermissions();
   const providerId = useProviderId();
   const [referralCount, setReferralCount] = useState<number | null>(null);
 
@@ -362,7 +429,19 @@ export function Sidebar({ className }: SidebarProps) {
 
   if (!user) return null;
 
-  const navItems = getNavItems(user.role, canManageSettings, canManageStaff);
+  const navItems = getNavItems(user.role, {
+    canManageSettings,
+    canManageStaff,
+    canManageHomes,
+    canManageOpenings,
+    canManageServices,
+    canManagePlacements,
+    canViewAnalytics,
+    canManageMessages,
+    canManageLicenses,
+    canViewResidents,
+    canViewReferrals,
+  });
 
   // Update referrals nav item with dynamic count
   const updatedNavItems = navItems.map((item) => {

@@ -3,6 +3,7 @@ import { body, param, query } from "express-validator";
 import { HomeController } from "../controllers/home.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const homeController = new HomeController();
@@ -77,6 +78,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.HOMES_MANAGE),
   homeController.createHome.bind(homeController)
 );
 
@@ -105,6 +107,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   homeController.getProviderHomes.bind(homeController)
 );
 
@@ -114,6 +117,7 @@ router.get(
   [param("homeId").isUUID().withMessage("Invalid home ID")],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   homeController.getHomeById.bind(homeController)
 );
 
@@ -196,6 +200,7 @@ router.put(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.HOMES_MANAGE),
   homeController.updateHome.bind(homeController)
 );
 
@@ -205,6 +210,7 @@ router.delete(
   [param("homeId").isUUID().withMessage("Invalid home ID")],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.HOMES_MANAGE),
   homeController.deleteHome.bind(homeController)
 );
 
@@ -214,6 +220,7 @@ router.get(
   [param("homeId").isUUID().withMessage("Invalid home ID")],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   homeController.getHomeServices.bind(homeController)
 );
 
@@ -227,6 +234,7 @@ router.put(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.HOMES_MANAGE),
   homeController.updateHomeServices.bind(homeController)
 );
 

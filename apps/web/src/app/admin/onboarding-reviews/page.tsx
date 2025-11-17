@@ -31,13 +31,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 interface ReviewFormData {
   status: OnboardingReviewStatus | '';
   notes: string;
 }
 
-export default function OnboardingReviewsPage() {
+function OnboardingReviewsPageContent() {
   const { user } = useAuth();
   const [pendingReviews, setPendingReviews] = useState<OnboardingState[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -443,5 +445,17 @@ export default function OnboardingReviewsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingReviewsPage() {
+  return (
+    <RequirePermission
+      permission={SYSTEM_CAPABILITIES.PROVIDERS_APPROVE}
+      title="Access Restricted"
+      description="You don't have permission to review provider onboarding applications."
+    >
+      <OnboardingReviewsPageContent />
+    </RequirePermission>
   );
 }

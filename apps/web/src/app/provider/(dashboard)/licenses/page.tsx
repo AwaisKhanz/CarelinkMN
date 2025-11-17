@@ -38,13 +38,20 @@ import { usePageMetadata } from "../use-page-metadata";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { format } from "date-fns";
-import { LICENSE_TYPES_MAP, STATES_MAP, LICENSE_TYPES, US_STATES } from "@/lib/constants";
+import {
+  LICENSE_TYPES_MAP,
+  STATES_MAP,
+  LICENSE_TYPES,
+  US_STATES,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { LicenseStatusBadge } from "@/components/ui/license-status-badge";
 import { StatsCard } from "@/components/ui/stats-card";
 import { SearchFilterBar } from "@/components/ui/search-filter-bar";
 import { getExpirationStatus as calculateExpirationStatus } from "@/lib/utils/expiration-status";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import {
   Dialog,
   DialogContent,
@@ -66,15 +73,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { uploadService } from "@/lib/api";
 import { CreateLicenseData } from "@carelink/types";
 
-export default function ProviderLicensesPage() {
+function ProviderLicensesPageContent() {
   const { user } = useAuth();
   const router = useRouter();
   const { setTitle, setDescription } = usePageMetadata();
   const { canManageLicenses } = usePermissions();
-  
+
   // Use provider ID from context hook directly
   const providerId = useProviderId();
-  
+
   const [licenses, setLicenses] = useState<License[]>([]);
   const [allLicenses, setAllLicenses] = useState<License[]>([]); // Store all licenses from API
   const [isLoading, setIsLoading] = useState(true); // Initial load only
@@ -620,10 +627,12 @@ export default function ProviderLicensesPage() {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button onClick={() => router.push("/provider/licenses/create")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add License
-            </Button>
+            {canManageLicenses && (
+              <Button onClick={() => router.push("/provider/licenses/create")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add License
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -1022,5 +1031,17 @@ export default function ProviderLicensesPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ProviderLicensesPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.LICENSES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to view licenses. Please contact your organization administrator if you need access."
+    >
+      <ProviderLicensesPageContent />
+    </RequirePermission>
   );
 }

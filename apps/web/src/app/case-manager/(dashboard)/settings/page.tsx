@@ -66,6 +66,8 @@ import {
   PAYER_OPTIONS,
   URGENCY_CONFIG,
 } from "@/lib/constants";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 const profileSchema = z.object({
   firstName: z
@@ -94,7 +96,7 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-export default function CaseManagerSettingsPage() {
+function CaseManagerSettingsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { caseManager: contextCaseManager, caseManagerId, refetch: refetchCaseManager } = useCaseManager();
@@ -1001,6 +1003,18 @@ export default function CaseManagerSettingsPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function CaseManagerSettingsPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.PROFILE_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage settings."
+    >
+      <CaseManagerSettingsPageContent />
+    </RequirePermission>
   );
 }
 

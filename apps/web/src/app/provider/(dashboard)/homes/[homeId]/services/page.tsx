@@ -24,11 +24,15 @@ import {
 import { toast } from "sonner";
 import { homeService, Home, Service } from "@/lib/api";
 import { usePageMetadata } from "../../../use-page-metadata";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
-export default function HomeServicesPage() {
+function HomeServicesPageContent() {
   const params = useParams();
   const router = useRouter();
   const { setTitle, setDescription } = usePageMetadata();
+  const { canManageServices, canManageHomes } = usePermissions();
   const homeId = params.homeId as string;
 
   const [home, setHome] = useState<
@@ -484,22 +488,43 @@ export default function HomeServicesPage() {
         )}
 
         {/* Save Button */}
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={isSaving} className="min-w-32">
-            {isSaving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </>
-            )}
-          </Button>
-        </div>
+        {(canManageServices || canManageHomes) && (
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="min-w-32"
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function HomeServicesPage() {
+  return (
+    <RequirePermission
+      anyPermission={[
+        PROVIDER_CAPABILITIES.SERVICES_MANAGE,
+        PROVIDER_CAPABILITIES.HOMES_MANAGE,
+      ]}
+      title="Access Restricted"
+      description="You don't have permission to manage home services. Only provider owners can modify services."
+    >
+      <HomeServicesPageContent />
+    </RequirePermission>
   );
 }

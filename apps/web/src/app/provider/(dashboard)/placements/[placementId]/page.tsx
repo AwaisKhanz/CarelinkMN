@@ -30,24 +30,18 @@ import { usePageMetadata } from "../../use-page-metadata";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { FeatureGate } from "@/components/subscription/feature-gate";
-import { PROVIDER_FEATURE_GATES, PLACEMENT_STATUS_CONFIG } from "@/lib/constants";
+import {
+  PROVIDER_FEATURE_GATES,
+  PLACEMENT_STATUS_CONFIG,
+} from "@/lib/constants";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const placementsGateConfig = PROVIDER_FEATURE_GATES.placements;
 
 // Use shared status config from constants
 const STATUS_CONFIG = PLACEMENT_STATUS_CONFIG;
-
-export default function PlacementDetailPage() {
-  return (
-    <FeatureGate
-      feature={placementsGateConfig.feature}
-      requiredPlan={placementsGateConfig.requiredPlan}
-      bannerDescription={placementsGateConfig.description}
-    >
-      <PlacementDetailContent />
-    </FeatureGate>
-  );
-}
 
 function PlacementDetailContent() {
   const router = useRouter();
@@ -57,6 +51,7 @@ function PlacementDetailContent() {
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { canManagePlacements } = usePermissions();
 
   const placementId = params?.placementId as string | undefined;
 
@@ -296,18 +291,20 @@ function PlacementDetailContent() {
               <CardDescription>Manage this placement</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button
-                className="w-full justify-start"
-                variant="healthcare"
-                onClick={() =>
-                  router.push(
-                    `/provider/placements/${placement.id}/edit?step=details`
-                  )
-                }
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Update Placement Details
-              </Button>
+              {canManagePlacements && (
+                <Button
+                  className="w-full justify-start"
+                  variant="healthcare"
+                  onClick={() =>
+                    router.push(
+                      `/provider/placements/${placement.id}/edit?step=details`
+                    )
+                  }
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Placement Details
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -365,4 +362,28 @@ function PlacementDetailContent() {
   }
 
   return content;
+}
+
+function PlacementDetailPageWrapper() {
+  return (
+    <FeatureGate
+      feature={placementsGateConfig.feature}
+      requiredPlan={placementsGateConfig.requiredPlan}
+      bannerDescription={placementsGateConfig.description}
+    >
+      <PlacementDetailContent />
+    </FeatureGate>
+  );
+}
+
+export default function PlacementDetailPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.RESIDENTS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view placement details. Please contact your organization administrator if you need access."
+    >
+      <PlacementDetailPageWrapper />
+    </RequirePermission>
+  );
 }

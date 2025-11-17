@@ -49,6 +49,8 @@ import {
 import { format } from "date-fns";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 const profileSchema = z.object({
   description: z
@@ -61,22 +63,12 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-export default function ProviderSettingsPage() {
+function ProviderSettingsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
   const { canManageSettings, canManageSubscription } = usePermissions();
   const { subscription, refetch } = useSubscriptionContext(); // Use context instead
-
-  // Redirect if user doesn't have permission to access settings
-  useEffect(() => {
-    if (user && !canManageSettings) {
-      toast.error(
-        "You don't have permission to access settings. Only provider owners can manage settings."
-      );
-      router.push("/provider/dashboard");
-    }
-  }, [user, canManageSettings, router]);
 
   const [provider, setProvider] = useState<Provider | null>(null);
   const providerId = useProviderId();
@@ -104,14 +96,15 @@ export default function ProviderSettingsPage() {
   }, [setTitle, setDescription]);
 
   // Get provider from context
-  const { provider: contextProvider, refetch: refetchProvider } = useProviderData();
-  
+  const { provider: contextProvider, refetch: refetchProvider } =
+    useProviderData();
+
   // Refresh subscription data
   const refreshSubscriptionData = async () => {
     try {
       // Refresh provider data from context
       await refetchProvider();
-      
+
       // Refresh subscription from context
       await refetch();
     } catch (err) {
@@ -954,5 +947,17 @@ export default function ProviderSettingsPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function ProviderSettingsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.SETTINGS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to access settings. Only provider owners can manage settings."
+    >
+      <ProviderSettingsPageContent />
+    </RequirePermission>
   );
 }

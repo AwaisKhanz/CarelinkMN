@@ -39,17 +39,15 @@ import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { providerService, StaffMember } from "@/lib/api";
 import { usePageMetadata } from "../use-page-metadata";
-import { usePermissions } from "@/hooks/use-permissions";
 import { Badge } from "@/components/ui/badge";
-import {
-  format,
-  formatDistanceToNow,
-  differenceInHours,
-} from "date-fns";
+import { format, formatDistanceToNow, differenceInHours } from "date-fns";
 import { useProvider } from "@/contexts/provider-context";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
-export default function ProviderStaffPage() {
+function ProviderStaffPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -219,25 +217,6 @@ export default function ProviderStaffPage() {
     }
   };
 
-  // Redirect if user doesn't have permission
-  if (user && !canManageStaff) {
-    return (
-      <div className="space-y-6">
-        <Card variant="healthcare">
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
-              <p className="text-muted-foreground">
-                Only provider owners can manage staff members.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -300,126 +279,129 @@ export default function ProviderStaffPage() {
 
             return (
               <Card key={member.id} variant="healthcare">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {member.firstName} {member.lastName}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          {getStatusBadge(member.status)}
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
                         </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {member.firstName} {member.lastName}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(member.status)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ml-13 space-y-1">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
+                          {member.email}
+                        </div>
+                        {member.phone && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="h-4 w-4" />
+                            {member.phone}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {member.status === "PENDING_VERIFICATION"
+                            ? "Invited"
+                            : "Joined"}{" "}
+                          {format(new Date(member.createdAt), "MMM dd, yyyy")}
+                        </div>
+                        {member.lastLoginAt && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            Last login{" "}
+                            {format(
+                              new Date(member.lastLoginAt),
+                              "MMM dd, yyyy"
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="ml-13 space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        {member.email}
-                      </div>
-                      {member.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          {member.phone}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        {member.status === "PENDING_VERIFICATION"
-                          ? "Invited"
-                          : "Joined"}{" "}
-                        {format(new Date(member.createdAt), "MMM dd, yyyy")}
-                      </div>
-                      {member.lastLoginAt && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4" />
-                          Last login{" "}
-                          {format(new Date(member.lastLoginAt), "MMM dd, yyyy")}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {member.status === "PENDING_VERIFICATION" &&
-                      canManageStaff && (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      {member.status === "PENDING_VERIFICATION" &&
+                        canManageStaff && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResendInvite(member)}
+                            disabled={
+                              resendingStaffId === member.id || !canResendInvite
+                            }
+                          >
+                            {resendingStaffId === member.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                {canResendInvite
+                                  ? "Resend Invite"
+                                  : "Resend in 24h"}
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      {canManageStaff && member.status !== "DEACTIVATED" && (
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          onClick={() => handleResendInvite(member)}
-                          disabled={
-                            resendingStaffId === member.id || !canResendInvite
-                          }
+                          onClick={() => setStaffToRemove(member)}
                         >
-                          {resendingStaffId === member.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              {canResendInvite
-                                ? "Resend Invite"
-                                : "Resend in 24h"}
-                            </>
-                          )}
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
                         </Button>
                       )}
-                    {canManageStaff && member.status !== "DEACTIVATED" && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setStaffToRemove(member)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {member.status === "PENDING_VERIFICATION" && (
-                  <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5">
-                        <Info className="h-4 w-4 text-warning" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-medium text-foreground">
-                          Waiting for activation
-                        </p>
-                        <p>
-                          Invitation links remain valid for 24 hours. If they
-                          miss it, send a fresh link once the current link
-                          expires.
-                        </p>
-                        {!canResendInvite && (
-                          <p className="text-xs">
-                            You can resend this invitation after{" "}
-                            {formatDistanceToNow(
-                              new Date(
-                                lastInviteDate.getTime() + 24 * 60 * 60 * 1000
-                              ),
-                              { addSuffix: true }
-                            )}
-                            .
-                          </p>
-                        )}
-                        <p className="text-xs">
-                          Last invitation sent{" "}
-                          {formatDistanceToNow(lastInviteDate, {
-                            addSuffix: true,
-                          })}
-                        </p>
-                      </div>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {member.status === "PENDING_VERIFICATION" && (
+                    <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          <Info className="h-4 w-4 text-warning" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">
+                            Waiting for activation
+                          </p>
+                          <p>
+                            Invitation links remain valid for 24 hours. If they
+                            miss it, send a fresh link once the current link
+                            expires.
+                          </p>
+                          {!canResendInvite && (
+                            <p className="text-xs">
+                              You can resend this invitation after{" "}
+                              {formatDistanceToNow(
+                                new Date(
+                                  lastInviteDate.getTime() + 24 * 60 * 60 * 1000
+                                ),
+                                { addSuffix: true }
+                              )}
+                              .
+                            </p>
+                          )}
+                          <p className="text-xs">
+                            Last invitation sent{" "}
+                            {formatDistanceToNow(lastInviteDate, {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             );
           })}
         </div>
@@ -530,3 +512,14 @@ export default function ProviderStaffPage() {
   );
 }
 
+export default function ProviderStaffPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.STAFF_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage staff. Only provider owners can manage staff members."
+    >
+      <ProviderStaffPageContent />
+    </RequirePermission>
+  );
+}

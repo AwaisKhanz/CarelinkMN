@@ -3,6 +3,7 @@ import { body, param, query } from "express-validator";
 import { OpeningController } from "../controllers/opening.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 import { OpeningStatus, Gender, Payer } from "@prisma/client";
 
 const router: Router = Router();
@@ -57,6 +58,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.createOpening.bind(openingController)
 );
 
@@ -108,6 +110,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.getOpeningsByStatus.bind(openingController)
 );
 
@@ -178,6 +181,7 @@ router.put(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.updateOpening.bind(openingController)
 );
 
@@ -192,6 +196,7 @@ router.patch(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.updateOpeningStatus.bind(openingController)
 );
 
@@ -203,6 +208,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.refreshOpening.bind(openingController)
 );
 
@@ -214,6 +220,7 @@ router.delete(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.OPENINGS_MANAGE),
   openingController.deleteOpening.bind(openingController)
 );
 

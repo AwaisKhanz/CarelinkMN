@@ -11,8 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CaseManagerErrorState } from "@/components/case-manager";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
-export default function CreateReferralPage() {
+function CreateReferralPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -117,6 +119,18 @@ export default function CreateReferralPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CreateReferralPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_CREATE}
+      title="Access Restricted"
+      description="You don't have permission to create referrals."
+    >
+      <CreateReferralPageContent />
+    </RequirePermission>
   );
 }
 

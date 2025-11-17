@@ -2,7 +2,10 @@ import { db } from "@carelink/database";
 import { User, UserRole, Organization } from "@prisma/client";
 import { UserStatus } from "@carelink/types";
 import { RegisterRequest } from "../types/auth";
-import crypto from 'crypto';
+import crypto from "crypto";
+
+const DEFAULT_PASSWORD_RESET_TTL =
+  Number(process.env.PASSWORD_RESET_TOKEN_TTL_MS) || 24 * 60 * 60 * 1000; // 24 hours
 
 export class AuthRepository {
   // User operations
@@ -26,7 +29,9 @@ export class AuthRepository {
     });
   }
 
-  async findUserByEmail(email: string): Promise<(User & { organization: any }) | null> {
+  async findUserByEmail(
+    email: string
+  ): Promise<(User & { organization: any }) | null> {
     return await db.user.findUnique({
       where: { email },
       include: {
@@ -35,7 +40,9 @@ export class AuthRepository {
     });
   }
 
-  async findUserById(id: string): Promise<(User & { organization: any }) | null> {
+  async findUserById(
+    id: string
+  ): Promise<(User & { organization: any }) | null> {
     return await db.user.findUnique({
       where: { id },
       include: {
@@ -73,7 +80,6 @@ export class AuthRepository {
     });
   }
 
-
   // Organization operations
   async findOrganizationById(id: string): Promise<Organization | null> {
     return await db.organization.findUnique({
@@ -96,13 +102,13 @@ export class AuthRepository {
     }
   ): Promise<string> {
     // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
-    const ttl = options?.expiresInMs ?? 60 * 60 * 1000; // default 1 hour
+    const token = crypto.randomBytes(32).toString("hex");
+    const ttl = options?.expiresInMs ?? DEFAULT_PASSWORD_RESET_TTL;
     const expiresAt = new Date(Date.now() + ttl);
 
     // Delete any existing reset tokens for this user
     await db.passwordResetToken.deleteMany({
-      where: { userId }
+      where: { userId },
     });
 
     // Create new token
@@ -110,8 +116,8 @@ export class AuthRepository {
       data: {
         userId,
         token,
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     return token;
@@ -120,7 +126,7 @@ export class AuthRepository {
   async findUserByResetToken(token: string): Promise<User | null> {
     const resetToken = await db.passwordResetToken.findUnique({
       where: { token },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!resetToken || resetToken.expiresAt < new Date() || resetToken.usedAt) {
@@ -133,21 +139,21 @@ export class AuthRepository {
   async usePasswordResetToken(token: string): Promise<void> {
     await db.passwordResetToken.update({
       where: { token },
-      data: { usedAt: new Date() }
+      data: { usedAt: new Date() },
     });
   }
 
   async clearPasswordResetToken(userId: string): Promise<void> {
     await db.passwordResetToken.deleteMany({
-      where: { userId }
+      where: { userId },
     });
   }
 
   async cleanupExpiredPasswordResetTokens(): Promise<number> {
     const result = await db.passwordResetToken.deleteMany({
       where: {
-        expiresAt: { lt: new Date() }
-      }
+        expiresAt: { lt: new Date() },
+      },
     });
     return result.count;
   }
@@ -155,12 +161,12 @@ export class AuthRepository {
   // Email verification operations
   async createEmailVerificationToken(userId: string): Promise<string> {
     // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Delete any existing verification tokens for this user
     await db.emailVerificationToken.deleteMany({
-      where: { userId }
+      where: { userId },
     });
 
     // Create new token
@@ -168,8 +174,8 @@ export class AuthRepository {
       data: {
         userId,
         token,
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     return token;
@@ -178,10 +184,14 @@ export class AuthRepository {
   async findUserByVerificationToken(token: string): Promise<User | null> {
     const verificationToken = await db.emailVerificationToken.findUnique({
       where: { token },
-      include: { user: true }
+      include: { user: true },
     });
 
-    if (!verificationToken || verificationToken.expiresAt < new Date() || verificationToken.verifiedAt) {
+    if (
+      !verificationToken ||
+      verificationToken.expiresAt < new Date() ||
+      verificationToken.verifiedAt
+    ) {
       return null;
     }
 
@@ -191,21 +201,21 @@ export class AuthRepository {
   async useEmailVerificationToken(token: string): Promise<void> {
     await db.emailVerificationToken.update({
       where: { token },
-      data: { verifiedAt: new Date() }
+      data: { verifiedAt: new Date() },
     });
   }
 
   async clearEmailVerificationToken(userId: string): Promise<void> {
     await db.emailVerificationToken.deleteMany({
-      where: { userId }
+      where: { userId },
     });
   }
 
   async cleanupExpiredEmailVerificationTokens(): Promise<number> {
     const result = await db.emailVerificationToken.deleteMany({
       where: {
-        expiresAt: { lt: new Date() }
-      }
+        expiresAt: { lt: new Date() },
+      },
     });
     return result.count;
   }
@@ -214,11 +224,14 @@ export class AuthRepository {
   async verifyUserPhone(id: string): Promise<User> {
     return await db.user.update({
       where: { id },
-      data: { phoneVerified: new Date() }
+      data: { phoneVerified: new Date() },
     });
   }
 
-  async storePhoneVerificationCode(userId: string, code: string): Promise<void> {
+  async storePhoneVerificationCode(
+    userId: string,
+    code: string
+  ): Promise<void> {
     // In a real implementation, this would store in Redis with TTL
     // For now, we'll use a simple in-memory store or database
     console.log(`Storing phone verification code for user ${userId}: ${code}`);
@@ -227,37 +240,39 @@ export class AuthRepository {
   async verifyPhoneCode(userId: string, code: string): Promise<boolean> {
     // In a real implementation, this would check Redis
     // For now, we'll accept any 6-digit code in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       return /^\d{6}$/.test(code);
     }
     return false;
   }
 
   // User management methods
-  async updateUser(id: string, data: Partial<{
-    firstName: string;
-    lastName: string;
-    phone: string;
-  }>): Promise<User> {
+  async updateUser(
+    id: string,
+    data: Partial<{
+      firstName: string;
+      lastName: string;
+      phone: string;
+    }>
+  ): Promise<User> {
     return await db.user.update({
       where: { id },
       data: {
         ...data,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
   }
 
   async updateUserStatus(id: string, status: UserStatus): Promise<User> {
     return await db.user.update({
       where: { id },
-      data: { 
+      data: {
         status,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
   }
-
 
   // Audit logging
   async logAuthEvent(
@@ -266,7 +281,7 @@ export class AuthRepository {
     details?: Record<string, any>,
     ipAddress?: string,
     userAgent?: string,
-    result: 'SUCCESS' | 'FAILURE' | 'ERROR' = 'SUCCESS'
+    result: "SUCCESS" | "FAILURE" | "ERROR" = "SUCCESS"
   ): Promise<void> {
     await db.auditLog.create({
       data: {

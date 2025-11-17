@@ -10,8 +10,10 @@ import { homeService, UpdateHomeData, Home } from "@/lib/api";
 import { usePageMetadata } from "../../../use-page-metadata";
 import { HomeForm, HomeFormData } from "@/components/forms/home-form";
 import { UploadedFile } from "@/components/ui/file-uploader";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function EditHomePage() {
+function EditHomePageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -229,5 +231,17 @@ export default function EditHomePage() {
         onCancel={() => router.back()}
       />
     </div>
+  );
+}
+
+export default function EditHomePage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.HOMES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to edit homes. Please contact your organization administrator if you need access."
+    >
+      <EditHomePageContent />
+    </RequirePermission>
   );
 }

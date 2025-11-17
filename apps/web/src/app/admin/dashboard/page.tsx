@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Users, Building2, FileText, Settings, BarChart3 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AdminGuard } from "@/components/auth/route-guard";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 function AdminDashboardContent() {
   const { user } = useAuth();
@@ -138,7 +140,13 @@ function AdminDashboardContent() {
 export default function AdminDashboard() {
   return (
     <AdminGuard>
-      <AdminDashboardContent />
+      <RequirePermission
+        permission={SYSTEM_CAPABILITIES.USERS_MANAGE}
+        title="Access Restricted"
+        description="You don't have permission to view the admin dashboard."
+      >
+        <AdminDashboardContent />
+      </RequirePermission>
     </AdminGuard>
   );
 }

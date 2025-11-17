@@ -18,8 +18,10 @@ import {
   UrgentCasesEmptyState,
 } from "./components";
 import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
-export default function UrgentCasesPage() {
+function UrgentCasesPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
@@ -235,6 +237,18 @@ export default function UrgentCasesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function UrgentCasesPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view urgent cases."
+    >
+      <UrgentCasesPageContent />
+    </RequirePermission>
   );
 }
 

@@ -45,6 +45,9 @@ import { FeatureGate } from "@/components/subscription/feature-gate";
 import { ProviderSubscriptionGuard } from "@/components/auth/provider-subscription-guard";
 import { PROVIDER_FEATURE_GATES } from "@/lib/constants";
 import { SubscriptionTier } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const availabilityGateConfig = PROVIDER_FEATURE_GATES.availability;
 
@@ -52,17 +55,24 @@ function ProviderAvailabilityPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
+  const { canManageHomes } = usePermissions();
 
   const providerId = useProviderId();
   const { provider, refetch: refetchProvider } = useProviderData();
-  const { homes, isLoading: homesLoading, refetch: refetchHomes } = useProviderHomes();
+  const {
+    homes,
+    isLoading: homesLoading,
+    refetch: refetchHomes,
+  } = useProviderHomes();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTitle("Availability Management");
-    setDescription("Manage your organization's availability for referrals and new residents");
+    setDescription(
+      "Manage your organization's availability for referrals and new residents"
+    );
   }, [setTitle, setDescription]);
 
   // Update loading state based on homes loading
@@ -70,16 +80,17 @@ function ProviderAvailabilityPageContent() {
     setIsLoading(homesLoading);
   }, [homesLoading]);
 
-  const handleProviderAvailabilityToggle = async (acceptsReferrals: boolean) => {
+  const handleProviderAvailabilityToggle = async (
+    acceptsReferrals: boolean
+  ) => {
     if (!providerId) return;
 
     setIsSaving((prev) => ({ ...prev, provider: true }));
 
     try {
-      await providerService.updateProviderProfile(
-        providerId,
-        { acceptsReferrals }
-      );
+      await providerService.updateProviderProfile(providerId, {
+        acceptsReferrals,
+      });
       await refetchProvider();
       toast.success(
         acceptsReferrals
@@ -89,16 +100,17 @@ function ProviderAvailabilityPageContent() {
     } catch (err) {
       console.error("Error updating provider availability:", err);
       toast.error(
-        err instanceof Error
-          ? err.message
-          : "Failed to update availability"
+        err instanceof Error ? err.message : "Failed to update availability"
       );
     } finally {
       setIsSaving((prev) => ({ ...prev, provider: false }));
     }
   };
 
-  const handleHomeAvailabilityToggle = async (homeId: string, acceptingNew: boolean) => {
+  const handleHomeAvailabilityToggle = async (
+    homeId: string,
+    acceptingNew: boolean
+  ) => {
     setIsSaving((prev) => ({ ...prev, [homeId]: true }));
 
     try {
@@ -131,9 +143,14 @@ function ProviderAvailabilityPageContent() {
   const stats = useMemo(() => {
     const totalHomes = homes.length;
     const activeHomes = homes.filter((h) => h.isActive).length;
-    const acceptingNewHomes = homes.filter((h) => h.acceptingNew && h.isActive).length;
+    const acceptingNewHomes = homes.filter(
+      (h) => h.acceptingNew && h.isActive
+    ).length;
     const totalCapacity = homes.reduce((sum, h) => sum + h.capacity, 0);
-    const totalOccupancy = homes.reduce((sum, h) => sum + h.currentOccupancy, 0);
+    const totalOccupancy = homes.reduce(
+      (sum, h) => sum + h.currentOccupancy,
+      0
+    );
     const availableSpots = totalCapacity - totalOccupancy;
 
     return {
@@ -192,9 +209,10 @@ function ProviderAvailabilityPageContent() {
         header: "Occupancy",
         cell: ({ row }) => {
           const home = row.original;
-          const occupancyPercent = home.capacity > 0
-            ? Math.round((home.currentOccupancy / home.capacity) * 100)
-            : 0;
+          const occupancyPercent =
+            home.capacity > 0
+              ? Math.round((home.currentOccupancy / home.capacity) * 100)
+              : 0;
           return (
             <div className="whitespace-nowrap">
               <div className="font-medium">
@@ -224,16 +242,29 @@ function ProviderAvailabilityPageContent() {
 
           return (
             <div className="flex items-center gap-2 whitespace-nowrap">
-              <Switch
-                checked={home.acceptingNew}
-                onCheckedChange={(checked) =>
-                  handleHomeAvailabilityToggle(home.id, checked)
-                }
-                disabled={isSavingHome}
-                variant="healthcare"
-              />
-              {isSavingHome && (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              {canManageHomes ? (
+                <>
+                  <Switch
+                    checked={home.acceptingNew}
+                    onCheckedChange={(checked) =>
+                      handleHomeAvailabilityToggle(home.id, checked)
+                    }
+                    disabled={isSavingHome}
+                    variant="healthcare"
+                  />
+                  {isSavingHome && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </>
+              ) : (
+                <Badge
+                  variant={
+                    home.acceptingNew ? "healthcareSuccess" : "secondary"
+                  }
+                  className="whitespace-nowrap"
+                >
+                  {home.acceptingNew ? "Yes" : "No"}
+                </Badge>
               )}
             </div>
           );
@@ -257,7 +288,7 @@ function ProviderAvailabilityPageContent() {
         },
       },
     ],
-    [isSaving, router]
+    [isSaving, router, canManageHomes]
   );
 
   if (isLoading) {
@@ -270,7 +301,9 @@ function ProviderAvailabilityPageContent() {
         <div className="flex items-center justify-center py-12">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Loading availability settings...</p>
+            <p className="text-muted-foreground">
+              Loading availability settings...
+            </p>
           </div>
         </div>
       </FeatureGate>
@@ -287,7 +320,10 @@ function ProviderAvailabilityPageContent() {
         <Card variant="healthcare">
           <CardContent className="pt-6">
             <p className="text-destructive text-center">{error}</p>
-            <Button onClick={() => window.location.reload()} className="w-full mt-4">
+            <Button
+              onClick={() => window.location.reload()}
+              className="w-full mt-4"
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
             </Button>
@@ -304,7 +340,8 @@ function ProviderAvailabilityPageContent() {
         <div>
           <h1 className="text-3xl font-bold">Availability Management</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your organization's availability for referrals and new residents
+            Manage your organization's availability for referrals and new
+            residents
           </p>
         </div>
       </div>
@@ -334,7 +371,8 @@ function ProviderAvailabilityPageContent() {
         <CardHeader>
           <CardTitle>Organization Availability</CardTitle>
           <CardDescription>
-            Control whether your organization accepts new referrals from case managers
+            Control whether your organization accepts new referrals from case
+            managers
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -360,8 +398,9 @@ function ProviderAvailabilityPageContent() {
                 <p className="font-medium">Availability Summary</p>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Keep your availability up to date to maintain priority placement in search results.
-                Homes marked as "Accepting New" appear higher for case managers.
+                Keep your availability up to date to maintain priority placement
+                in search results. Homes marked as "Accepting New" appear higher
+                for case managers.
               </p>
             </div>
             <div className="rounded-lg border p-4 space-y-2">
@@ -370,8 +409,9 @@ function ProviderAvailabilityPageContent() {
                 <p className="font-medium">Automated Alerts</p>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                We'll send reminders when data gets stale for more than 48 hours so families always see that your
-                information is fresh and trustworthy.
+                We'll send reminders when data gets stale for more than 48 hours
+                so families always see that your information is fresh and
+                trustworthy.
               </p>
             </div>
           </div>
@@ -408,9 +448,9 @@ function ProviderAvailabilityPageContent() {
   );
 }
 
-export default function ProviderAvailabilityPage() {
+function ProviderAvailabilityPageWrapper() {
   const availabilityGate = PROVIDER_FEATURE_GATES.availability;
-  
+
   return (
     <ProviderSubscriptionGuard
       requiredPlan={SubscriptionTier.PRO}
@@ -422,3 +462,14 @@ export default function ProviderAvailabilityPage() {
   );
 }
 
+export default function ProviderAvailabilityPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.HOMES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage organization availability. Please contact your administrator if you need access."
+    >
+      <ProviderAvailabilityPageWrapper />
+    </RequirePermission>
+  );
+}

@@ -7,9 +7,10 @@ import { useRouter } from "next/navigation";
 interface ReferralsHeaderProps {
   onRefresh: () => void;
   isRefreshing: boolean;
+  canCreate?: boolean;
 }
 
-export function ReferralsHeader({ onRefresh, isRefreshing }: ReferralsHeaderProps) {
+export function ReferralsHeader({ onRefresh, isRefreshing, canCreate = true }: ReferralsHeaderProps) {
   const router = useRouter();
 
   return (
@@ -21,13 +22,15 @@ export function ReferralsHeader({ onRefresh, isRefreshing }: ReferralsHeaderProp
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          variant="healthcare"
-          onClick={() => router.push("/case-manager/referrals/create")}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Referral
-        </Button>
+        {canCreate && (
+          <Button
+            variant="healthcare"
+            onClick={() => router.push("/case-manager/referrals/create")}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Referral
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={onRefresh}

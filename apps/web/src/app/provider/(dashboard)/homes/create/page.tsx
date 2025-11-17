@@ -15,8 +15,10 @@ import {
   STANDARD_AMENITIES,
 } from "@/components/forms/home-form";
 import { UploadedFile } from "@/components/ui/file-uploader";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function CreateHomePage() {
+function CreateHomePageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -165,5 +167,17 @@ export default function CreateHomePage() {
         onCancel={() => router.back()}
       />
     </div>
+  );
+}
+
+export default function CreateHomePage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.HOMES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to create homes. Please contact your organization administrator if you need access."
+    >
+      <CreateHomePageContent />
+    </RequirePermission>
   );
 }

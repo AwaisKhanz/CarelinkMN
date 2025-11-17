@@ -9,8 +9,10 @@ import { useProviderId } from "@/hooks/use-provider-data";
 import { LicenseForm } from "@/components/forms/license-form";
 import { CreateLicenseData, UpdateLicenseData } from "@carelink/types";
 import { usePageMetadata } from "../../use-page-metadata";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function CreateLicensePage() {
+function CreateLicensePageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -64,5 +66,17 @@ export default function CreateLicensePage() {
       isSubmitting={isSubmitting}
       onCancel={handleCancel}
     />
+  );
+}
+
+export default function CreateLicensePage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.LICENSES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to create licenses. Only provider owners can manage licenses."
+    >
+      <CreateLicensePageContent />
+    </RequirePermission>
   );
 }

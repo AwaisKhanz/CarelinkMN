@@ -4,6 +4,7 @@ import { ReferralController } from "../controllers/referral.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
 import { ReferralStatus, Urgency, Payer, ShortlistStatus } from "@carelink/types";
+import { PROVIDER_PERMISSIONS, CASE_MANAGER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const referralController = new ReferralController();
@@ -13,8 +14,14 @@ const authMiddleware = new AuthMiddleware();
 router.use(authMiddleware.requireAuth);
 
 // Referral CRUD operations
+// Create referral - Case Managers, Hospital SW, VRS can create
 router.post(
   "/referrals",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_CREATE,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_CREATE,
+    "referrals:create", // Legacy permission
+  ]),
   [
     body("clientAge")
       .isInt({ min: 18, max: 120 })
@@ -94,8 +101,15 @@ router.post(
   referralController.createReferral.bind(referralController)
 );
 
+// Get referrals - Providers can view, Case Managers/Hospital SW can view their own
 router.get(
   "/referrals",
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.REFERRALS_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
+    "referrals:read", // Legacy permission
+  ]),
   [
     query("page").optional().isInt({ min: 1 }).withMessage("Page must be a positive integer"),
     query("limit")
@@ -120,15 +134,28 @@ router.get(
   referralController.getReferrals.bind(referralController)
 );
 
+// Get referral by ID - Same permissions as list
 router.get(
   "/referrals/:id",
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.REFERRALS_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
+    "referrals:read", // Legacy permission
+  ]),
   [param("id").isUUID().withMessage("Invalid referral ID")],
   validate([]),
   referralController.getReferralById.bind(referralController)
 );
 
+// Update referral - Case Managers, Hospital SW can update
 router.put(
   "/referrals/:id",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_UPDATE,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_UPDATE,
+    "referrals:update", // Legacy permission
+  ]),
   [
     param("id").isUUID().withMessage("Invalid referral ID"),
     body("clientAge")
@@ -163,16 +190,27 @@ router.put(
   referralController.updateReferral.bind(referralController)
 );
 
+// Delete referral - Case Managers, Hospital SW can delete
 router.delete(
   "/referrals/:id",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_DELETE,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_DELETE,
+    "referrals:delete", // Legacy permission
+  ]),
   [param("id").isUUID().withMessage("Invalid referral ID")],
   validate([]),
   referralController.deleteReferral.bind(referralController)
 );
 
 // Shortlist management
+// Add provider to shortlist - Case Managers can manage shortlists
 router.post(
   "/referrals/:id/shortlist",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    "referrals:update", // Legacy permission
+  ]),
   [
     param("id").isUUID().withMessage("Invalid referral ID"),
     body("providerIds")
@@ -191,8 +229,13 @@ router.post(
   referralController.addToShortlist.bind(referralController)
 );
 
+// Update shortlist entry - Case Managers can manage shortlists
 router.put(
   "/referrals/:id/shortlist/:shortlistId",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    "referrals:update", // Legacy permission
+  ]),
   [
     param("id").isUUID().withMessage("Invalid referral ID"),
     param("shortlistId").isUUID().withMessage("Invalid shortlist ID"),
@@ -210,8 +253,13 @@ router.put(
   referralController.updateShortlistStatus.bind(referralController)
 );
 
+// Remove from shortlist - Case Managers can manage shortlists
 router.delete(
   "/referrals/:id/shortlist/:shortlistId",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    "referrals:update", // Legacy permission
+  ]),
   [
     param("id").isUUID().withMessage("Invalid referral ID"),
     param("shortlistId").isUUID().withMessage("Invalid shortlist ID"),
@@ -220,16 +268,28 @@ router.delete(
   referralController.removeFromShortlist.bind(referralController)
 );
 
+// Get shortlist - Case Managers can view, Providers can view their own
 router.get(
   "/referrals/:id/shortlist",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    PROVIDER_PERMISSIONS.REFERRALS_VIEW,
+    "referrals:read", // Legacy permission
+  ]),
   [param("id").isUUID().withMessage("Invalid referral ID")],
   validate([]),
   referralController.getShortlist.bind(referralController)
 );
 
 // Batch operations
+// Batch add to shortlist - Case Managers can batch manage
 router.post(
   "/referrals/:id/shortlist/batch",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    CASE_MANAGER_PERMISSIONS.BATCH_OUTREACH,
+    "referrals:update", // Legacy permission
+  ]),
   [
     param("id").isUUID().withMessage("Invalid referral ID"),
     body("providerIds")
@@ -248,8 +308,13 @@ router.post(
   referralController.batchAddToShortlist.bind(referralController)
 );
 
+// Batch message providers - Case Managers can batch outreach
 router.post(
   "/referrals/batch-message",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.BATCH_OUTREACH,
+    "communications:send", // Legacy permission
+  ]),
   [
     body("referralIds")
       .isArray({ min: 1 })

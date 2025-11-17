@@ -46,7 +46,6 @@ import { usePageMetadata } from "../use-page-metadata";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { SearchFilterBar } from "@/components/ui/search-filter-bar";
-import { usePermissions } from "@/hooks/use-permissions";
 import { getOccupancyColor } from "@/lib/utils/provider";
 import {
   BulkActionsToolbar,
@@ -57,6 +56,8 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProviderDeleteDialog } from "@/components/provider";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 interface HomeFilters {
   search: string;
@@ -65,11 +66,10 @@ interface HomeFilters {
   limit: number;
 }
 
-export default function ProviderHomesPage() {
+function ProviderHomesPageContent() {
   const router = useRouter();
   const { user, token } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
-  const { canManageHomes } = usePermissions();
   const [homes, setHomes] = useState<Home[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
@@ -307,7 +307,7 @@ export default function ProviderHomesPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">Homes</h1>
-            {homes.length > 0 && canManageHomes && (
+            {homes.length > 0 && (
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={
@@ -765,5 +765,17 @@ export default function ProviderHomesPage() {
         variant="delete"
       />
     </div>
+  );
+}
+
+export default function ProviderHomesPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.HOMES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage homes. Please contact your organization administrator if you need access."
+    >
+      <ProviderHomesPageContent />
+    </RequirePermission>
   );
 }

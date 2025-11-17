@@ -52,8 +52,14 @@ import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { FeatureGate } from "@/components/subscription/feature-gate";
 import { ProviderSubscriptionGuard } from "@/components/auth/provider-subscription-guard";
-import { PROVIDER_FEATURE_GATES, PAYER_LABELS, PLACEMENT_STATUS_CONFIG } from "@/lib/constants";
+import {
+  PROVIDER_FEATURE_GATES,
+  PAYER_LABELS,
+  PLACEMENT_STATUS_CONFIG,
+} from "@/lib/constants";
 import { SubscriptionTier } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 const residentsGateConfig = PROVIDER_FEATURE_GATES.residents;
 
@@ -99,7 +105,13 @@ function ProviderResidentsPageContent() {
     if (providerId) {
       fetchResidents();
     }
-  }, [providerId, selectedHomeId, statusFilter, pagination.page, debouncedSearch]);
+  }, [
+    providerId,
+    selectedHomeId,
+    statusFilter,
+    pagination.page,
+    debouncedSearch,
+  ]);
 
   const fetchResidents = async () => {
     if (!providerId) return;
@@ -112,7 +124,10 @@ function ProviderResidentsPageContent() {
         providerId,
         page: pagination.page,
         limit: pagination.limit,
-        status: statusFilter !== "all" ? (statusFilter as PlacementStatus) : undefined,
+        status:
+          statusFilter !== "all"
+            ? (statusFilter as PlacementStatus)
+            : undefined,
         search: debouncedSearch || undefined,
       };
 
@@ -120,7 +135,7 @@ function ProviderResidentsPageContent() {
 
       if (response.success && response.data) {
         let placements = response.data.placements || response.data || [];
-        
+
         // Filter to only active residents (CONFIRMED, IN_PROGRESS, COMPLETED)
         placements = placements.filter((p: Placement) =>
           ACTIVE_RESIDENT_STATUSES.includes(p.status)
@@ -134,7 +149,7 @@ function ProviderResidentsPageContent() {
         }
 
         setResidents(placements);
-        
+
         if (response.data.pagination) {
           setPagination(response.data.pagination);
         } else {
@@ -173,18 +188,20 @@ function ProviderResidentsPageContent() {
   const stats = useMemo(() => {
     const totalResidents = residents.length;
     const byStatus = {
-      confirmed: residents.filter((r) => r.status === PlacementStatus.CONFIRMED).length,
-      inProgress: residents.filter((r) => r.status === PlacementStatus.IN_PROGRESS).length,
-      completed: residents.filter((r) => r.status === PlacementStatus.COMPLETED).length,
+      confirmed: residents.filter((r) => r.status === PlacementStatus.CONFIRMED)
+        .length,
+      inProgress: residents.filter(
+        (r) => r.status === PlacementStatus.IN_PROGRESS
+      ).length,
+      completed: residents.filter((r) => r.status === PlacementStatus.COMPLETED)
+        .length,
     };
-    
+
     // Group by home
     const byHome = homes.map((home) => ({
       homeId: home.id,
       homeName: home.name,
-      count: residents.filter(
-        (r) => r.opening?.home?.id === home.id
-      ).length,
+      count: residents.filter((r) => r.opening?.home?.id === home.id).length,
     }));
 
     return {
@@ -211,12 +228,12 @@ function ProviderResidentsPageContent() {
                 gender: placement.referral.clientGender,
               }
             : placement.dischargeCase
-            ? {
-                initials: placement.dischargeCase.patientInitials,
-                age: placement.dischargeCase.patientAge,
-                gender: placement.dischargeCase.patientGender,
-              }
-            : null;
+              ? {
+                  initials: placement.dischargeCase.patientInitials,
+                  age: placement.dischargeCase.patientAge,
+                  gender: placement.dischargeCase.patientGender,
+                }
+              : null;
 
           if (!clientInfo) {
             return <span className="text-muted-foreground">-</span>;
@@ -439,7 +456,10 @@ function ProviderResidentsPageContent() {
                 <label className="text-sm font-medium whitespace-nowrap">
                   Filter by Home:
                 </label>
-                <Select value={selectedHomeId} onValueChange={setSelectedHomeId}>
+                <Select
+                  value={selectedHomeId}
+                  onValueChange={setSelectedHomeId}
+                >
                   <SelectTrigger className="w-full md:w-[250px]">
                     <SelectValue placeholder="Select a home" />
                   </SelectTrigger>
@@ -497,9 +517,9 @@ function ProviderResidentsPageContent() {
   );
 }
 
-export default function ProviderResidentsPage() {
+function ProviderResidentsPageWrapper() {
   const residentsGate = PROVIDER_FEATURE_GATES.residents;
-  
+
   return (
     <ProviderSubscriptionGuard
       requiredPlan={SubscriptionTier.PRO}
@@ -511,3 +531,14 @@ export default function ProviderResidentsPage() {
   );
 }
 
+export default function ProviderResidentsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.RESIDENTS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view residents. Please contact your organization administrator if you need access."
+    >
+      <ProviderResidentsPageWrapper />
+    </RequirePermission>
+  );
+}

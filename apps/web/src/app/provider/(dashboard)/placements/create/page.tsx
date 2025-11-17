@@ -21,20 +21,10 @@ import {
 } from "@/components/forms/placement-form";
 import { FeatureGate } from "@/components/subscription/feature-gate";
 import { PROVIDER_FEATURE_GATES } from "@/lib/constants";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 const placementsGateConfig = PROVIDER_FEATURE_GATES.placements;
-
-export default function CreatePlacementPage() {
-  return (
-    <FeatureGate
-      feature={placementsGateConfig.feature}
-      requiredPlan={placementsGateConfig.requiredPlan}
-      bannerDescription={placementsGateConfig.description}
-    >
-      <CreatePlacementContent />
-    </FeatureGate>
-  );
-}
 
 function CreatePlacementContent() {
   const router = useRouter();
@@ -147,3 +137,26 @@ function CreatePlacementContent() {
   );
 }
 
+function CreatePlacementPageWrapper() {
+  return (
+    <FeatureGate
+      feature={placementsGateConfig.feature}
+      requiredPlan={placementsGateConfig.requiredPlan}
+      bannerDescription={placementsGateConfig.description}
+    >
+      <CreatePlacementContent />
+    </FeatureGate>
+  );
+}
+
+export default function CreatePlacementPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.PLACEMENTS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to create placements. Please contact your organization administrator if you need access."
+    >
+      <CreatePlacementPageWrapper />
+    </RequirePermission>
+  );
+}

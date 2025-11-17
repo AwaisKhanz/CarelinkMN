@@ -28,6 +28,12 @@ export function ProviderOnboardingGuard({
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
+      // Staff members are already attached to an organization and should never be forced through onboarding
+      if (user?.role === UserRole.PROVIDER_STAFF) {
+        setIsChecking(false);
+        return;
+      }
+
       // Wait for provider status to load
       if (isLoading) return;
 

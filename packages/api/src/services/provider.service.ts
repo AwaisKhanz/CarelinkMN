@@ -573,18 +573,21 @@ export class ProviderService {
     }
   }
 
-  // Get provider by user ID
+  // Get provider by user ID (works for both owner and staff)
   async getProviderByUserId(userId: string): Promise<any> {
     try {
+      const userRecord = await db.user.findUnique({
+        where: { id: userId },
+        select: { organizationId: true },
+      });
+
+      if (!userRecord?.organizationId) {
+        return null;
+      }
+
       const provider = await db.provider.findFirst({
         where: {
-          organization: {
-            users: {
-              some: {
-                id: userId,
-              },
-            },
-          },
+          organizationId: userRecord.organizationId,
         },
         include: {
           organization: true,

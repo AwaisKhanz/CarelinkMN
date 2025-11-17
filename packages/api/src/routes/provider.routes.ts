@@ -3,6 +3,7 @@ import { body, param, query } from "express-validator";
 import { ProviderController } from "../controllers/provider.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const providerController = new ProviderController();
@@ -68,6 +69,7 @@ router.get(
     .isBoolean()
     .withMessage("includeOpenings must be a boolean"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   providerController.getProvider
 );
 
@@ -104,6 +106,7 @@ router.put(
       .withMessage("Verification notes must be less than 1000 characters"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PROFILE_MANAGE),
   providerController.updateProvider
 );
 
@@ -132,6 +135,7 @@ router.put(
       .withMessage("Response time must be between 1 and 168 hours"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PROFILE_MANAGE),
   providerController.updateProviderProfile
 );
 
@@ -153,6 +157,7 @@ router.post(
       .withMessage("Document URL must be a valid URL"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.LICENSES_MANAGE),
   providerController.uploadLicense
 );
 
@@ -170,6 +175,11 @@ router.put(
       .withMessage("Verification notes must be less than 1000 characters"),
   ],
   validate([]),
+  authMiddleware.requireAnyPermission([
+    "system:licenses:verify",
+    "licenses:verify",
+    "providers:verify",
+  ]),
   providerController.verifyLicense
 );
 
@@ -181,6 +191,7 @@ router.get(
     .isIn(["PENDING", "ACTIVE", "EXPIRED", "SUSPENDED", "REVOKED"])
     .withMessage("Invalid license status"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.LICENSES_MANAGE),
   providerController.getProviderLicenses
 );
 
@@ -212,6 +223,7 @@ router.put(
       .withMessage("Document URL must be a valid URL"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.LICENSES_MANAGE),
   providerController.updateLicense
 );
 
@@ -221,6 +233,7 @@ router.delete(
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   param("licenseId").isUUID().withMessage("Invalid license ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.LICENSES_MANAGE),
   providerController.deleteLicense
 );
 
@@ -228,6 +241,7 @@ router.get(
   "/providers/by-user/:userId",
   param("userId").isUUID().withMessage("Invalid user ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   providerController.getProviderByUserId
 );
 
@@ -235,6 +249,7 @@ router.get(
   "/providers/organization/:organizationId",
   param("organizationId").isUUID().withMessage("Invalid organization ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   providerController.getProviderByOrganizationId
 );
 
@@ -243,6 +258,7 @@ router.get(
   "/providers/:providerId/services",
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.SERVICES_MANAGE),
   providerController.getProviderServices
 );
 
@@ -256,6 +272,7 @@ router.put(
       .withMessage("Each service ID must be a valid UUID"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.SERVICES_MANAGE),
   providerController.updateProviderServices
 );
 
@@ -278,6 +295,7 @@ router.get(
       .withMessage("Status must be a string"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.REFERRALS_VIEW),
   providerController.getProviderReferrals
 );
 
@@ -286,6 +304,7 @@ router.get(
   "/providers/:providerId/staff",
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.STAFF_MANAGE),
   providerController.getOrganizationStaff
 );
 
@@ -311,6 +330,7 @@ router.post(
       .withMessage("Invalid phone number format"),
   ],
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.STAFF_MANAGE),
   providerController.inviteStaff
 );
 
@@ -319,6 +339,7 @@ router.delete(
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   param("staffUserId").isUUID().withMessage("Invalid staff user ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.STAFF_MANAGE),
   providerController.removeStaff
 );
 
@@ -327,6 +348,7 @@ router.post(
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   param("staffUserId").isUUID().withMessage("Invalid staff user ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.STAFF_MANAGE),
   providerController.resendStaffInvite
 );
 
@@ -335,6 +357,7 @@ router.get(
   "/providers/:providerId/stats",
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.ANALYTICS_VIEW),
   providerController.getProviderStats
 );
 

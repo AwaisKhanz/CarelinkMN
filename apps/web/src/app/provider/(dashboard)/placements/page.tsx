@@ -64,6 +64,9 @@ import {
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { SubscriptionTier } from "@carelink/types";
 import { useProvider } from "@/contexts/provider-context";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Use shared status config from constants
 const STATUS_CONFIG = PLACEMENT_STATUS_CONFIG;
@@ -77,6 +80,7 @@ function PlacementsPageContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { providerId } = useProvider();
+  const { canManagePlacements } = usePermissions();
 
   // State for server-side filtering and pagination
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -372,7 +376,7 @@ function PlacementsPageContent() {
         },
       },
     ],
-    [router]
+    [router, canManagePlacements]
   );
 
   const totalPlacements = pagination.total;
@@ -536,7 +540,7 @@ function PlacementsPageContent() {
   );
 }
 
-export default function PlacementsPage() {
+function PlacementsPageWrapper() {
   const placementsGate = PROVIDER_FEATURE_GATES.placements;
 
   return (
@@ -547,5 +551,17 @@ export default function PlacementsPage() {
     >
       <PlacementsPageContent />
     </ProviderSubscriptionGuard>
+  );
+}
+
+export default function PlacementsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.PLACEMENTS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage placements. Please contact your organization administrator if you need access."
+    >
+      <PlacementsPageWrapper />
+    </RequirePermission>
   );
 }

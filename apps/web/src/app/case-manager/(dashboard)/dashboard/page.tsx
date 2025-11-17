@@ -14,12 +14,16 @@ import { Button } from "@/components/ui/button";
 import { FileText, Users, Clock, CheckCircle, AlertTriangle, Search } from "lucide-react";
 import { format } from "date-fns";
 import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { useRolePermissions } from "@/hooks/use-role-permissions";
 
 function CaseManagerDashboardContent() {
   const { user } = useAuth();
   const { caseManager, caseManagerId } = useCaseManager();
   const router = useRouter();
   const { setTitle, setDescription } = usePageMetadata();
+  const { canCreateReferrals, canViewSearch } = useRolePermissions();
   
   const [dashboard, setDashboard] = useState<CaseManagerDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -266,22 +270,26 @@ function CaseManagerDashboardContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              variant="healthcare"
-              className="w-full justify-start"
-              onClick={() => router.push("/case-manager/search")}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Search Available Providers
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/case-manager/referrals/create")}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Create New Referral
-            </Button>
+            {canViewSearch && (
+              <Button
+                variant="healthcare"
+                className="w-full justify-start"
+                onClick={() => router.push("/case-manager/search")}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Search Available Providers
+              </Button>
+            )}
+            {canCreateReferrals && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/case-manager/referrals/create")}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Create New Referral
+              </Button>
+            )}
             <Button
               variant="healthcareSecondary"
               className="w-full justify-start"
@@ -347,5 +355,13 @@ function CaseManagerDashboardContent() {
 }
 
 export default function CaseManagerDashboard() {
-  return <CaseManagerDashboardContent />;
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.DASHBOARD_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view the case manager dashboard."
+    >
+      <CaseManagerDashboardContent />
+    </RequirePermission>
+  );
 }

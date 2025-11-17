@@ -29,14 +29,33 @@ export function useProviderStatus(): ProviderStatus {
 
   useEffect(() => {
     const checkProviderStatus = async () => {
-      // Only check for provider roles
-      if (
-        !isAuthenticated ||
-        !user ||
-        ![UserRole.PROVIDER_OWNER, UserRole.PROVIDER_STAFF].includes(
-          user.role as UserRole
-        )
-      ) {
+      // Must be authenticated with a provider-related role
+      if (!isAuthenticated || !user) {
+        setStatus({
+          hasProviderProfile: false,
+          isVerified: false,
+          needsOnboarding: false,
+          isLoading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // Provider staff members are already attached to an organization/provider.
+      // They should never be forced through onboarding.
+      if (user.role === UserRole.PROVIDER_STAFF) {
+        setStatus({
+          hasProviderProfile: true,
+          isVerified: true,
+          needsOnboarding: false,
+          isLoading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // Only provider owners must complete onboarding
+      if (user.role !== UserRole.PROVIDER_OWNER) {
         setStatus({
           hasProviderProfile: false,
           isVerified: false,

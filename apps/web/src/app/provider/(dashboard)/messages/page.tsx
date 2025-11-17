@@ -8,6 +8,8 @@ import { ProviderSubscriptionGuard } from "@/components/auth/provider-subscripti
 import { PROVIDER_FEATURE_GATES } from "@/lib/constants";
 import { MessageThread, SubscriptionTier } from "@carelink/types";
 import { useProviderId } from "@/hooks/use-provider-data";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 function ProviderMessagesPageContent() {
   const { setTitle, setDescription } = usePageMetadata();
@@ -51,16 +53,18 @@ function ProviderMessagesPageContent() {
         />
       ) : (
         <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading provider information...</p>
+          <p className="text-muted-foreground">
+            Loading provider information...
+          </p>
         </div>
       )}
     </FeatureGate>
   );
 }
 
-export default function ProviderMessagesPage() {
+function ProviderMessagesPageWrapper() {
   const messagesGate = PROVIDER_FEATURE_GATES.messages;
-  
+
   return (
     <ProviderSubscriptionGuard
       requiredPlan={SubscriptionTier.PRO}
@@ -69,5 +73,17 @@ export default function ProviderMessagesPage() {
     >
       <ProviderMessagesPageContent />
     </ProviderSubscriptionGuard>
+  );
+}
+
+export default function ProviderMessagesPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.MESSAGES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to access provider messages. Please contact your organization administrator if you need access."
+    >
+      <ProviderMessagesPageWrapper />
+    </RequirePermission>
   );
 }

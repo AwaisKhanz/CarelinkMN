@@ -18,8 +18,10 @@ import {
   OpeningForm,
   OpeningFormFields,
 } from "@/components/forms/opening-form";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function EditOpeningPage() {
+function EditOpeningPageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -156,5 +158,17 @@ export default function EditOpeningPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function EditOpeningPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.OPENINGS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to edit openings. Please contact your organization administrator if you need access."
+    >
+      <EditOpeningPageContent />
+    </RequirePermission>
   );
 }

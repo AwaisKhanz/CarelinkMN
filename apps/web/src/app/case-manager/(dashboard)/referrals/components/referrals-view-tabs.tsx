@@ -21,6 +21,7 @@ interface ReferralsViewTabsProps {
   isExporting?: boolean;
   tableView: ReactNode;
   kanbanView: ReactNode;
+  hasExportPermission?: boolean;
 }
 
 export function ReferralsViewTabs({
@@ -32,6 +33,7 @@ export function ReferralsViewTabs({
   isExporting = false,
   tableView,
   kanbanView,
+  hasExportPermission = true,
 }: ReferralsViewTabsProps) {
   return (
     <Card variant="healthcare">
@@ -56,24 +58,26 @@ export function ReferralsViewTabs({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onExportCSV}
-              disabled={!canExport || isExporting}
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </>
-              )}
-            </Button>
+            {hasExportPermission && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportCSV}
+                disabled={!canExport || isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>

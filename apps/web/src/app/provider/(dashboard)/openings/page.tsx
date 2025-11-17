@@ -65,6 +65,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { PAYER_LABELS, OPENING_STATUS_CONFIG } from "@/lib/constants";
 import { ProviderDeleteDialog } from "@/components/provider";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 function OpeningsPageContent() {
   const router = useRouter();
@@ -81,6 +84,7 @@ function OpeningsPageContent() {
 
   // Use provider homes hook for homes data
   const { homes: homesData, isLoading: homesLoading } = useProviderHomes();
+  const { canManageOpenings } = usePermissions();
 
   // Transform homes data for filter dropdown
   const homes = useMemo(() => {
@@ -336,30 +340,32 @@ function OpeningsPageContent() {
     () => [
       {
         id: "select",
-        header: ({ table }) => (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={
-                openings.length > 0 &&
-                selectedOpenings.length === openings.length
-              }
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  handleSelectAll();
-                } else {
-                  handleDeselectAll();
+        header: ({ table }) =>
+          canManageOpenings ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={
+                  openings.length > 0 &&
+                  selectedOpenings.length === openings.length
                 }
-              }}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    handleSelectAll();
+                  } else {
+                    handleDeselectAll();
+                  }
+                }}
+              />
+            </div>
+          ) : null,
+        cell: ({ row }: { row: { original: Opening } }) =>
+          canManageOpenings ? (
+            <Checkbox
+              checked={selectedOpenings.includes(row.original.id)}
+              onCheckedChange={() => handleToggleSelection(row.original.id)}
+              onClick={(e) => e.stopPropagation()}
             />
-          </div>
-        ),
-        cell: ({ row }: { row: { original: Opening } }) => (
-          <Checkbox
-            checked={selectedOpenings.includes(row.original.id)}
-            onCheckedChange={() => handleToggleSelection(row.original.id)}
-            onClick={(e) => e.stopPropagation()}
-          />
-        ),
+          ) : null,
         enableSorting: false,
         enableHiding: false,
       },
@@ -464,18 +470,20 @@ function OpeningsPageContent() {
                   <XCircle className="w-3 h-3" />
                   Expired
                 </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRefreshOpening(opening.id);
-                  }}
-                >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Refresh
-                </Button>
+                {canManageOpenings && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRefreshOpening(opening.id);
+                    }}
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh
+                  </Button>
+                )}
               </div>
             );
           }
@@ -518,29 +526,33 @@ function OpeningsPageContent() {
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    router.push(`/provider/openings/${opening.id}/edit`)
-                  }
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {!opening.isFresh && (
-                  <DropdownMenuItem
-                    onClick={() => handleRefreshOpening(opening.id)}
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh
-                  </DropdownMenuItem>
+                {canManageOpenings && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        router.push(`/provider/openings/${opening.id}/edit`)
+                      }
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    {!opening.isFresh && (
+                      <DropdownMenuItem
+                        onClick={() => handleRefreshOpening(opening.id)}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => handleDeleteOpening(opening.id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
                 )}
-                <DropdownMenuItem
-                  onClick={() => handleDeleteOpening(opening.id)}
-                  className="text-destructive"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           );
@@ -554,6 +566,7 @@ function OpeningsPageContent() {
       handleSelectAll,
       handleDeselectAll,
       handleToggleSelection,
+      canManageOpenings,
     ]
   );
 
@@ -572,25 +585,27 @@ function OpeningsPageContent() {
             Manage openings and track bed availability
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw
-              className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}
-            />
-            Refresh
-          </Button>
-          <Button
-            onClick={() => router.push("/provider/openings/create")}
-            className="w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Opening
-          </Button>
-        </div>
+        {canManageOpenings && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw
+                className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}
+              />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => router.push("/provider/openings/create")}
+              className="w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Opening
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Error State */}
@@ -633,7 +648,7 @@ function OpeningsPageContent() {
         <CardContent>
           <div className="space-y-4">
             {/* Bulk Actions Toolbar */}
-            {selectedOpenings.length > 0 && (
+            {canManageOpenings && selectedOpenings.length > 0 && (
               <BulkActionsToolbar
                 selectedCount={selectedOpenings.length}
                 totalCount={openings.length}
@@ -773,7 +788,7 @@ function OpeningsPageContent() {
   );
 }
 
-export default function OpeningsPage() {
+function OpeningsPageWrapper() {
   return (
     <Suspense
       fallback={
@@ -787,5 +802,17 @@ export default function OpeningsPage() {
     >
       <OpeningsPageContent />
     </Suspense>
+  );
+}
+
+export default function OpeningsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.OPENINGS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage openings. Please contact your organization administrator if you need access."
+    >
+      <OpeningsPageWrapper />
+    </RequirePermission>
   );
 }

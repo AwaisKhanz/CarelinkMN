@@ -46,16 +46,16 @@ import {
   Urgency,
   Payer,
 } from "@carelink/types";
-import {
-  SHORTLIST_STATUS_CONFIG,
-  PAYER_LABELS,
-} from "@/lib/constants";
+import { SHORTLIST_STATUS_CONFIG, PAYER_LABELS } from "@/lib/constants";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   getUrgencyBadgeConfig,
   getReferralStatusBadgeConfig,
 } from "@/lib/utils/provider";
 
-export default function ProviderReferralsPage() {
+function ProviderReferralsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -65,6 +65,7 @@ export default function ProviderReferralsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const providerId = useProviderId();
+  const { canRespondToReferrals, canViewReferrals } = usePermissions();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -269,10 +270,7 @@ export default function ProviderReferralsPage() {
           const referral = row.original;
           const config = getReferralStatusBadgeConfig(referral.status);
           return (
-            <Badge
-              variant={config.variant}
-              className="whitespace-nowrap"
-            >
+            <Badge variant={config.variant} className="whitespace-nowrap">
               {config.label}
             </Badge>
           );
@@ -322,26 +320,30 @@ export default function ProviderReferralsPage() {
           const referral = row.original;
           return (
             <div className="flex items-center gap-2 whitespace-nowrap">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleViewReferral(referral)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleMessageReferral(referral)}
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
+              {canViewReferrals && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewReferral(referral)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              )}
+              {canRespondToReferrals && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleMessageReferral(referral)}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           );
         },
       },
     ],
-    []
+    [canRespondToReferrals, canViewReferrals]
   );
 
   return (
@@ -461,5 +463,17 @@ export default function ProviderReferralsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ProviderReferralsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.REFERRALS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view referrals. Please contact your organization administrator if you need access."
+    >
+      <ProviderReferralsPageContent />
+    </RequirePermission>
   );
 }

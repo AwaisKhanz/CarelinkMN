@@ -42,7 +42,11 @@ import {
   Payer,
 } from "@/lib/api";
 import { calculateHoursUntilExpiry } from "@/lib/utils/provider";
-import { PAYER_LABELS, OPENING_STATUS_CONFIG, GENDER_LABELS } from "@/lib/constants";
+import {
+  PAYER_LABELS,
+  OPENING_STATUS_CONFIG,
+  GENDER_LABELS,
+} from "@/lib/constants";
 import type { BadgeProps } from "@/components/ui/badge";
 import { usePageMetadata } from "../../use-page-metadata";
 import { cn } from "@/lib/utils";
@@ -58,12 +62,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Label } from "@/components/ui/label";
 
 // Use shared constants
 const STATUS_CONFIG = OPENING_STATUS_CONFIG;
 
-export default function OpeningDetailPage() {
+function OpeningDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -78,6 +85,7 @@ export default function OpeningDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const { saveTemplate } = useOpeningTemplates();
+  const { canManageOpenings } = usePermissions();
 
   useEffect(() => {
     if (opening) {
@@ -202,54 +210,62 @@ export default function OpeningDetailPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <div className="flex items-center gap-2">
-          {!opening.isFresh && (
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <MoreVertical className="w-4 h-4" />
+        {canManageOpenings && (
+          <div className="flex items-center gap-2">
+            {!opening.isFresh && (
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw
+                  className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}
+                />
+                Refresh
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/provider/openings/${opening.id}/edit`)
-                }
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              {!opening.isFresh && (
-                <DropdownMenuItem onClick={handleRefresh}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh Opening
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => setSaveTemplateDialogOpen(true)}>
-                <Save className="w-4 h-4 mr-2" />
-                Save as Template
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canManageOpenings && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        router.push(`/provider/openings/${opening.id}/edit`)
+                      }
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    {!opening.isFresh && (
+                      <DropdownMenuItem onClick={handleRefresh}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh Opening
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => setSaveTemplateDialogOpen(true)}
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save as Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={handleDelete}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       {/* Status Banner */}
@@ -257,9 +273,12 @@ export default function OpeningDetailPage() {
         variant="healthcare"
         className={cn(
           "border-l-4",
-          opening.status === OpeningStatus.OPEN && "border-l-[hsl(var(--success))]",
-          opening.status === OpeningStatus.PENDING && "border-l-[hsl(var(--warning))]",
-          opening.status === OpeningStatus.FILLED && "border-l-[hsl(var(--info))]",
+          opening.status === OpeningStatus.OPEN &&
+            "border-l-[hsl(var(--success))]",
+          opening.status === OpeningStatus.PENDING &&
+            "border-l-[hsl(var(--warning))]",
+          opening.status === OpeningStatus.FILLED &&
+            "border-l-[hsl(var(--info))]",
           opening.status === OpeningStatus.EXPIRED && "border-l-border"
         )}
       >
@@ -557,30 +576,34 @@ export default function OpeningDetailPage() {
               <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button
-                className="w-full"
-                onClick={() =>
-                  router.push(`/provider/openings/${opening.id}/edit`)
-                }
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Opening
-              </Button>
-              {!opening.isFresh && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                >
-                  <RefreshCw
-                    className={cn(
-                      "w-4 h-4 mr-2",
-                      isRefreshing && "animate-spin"
-                    )}
-                  />
-                  Refresh Opening
-                </Button>
+              {canManageOpenings && (
+                <>
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      router.push(`/provider/openings/${opening.id}/edit`)
+                    }
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Opening
+                  </Button>
+                  {!opening.isFresh && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "w-4 h-4 mr-2",
+                          isRefreshing && "animate-spin"
+                        )}
+                      />
+                      Refresh Opening
+                    </Button>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -673,5 +696,17 @@ export default function OpeningDetailPage() {
         variant="destructive"
       />
     </div>
+  );
+}
+
+export default function OpeningDetailPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.OPENINGS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to view opening details. Please contact your organization administrator if you need access."
+    >
+      <OpeningDetailPageContent />
+    </RequirePermission>
   );
 }

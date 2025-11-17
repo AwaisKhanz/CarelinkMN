@@ -12,3 +12,4 @@ export { ProviderLoadingState } from "./provider-loading-state";
 export { ProviderErrorState } from "./provider-error-state";
 export { ProviderDeleteDialog } from "./provider-delete-dialog";
 export { ProviderDetailHeader } from "./provider-detail-header";
+export { AccessRestricted } from "./access-restricted";

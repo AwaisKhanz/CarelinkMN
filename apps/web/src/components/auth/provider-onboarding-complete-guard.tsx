@@ -3,6 +3,8 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProviderStatus } from "@/hooks/use-provider-status";
+import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "@carelink/types";
 import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,10 +34,17 @@ export function ProviderOnboardingCompleteGuard({
   redirectPath,
 }: ProviderOnboardingCompleteGuardProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const { needsOnboarding, isLoading, error } = useProviderStatus();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Staff members are already attached to their provider org; onboarding isn't required
+    if (user?.role === UserRole.PROVIDER_STAFF) {
+      setIsChecking(false);
+      return;
+    }
+
     if (isLoading) return;
 
     if (needsOnboarding) {
@@ -74,10 +83,7 @@ export function ProviderOnboardingCompleteGuard({
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
+            <Button onClick={() => window.location.reload()} className="w-full">
               Try Again
             </Button>
             <Button

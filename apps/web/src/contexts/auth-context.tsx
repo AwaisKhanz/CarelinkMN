@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserRole } from "@carelink/types";
 import { authToasts } from "@/lib/toast";
+import { apiService } from "@/lib/api";
 
 export interface User {
   id: string;
@@ -233,18 +234,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const forgotPassword = async (email: string) => {
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
+      const response = await apiService.post("/api/auth/forgot-password", {
+        email,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Password reset request failed");
+      if (!response.success) {
+        throw new Error(response.message || "Password reset request failed");
       }
     } catch (error) {
       console.error("Forgot password error:", error);
@@ -254,18 +249,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (token: string, newPassword: string) => {
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token, newPassword }),
+      const response = await apiService.post("/api/auth/reset-password", {
+        token,
+        newPassword,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Password reset failed");
+      if (!response.success) {
+        throw new Error(response.message || "Password reset failed");
       }
     } catch (error) {
       console.error("Reset password error:", error);

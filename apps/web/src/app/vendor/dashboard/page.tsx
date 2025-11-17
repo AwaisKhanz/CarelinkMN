@@ -14,6 +14,8 @@ import { Package, Users, Clock, CheckCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { VendorGuard } from "@/components/auth/route-guard";
 import { VendorOnboardingGuard } from "@/components/auth/role-onboarding-guard";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 function VendorDashboardContent() {
   const { user } = useAuth();
@@ -106,7 +108,13 @@ export default function VendorDashboard() {
   return (
     <VendorGuard>
       <VendorOnboardingGuard>
-        <VendorDashboardContent />
+        <RequirePermission
+          permission={VENDOR_CAPABILITIES.DASHBOARD_VIEW}
+          title="Access Restricted"
+          description="You don't have permission to view the vendor dashboard."
+        >
+          <VendorDashboardContent />
+        </RequirePermission>
       </VendorOnboardingGuard>
     </VendorGuard>
   );

@@ -8,6 +8,8 @@ import { Users, FileText, Clock, CheckCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { HospitalSWGuard } from "@/components/auth/route-guard";
 import { HospitalSWOnboardingGuard } from "@/components/auth/role-onboarding-guard";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 function HospitalSWDashboardContent() {
   const { user } = useAuth();
@@ -104,7 +106,13 @@ export default function HospitalSWDashboard() {
   return (
     <HospitalSWGuard>
       <HospitalSWOnboardingGuard>
-        <HospitalSWDashboardContent />
+        <RequirePermission
+          permission={HOSPITAL_SW_CAPABILITIES.DASHBOARD_VIEW}
+          title="Access Restricted"
+          description="You don't have permission to view the hospital social worker dashboard."
+        >
+          <HospitalSWDashboardContent />
+        </RequirePermission>
       </HospitalSWOnboardingGuard>
     </HospitalSWGuard>
   );

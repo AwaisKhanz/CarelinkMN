@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button";
 import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
 import { getUrgencyBadgeConfig, getReferralStatusBadgeConfig } from "@/lib/utils/case-manager";
 import { Urgency, ReferralStatus, CaseManagerClientSummary } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
-export default function ClientsPage() {
+function ClientsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
@@ -340,6 +342,18 @@ export default function ClientsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ClientsPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view clients."
+    >
+      <ClientsPageContent />
+    </RequirePermission>
   );
 }
 

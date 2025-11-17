@@ -6,8 +6,10 @@ import { usePageMetadata } from "../use-page-metadata";
 import { MessageCenter } from "@/components/messaging";
 import { referralService } from "@/lib/api";
 import { MessageThread } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
-export default function CaseManagerMessagesPage() {
+function CaseManagerMessagesPageContent() {
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
 
@@ -38,6 +40,18 @@ export default function CaseManagerMessagesPage() {
       getThreadContext={getThreadContext}
       getThreadTitle={getThreadTitle}
     />
+  );
+}
+
+export default function CaseManagerMessagesPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.MESSAGES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to manage messages."
+    >
+      <CaseManagerMessagesPageContent />
+    </RequirePermission>
   );
 }
 

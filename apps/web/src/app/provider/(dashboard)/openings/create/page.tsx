@@ -43,8 +43,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Trash2 } from "lucide-react";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function CreateOpeningPage() {
+function CreateOpeningPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -269,5 +271,17 @@ export default function CreateOpeningPage() {
         onCancel={() => router.back()}
       />
     </div>
+  );
+}
+
+export default function CreateOpeningPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.OPENINGS_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to create openings. Please contact your organization administrator if you need access."
+    >
+      <CreateOpeningPageContent />
+    </RequirePermission>
   );
 }

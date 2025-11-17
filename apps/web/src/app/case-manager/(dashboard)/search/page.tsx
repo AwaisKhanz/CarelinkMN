@@ -78,13 +78,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ProviderSearchResultCard } from "./components/provider-search-result-card";
 import { ProviderWithAvailability } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { useRolePermissions } from "@/hooks/use-role-permissions";
 
-export default function CaseManagerSearchPage() {
+function CaseManagerSearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
   const { setTitle, setDescription } = usePageMetadata();
+  const { canUseAISearch } = useRolePermissions();
 
   const referralId = searchParams.get("referralId");
   const referralNumber = searchParams.get("referralNumber");
@@ -570,19 +574,23 @@ export default function CaseManagerSearchPage() {
                 <div className="flex items-center justify-between mb-2">
                   <Label htmlFor="search">Search</Label>
                   <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor="ai-search"
-                      className="text-xs text-muted-foreground cursor-pointer"
-                    >
-                      CareBot AI
-                    </Label>
-                    <input
-                      type="checkbox"
-                      id="ai-search"
-                      checked={useAISearch}
-                      onChange={(e) => setUseAISearch(e.target.checked)}
-                      className="h-4 w-4 rounded border-border"
-                    />
+                    {canUseAISearch && (
+                      <>
+                        <Label
+                          htmlFor="ai-search"
+                          className="text-xs text-muted-foreground cursor-pointer"
+                        >
+                          CareBot AI
+                        </Label>
+                        <input
+                          type="checkbox"
+                          id="ai-search"
+                          checked={useAISearch}
+                          onChange={(e) => setUseAISearch(e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="relative mt-2">
@@ -888,26 +896,40 @@ export default function CaseManagerSearchPage() {
             >
               Cancel
             </Button>
-            <Button
-              variant="healthcare"
-              onClick={handleAddToShortlist}
-              disabled={isAddingToShortlist}
-            >
-              {isAddingToShortlist ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add to Shortlist
-                </>
-              )}
-            </Button>
+            {canManageShortlist && (
+              <Button
+                variant="healthcare"
+                onClick={handleAddToShortlist}
+                disabled={isAddingToShortlist}
+              >
+                {isAddingToShortlist ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Shortlist
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function CaseManagerSearchPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.SEARCH_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to search providers."
+    >
+      <CaseManagerSearchPageContent />
+    </RequirePermission>
   );
 }

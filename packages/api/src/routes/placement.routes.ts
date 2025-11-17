@@ -3,6 +3,7 @@ import { body, param, query } from "express-validator";
 import { PlacementController } from "../controllers/placement.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 import { PlacementStatus } from "@prisma/client";
 
 const router: Router = Router();
@@ -42,6 +43,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.createPlacement.bind(placementController)
 );
 
@@ -120,6 +122,7 @@ router.put(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.updatePlacement.bind(placementController)
 );
 
@@ -134,6 +137,7 @@ router.patch(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.updatePlacementStatus.bind(placementController)
 );
 
@@ -151,6 +155,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.cancelPlacement.bind(placementController)
 );
 
@@ -162,6 +167,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.generatePacket.bind(placementController)
 );
 

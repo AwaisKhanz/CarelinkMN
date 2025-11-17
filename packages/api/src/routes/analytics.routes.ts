@@ -3,6 +3,7 @@ import { param, query } from "express-validator";
 import { AnalyticsController } from "../controllers/analytics.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const analyticsController = new AnalyticsController();
@@ -11,9 +12,10 @@ const authMiddleware = new AuthMiddleware();
 // All routes require authentication
 router.use(authMiddleware.requireAuth);
 
-// Get provider analytics
+// Get provider analytics - Requires analytics view permission
 router.get(
   "/providers/:providerId/analytics",
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.ANALYTICS_VIEW),
   [
     param("providerId").isUUID().withMessage("Invalid provider ID"),
     query("startDate")
@@ -30,4 +32,3 @@ router.get(
 );
 
 export default router;
-

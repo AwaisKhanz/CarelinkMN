@@ -28,12 +28,23 @@ import {
   useReferralsStats,
   useReferralsSelection,
 } from "./hooks";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { useRolePermissions } from "@/hooks/use-role-permissions";
 
-export default function CaseManagerReferralsPage() {
+function CaseManagerReferralsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
   const { setTitle, setDescription } = usePageMetadata();
+  const {
+    canCreateReferrals,
+    canUpdateReferrals,
+    canDeleteReferrals,
+    canManageShortlist,
+    canBatchOutreach,
+    canExportData,
+  } = useRolePermissions();
 
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -375,6 +386,10 @@ export default function CaseManagerReferralsPage() {
     onView: handleViewReferral,
     onEdit: handleEditReferral,
     onDelete: handleDeleteReferral,
+    canUpdate: canUpdateReferrals,
+    canDelete: canDeleteReferrals,
+    canManageShortlist,
+    canManageMessages: canBatchOutreach,
   });
 
   const stats = useReferralsStats({
@@ -406,7 +421,11 @@ export default function CaseManagerReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <ReferralsHeader onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+      <ReferralsHeader 
+        onRefresh={handleRefresh} 
+        isRefreshing={isRefreshing}
+        canCreate={canCreateReferrals}
+      />
 
       <ReferralsStats stats={stats} />
 
@@ -433,15 +452,20 @@ export default function CaseManagerReferralsPage() {
         />
       )}
 
-      <ReferralsBulkActions
-        selectedCount={selectedReferrals.length}
-        totalCount={referrals.length}
-        onSelectAll={handleSelectAll}
-        onDeselectAll={handleDeselectAll}
-        onAddToShortlist={handleBulkAddToShortlist}
-        onMessage={handleBulkMessage}
-        onExport={handleExportCSV}
-      />
+      {(canManageShortlist || canBatchOutreach || canExportData) && (
+        <ReferralsBulkActions
+          selectedCount={selectedReferrals.length}
+          totalCount={referrals.length}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
+          onAddToShortlist={handleBulkAddToShortlist}
+          onMessage={handleBulkMessage}
+          onExport={handleExportCSV}
+          canAddToShortlist={canManageShortlist}
+          canMessage={canBatchOutreach}
+          canExport={canExportData}
+        />
+      )}
 
       <ReferralsViewTabs
         viewMode={viewMode}
@@ -450,6 +474,7 @@ export default function CaseManagerReferralsPage() {
         onExportCSV={handleExportCSV}
         canExport={pagination.total > 0}
         isExporting={isExporting}
+        hasExportPermission={canExportData}
         tableView={
           <ReferralsTable
             columns={columnsWithSelection}
@@ -511,5 +536,17 @@ export default function CaseManagerReferralsPage() {
         isSending={isSendingBatchMessage}
       />
     </div>
+  );
+}
+
+export default function CaseManagerReferralsPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view referrals."
+    >
+      <CaseManagerReferralsPageContent />
+    </RequirePermission>
   );
 }

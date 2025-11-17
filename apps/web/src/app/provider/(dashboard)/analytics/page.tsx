@@ -30,10 +30,7 @@ import {
   Download,
 } from "lucide-react";
 import { usePageMetadata } from "../use-page-metadata";
-import {
-  analyticsService,
-  type ProviderAnalytics,
-} from "@/lib/api";
+import { analyticsService, type ProviderAnalytics } from "@/lib/api";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -58,6 +55,8 @@ import {
 import { FeatureGate } from "@/components/subscription/feature-gate";
 import { PROVIDER_FEATURE_GATES } from "@/lib/constants";
 import { SubscriptionTier } from "@carelink/types";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -564,9 +563,9 @@ function ProviderAnalyticsPageContent() {
   );
 }
 
-export default function ProviderAnalyticsPage() {
+function ProviderAnalyticsPageWrapper() {
   const analyticsGate = PROVIDER_FEATURE_GATES.analytics;
-  
+
   return (
     <ProviderSubscriptionGuard
       requiredPlan={SubscriptionTier.PRO}
@@ -575,5 +574,17 @@ export default function ProviderAnalyticsPage() {
     >
       <ProviderAnalyticsPageContent />
     </ProviderSubscriptionGuard>
+  );
+}
+
+export default function ProviderAnalyticsPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.ANALYTICS_VIEW}
+      title="Access Restricted"
+      description="Analytics are available only to provider owners. Please contact your organization administrator if you require access."
+    >
+      <ProviderAnalyticsPageWrapper />
+    </RequirePermission>
   );
 }

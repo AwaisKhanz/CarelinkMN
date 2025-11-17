@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Users, FileText, Clock, CheckCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { VRSGuard } from "@/components/auth/route-guard";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 
 function VRSDashboardContent() {
   const { user } = useAuth();
@@ -102,7 +104,13 @@ function VRSDashboardContent() {
 export default function VRSDashboard() {
   return (
     <VRSGuard>
-      <VRSDashboardContent />
+      <RequirePermission
+        permission={VRS_CAPABILITIES.DASHBOARD_VIEW}
+        title="Access Restricted"
+        description="You don't have permission to view the VRS dashboard."
+      >
+        <VRSDashboardContent />
+      </RequirePermission>
     </VRSGuard>
   );
 }

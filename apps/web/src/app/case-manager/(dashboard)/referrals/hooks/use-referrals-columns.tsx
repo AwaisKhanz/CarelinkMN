@@ -15,12 +15,20 @@ interface UseReferralsColumnsProps {
   onView: (referral: Referral) => void;
   onEdit: (referral: Referral) => void;
   onDelete: (referral: Referral) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  canManageShortlist?: boolean;
+  canManageMessages?: boolean;
 }
 
 export function useReferralsColumns({
   onView,
   onEdit,
   onDelete,
+  canUpdate = true,
+  canDelete = true,
+  canManageShortlist = true,
+  canManageMessages = true,
 }: UseReferralsColumnsProps) {
   const router = useRouter();
 
@@ -149,12 +157,16 @@ export function useReferralsColumns({
               onView={onView}
               onEdit={onEdit}
               onDelete={onDelete}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+              canManageShortlist={canManageShortlist}
+              canManageMessages={canManageMessages}
             />
           );
         },
       },
     ],
-    [onView, onEdit, onDelete]
+    [onView, onEdit, onDelete, canUpdate, canDelete, canManageShortlist, canManageMessages]
   );
 
   return columns;

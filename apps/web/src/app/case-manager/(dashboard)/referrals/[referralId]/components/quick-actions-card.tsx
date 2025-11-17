@@ -10,9 +10,17 @@ interface QuickActionsCardProps {
   referral: Referral;
   shortlistCount: number;
   onBatchMessage: () => void;
+  canManageShortlist?: boolean;
+  canBatchMessage?: boolean;
 }
 
-export function QuickActionsCard({ referral, shortlistCount, onBatchMessage }: QuickActionsCardProps) {
+export function QuickActionsCard({ 
+  referral, 
+  shortlistCount, 
+  onBatchMessage,
+  canManageShortlist = true,
+  canBatchMessage = true,
+}: QuickActionsCardProps) {
   const router = useRouter();
 
   return (
@@ -21,23 +29,27 @@ export function QuickActionsCard({ referral, shortlistCount, onBatchMessage }: Q
         <CardTitle>Quick Actions</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Button
-          variant="healthcare"
-          className="w-full justify-start"
-          onClick={() => router.push(`/case-manager/search?referralId=${referral.id}`)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Providers to Shortlist
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start"
-          onClick={onBatchMessage}
-          disabled={shortlistCount === 0}
-        >
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Batch Message Providers
-        </Button>
+        {canManageShortlist && (
+          <Button
+            variant="healthcare"
+            className="w-full justify-start"
+            onClick={() => router.push(`/case-manager/search?referralId=${referral.id}`)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Providers to Shortlist
+          </Button>
+        )}
+        {canBatchMessage && (
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            onClick={onBatchMessage}
+            disabled={shortlistCount === 0}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Batch Message Providers
+          </Button>
+        )}
         <Button
           variant="outline"
           className="w-full justify-start"

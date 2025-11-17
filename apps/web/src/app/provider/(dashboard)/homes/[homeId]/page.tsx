@@ -29,13 +29,19 @@ import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { homeService, Home, HomePhoto, HomeAmenity } from "@/lib/api";
 import { usePageMetadata } from "../../use-page-metadata";
-import { getOccupancyColor, getOccupancyPercentage } from "@/lib/utils/provider";
+import {
+  getOccupancyColor,
+  getOccupancyPercentage,
+} from "@/lib/utils/provider";
 import {
   ProviderLoadingState,
   ProviderErrorState,
 } from "@/components/provider";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
-export default function HomeDetailPage() {
+function HomeDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -45,6 +51,8 @@ export default function HomeDetailPage() {
   const [home, setHome] = useState<Home | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { canManageHomes, canManageServices, canManageOpenings } =
+    usePermissions();
 
   useEffect(() => {
     if (home) {
@@ -80,10 +88,7 @@ export default function HomeDetailPage() {
 
   if (isLoading) {
     return (
-      <ProviderLoadingState
-        message="Loading home details..."
-        fullHeight
-      />
+      <ProviderLoadingState message="Loading home details..." fullHeight />
     );
   }
 
@@ -142,13 +147,15 @@ export default function HomeDetailPage() {
           {home.acceptingNew && (
             <Badge variant="healthcareInfo">Accepting New Residents</Badge>
           )}
-          <Button
-            variant="healthcare"
-            onClick={() => router.push(`/provider/homes/${homeId}/edit`)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
+          {canManageHomes && (
+            <Button
+              variant="healthcare"
+              onClick={() => router.push(`/provider/homes/${homeId}/edit`)}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
         </div>
       </div>
 
@@ -483,30 +490,46 @@ export default function HomeDetailPage() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() =>
-                  router.push(`/provider/homes/${homeId}/services`)
-                }
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Manage Services
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() =>
-                  router.push(`/provider/openings?homeId=${homeId}`)
-                }
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                View Openings
-              </Button>
+              {(canManageServices || canManageHomes) && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() =>
+                    router.push(`/provider/homes/${homeId}/services`)
+                  }
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Manage Services
+                </Button>
+              )}
+              {canManageOpenings && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() =>
+                    router.push(`/provider/openings?homeId=${homeId}`)
+                  }
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  View Openings
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HomeDetailPage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.DASHBOARD_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view home details. Please contact your organization administrator if you need access."
+    >
+      <HomeDetailPageContent />
+    </RequirePermission>
   );
 }

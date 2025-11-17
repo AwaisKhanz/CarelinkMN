@@ -11,8 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
-export default function EditReferralPage() {
+function EditReferralPageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -184,6 +186,18 @@ export default function EditReferralPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function EditReferralPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_UPDATE}
+      title="Access Restricted"
+      description="You don't have permission to edit referrals."
+    >
+      <EditReferralPageContent />
+    </RequirePermission>
   );
 }
 

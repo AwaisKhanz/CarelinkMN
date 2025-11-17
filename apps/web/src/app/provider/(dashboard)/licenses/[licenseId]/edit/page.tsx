@@ -10,8 +10,10 @@ import { LicenseForm } from "@/components/forms/license-form";
 import { UpdateLicenseData, License } from "@carelink/types";
 import { usePageMetadata } from "../../../use-page-metadata";
 import { Loader2 } from "lucide-react";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
-export default function EditLicensePage() {
+function EditLicensePageContent() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
@@ -33,7 +35,8 @@ export default function EditLicensePage() {
 
       try {
         // Fetch license details
-        const licensesResponse = await providerService.getProviderLicenses(providerId);
+        const licensesResponse =
+          await providerService.getProviderLicenses(providerId);
         if (licensesResponse.success && licensesResponse.data) {
           const foundLicense = licensesResponse.data.find(
             (l) => l.id === licenseId
@@ -115,3 +118,14 @@ export default function EditLicensePage() {
   );
 }
 
+export default function EditLicensePage() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.LICENSES_MANAGE}
+      title="Access Restricted"
+      description="You don't have permission to edit licenses. Only provider owners can manage licenses."
+    >
+      <EditLicensePageContent />
+    </RequirePermission>
+  );
+}

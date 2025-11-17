@@ -36,13 +36,22 @@ import {
   BatchMessageDialog,
   DeleteReferralDialog,
 } from "./components";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { useRolePermissions } from "@/hooks/use-role-permissions";
 
-export default function ReferralDetailPage() {
+function ReferralDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
   const referralId = params.referralId as string;
+  const {
+    canUpdateReferrals,
+    canDeleteReferrals,
+    canManageShortlist,
+    canBatchOutreach,
+  } = useRolePermissions();
 
   const [referral, setReferral] = useState<Referral | null>(null);
   const [shortlist, setShortlist] = useState<ReferralShortlist[]>([]);
@@ -354,20 +363,24 @@ export default function ReferralDetailPage() {
           Back
         </Button>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() =>
-              router.push(`/case-manager/referrals/${referral.id}/edit`)
-            }
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
+          {canUpdateReferrals && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                router.push(`/case-manager/referrals/${referral.id}/edit`)
+              }
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
           <ReferralActionsMenu
             referral={referral}
             onUpdateStatus={() => setStatusUpdateDialogOpen(true)}
             onCloseReferral={handleCloseReferral}
             onDelete={handleDelete}
+            canUpdate={canUpdateReferrals}
+            canDelete={canDeleteReferrals}
           />
         </div>
       </div>
@@ -408,6 +421,8 @@ export default function ReferralDetailPage() {
                 referral={referral}
                 shortlistCount={shortlist.length}
                 onBatchMessage={() => setBatchMessageDialogOpen(true)}
+                canManageShortlist={canManageShortlist}
+                canBatchMessage={canBatchOutreach}
               />
               <TimelineCard referral={referral} />
             </div>
@@ -476,5 +491,17 @@ export default function ReferralDetailPage() {
         isDeleting={isDeleting}
       />
     </div>
+  );
+}
+
+export default function ReferralDetailPage() {
+  return (
+    <RequirePermission
+      permission={CASE_MANAGER_CAPABILITIES.REFERRALS_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to view referral details."
+    >
+      <ReferralDetailPageContent />
+    </RequirePermission>
   );
 }

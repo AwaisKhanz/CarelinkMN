@@ -17,6 +17,8 @@ interface ReferralActionsMenuProps {
   onUpdateStatus: () => void;
   onCloseReferral: () => void;
   onDelete: () => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export function ReferralActionsMenu({
@@ -24,6 +26,8 @@ export function ReferralActionsMenu({
   onUpdateStatus,
   onCloseReferral,
   onDelete,
+  canUpdate = true,
+  canDelete = true,
 }: ReferralActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -33,21 +37,29 @@ export function ReferralActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onUpdateStatus}>
-          <Clock className="h-4 w-4 mr-2" />
-          Update Status
-        </DropdownMenuItem>
-        {referral.status !== ReferralStatus.CLOSED && (
-          <DropdownMenuItem onClick={onCloseReferral}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Close Referral
-          </DropdownMenuItem>
+        {canUpdate && (
+          <>
+            <DropdownMenuItem onClick={onUpdateStatus}>
+              <Clock className="h-4 w-4 mr-2" />
+              Update Status
+            </DropdownMenuItem>
+            {referral.status !== ReferralStatus.CLOSED && (
+              <DropdownMenuItem onClick={onCloseReferral}>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Close Referral
+              </DropdownMenuItem>
+            )}
+          </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} className="text-destructive">
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete
-        </DropdownMenuItem>
+        {canDelete && (
+          <>
+            {canUpdate && <DropdownMenuSeparator />}
+            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

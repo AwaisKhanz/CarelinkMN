@@ -62,6 +62,9 @@ import {
   ProviderLoadingState,
   ProviderErrorState,
 } from "@/components/provider";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Types
 interface DashboardStats {
@@ -81,7 +84,7 @@ interface DashboardStats {
 
 // Helper functions are now imported from shared utils
 
-export default function ProviderDashboard() {
+function ProviderDashboardContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
@@ -95,10 +98,30 @@ export default function ProviderDashboard() {
   } = useSubscriptionContext();
   const providerId = useProviderId(); // Use hook instead of fetching
   const { provider, organizationName } = useProviderData(); // Get provider from context
+  const {
+    canManageOpenings,
+    canViewResidents,
+    canViewReferrals,
+    canManageMessages,
+    canManageHomes,
+    canManageServices,
+    canManageLicenses,
+    canViewAnalytics,
+    canManageSettings,
+    canManagePlacements,
+  } = usePermissions();
 
   // Use hooks for data fetching with caching
-  const { homes, isLoading: homesLoading, error: homesError } = useProviderHomes();
-  const { analytics, isLoading: analyticsLoading, error: analyticsError } = useProviderAnalytics();
+  const {
+    homes,
+    isLoading: homesLoading,
+    error: homesError,
+  } = useProviderHomes();
+  const {
+    analytics,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+  } = useProviderAnalytics();
 
   // State for data not yet in hooks
   const [recentReferrals, setRecentReferrals] = useState<Referral[]>([]);
@@ -113,7 +136,7 @@ export default function ProviderDashboard() {
   // Refs for cleanup and preventing race conditions
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  
+
   // Computed loading state
   const isLoading = homesLoading || analyticsLoading || isLoadingAdditional;
 
@@ -157,51 +180,48 @@ export default function ProviderDashboard() {
 
         // Fetch additional data (referrals, openings, placements)
         // Homes and analytics are now fetched via hooks with caching
-        const [
-          referralsResponse,
-          openingsResponse,
-          placementsResponse,
-        ] = await Promise.all([
-          // Fetch recent referrals (always available)
-          providerService
-            .getProviderReferrals(providerId, {
-              page: 1,
-              limit: RECENT_ITEMS_LIMIT,
-              status: "all",
-            })
-            .catch((error) => {
-              console.error("Error fetching referrals:", error);
-              return null;
-            }),
+        const [referralsResponse, openingsResponse, placementsResponse] =
+          await Promise.all([
+            // Fetch recent referrals (always available)
+            providerService
+              .getProviderReferrals(providerId, {
+                page: 1,
+                limit: RECENT_ITEMS_LIMIT,
+                status: "all",
+              })
+              .catch((error) => {
+                console.error("Error fetching referrals:", error);
+                return null;
+              }),
 
-          // Fetch openings (always available)
-          openingService
-            .getOpenings({
-              providerId,
-              status: OpeningStatus.OPEN,
-              page: 1,
-              limit: MAX_OPENINGS_FETCH_LIMIT,
-              includeExpired: false,
-            })
-            .catch((error) => {
-              console.error("Error fetching openings:", error);
-              return null;
-            }),
+            // Fetch openings (always available)
+            openingService
+              .getOpenings({
+                providerId,
+                status: OpeningStatus.OPEN,
+                page: 1,
+                limit: MAX_OPENINGS_FETCH_LIMIT,
+                includeExpired: false,
+              })
+              .catch((error) => {
+                console.error("Error fetching openings:", error);
+                return null;
+              }),
 
-          // Fetch placements (only for PRO+)
-          tier !== "FREE"
-            ? placementService
-                .getPlacements({
-                  providerId,
-                  page: 1,
-                  limit: RECENT_ITEMS_LIMIT,
-                })
-                .catch((error) => {
-                  console.error("Error fetching placements:", error);
-                  return null;
-                })
-            : Promise.resolve(null),
-        ]);
+            // Fetch placements (only for PRO+)
+            tier !== "FREE"
+              ? placementService
+                  .getPlacements({
+                    providerId,
+                    page: 1,
+                    limit: RECENT_ITEMS_LIMIT,
+                  })
+                  .catch((error) => {
+                    console.error("Error fetching placements:", error);
+                    return null;
+                  })
+              : Promise.resolve(null),
+          ]);
 
         if (!mountedRef.current || abortController.signal.aborted) return;
 
@@ -269,12 +289,17 @@ export default function ProviderDashboard() {
     return {
       totalHomes: analyticsData?.summary.totalHomes || homes.length,
       activeHomes: analyticsData?.summary.totalHomes || homes.length,
-      totalOpenings: analyticsData?.summary.activeOpenings || expiringOpenings.length,
-      activeOpenings: analyticsData?.summary.activeOpenings || expiringOpenings.length,
-      totalPlacements: analyticsData?.summary.totalPlacements || recentPlacements.length,
-      completedPlacements: analyticsData?.summary.completedPlacements || recentPlacements.length,
+      totalOpenings:
+        analyticsData?.summary.activeOpenings || expiringOpenings.length,
+      activeOpenings:
+        analyticsData?.summary.activeOpenings || expiringOpenings.length,
+      totalPlacements:
+        analyticsData?.summary.totalPlacements || recentPlacements.length,
+      completedPlacements:
+        analyticsData?.summary.completedPlacements || recentPlacements.length,
       pendingPlacements: analyticsData?.summary.pendingPlacements || 0,
-      totalResidents: analyticsData?.summary.completedPlacements || recentPlacements.length,
+      totalResidents:
+        analyticsData?.summary.completedPlacements || recentPlacements.length,
       availableSpots,
       pendingReferrals,
       urgentReferrals,
@@ -352,7 +377,9 @@ export default function ProviderDashboard() {
             Welcome back, {user?.firstName} {user?.lastName}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {organizationName || provider?.organization?.name || "Your organization"}
+            {organizationName ||
+              provider?.organization?.name ||
+              "Your organization"}
           </p>
         </div>
         {/* Subscription Status Badge */}
@@ -431,48 +458,50 @@ export default function ProviderDashboard() {
                   . You'll lose access to PRO features after this date.
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleNavigateToSettings("subscription")}
-              >
-                Manage
-              </Button>
+              {canManageSettings && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleNavigateToSettings("subscription")}
+                >
+                  Manage
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {isCancelled &&
-        subscription &&
-        subscriptionStatus.expiryDate && (
-          <Card
-            variant="healthcare"
-            className="border-destructive/50 bg-destructive/5"
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground mb-1">
-                    Subscription Cancelled
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Your subscription was cancelled. You'll have access until{" "}
-                    {format(subscriptionStatus.expiryDate, "PPP")}. After this
-                    date, you'll be moved to the Free plan.
-                  </p>
-                </div>
+      {isCancelled && subscription && subscriptionStatus.expiryDate && (
+        <Card
+          variant="healthcare"
+          className="border-destructive/50 bg-destructive/5"
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-foreground mb-1">
+                  Subscription Cancelled
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your subscription was cancelled. You'll have access until{" "}
+                  {format(subscriptionStatus.expiryDate, "PPP")}. After this
+                  date, you'll be moved to the Free plan.
+                </p>
+              </div>
+              {canManageSettings && (
                 <Button
                   size="sm"
                   onClick={() => handleNavigateToSettings("subscription")}
                 >
                   Reactivate
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Expiring Openings Alert */}
       {expiringOpenings.length > 0 && (
@@ -532,12 +561,14 @@ export default function ProviderDashboard() {
                   )}
                 </div>
               </div>
-              <Button
-                size="sm"
-                onClick={() => router.push("/provider/openings")}
-              >
-                Manage Openings
-              </Button>
+              {canManageOpenings && (
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/provider/openings")}
+                >
+                  Manage Openings
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -649,14 +680,16 @@ export default function ProviderDashboard() {
                 Latest referral requests requiring attention
               </CardDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/provider/referrals")}
-            >
-              View All
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            {canViewReferrals && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/provider/referrals")}
+              >
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {recentReferrals.length === 0 ? (
@@ -709,38 +742,46 @@ export default function ProviderDashboard() {
             <CardDescription>Common provider tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button
-              variant="healthcare"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/openings/create")}
-            >
-              <Bed className="mr-2 h-4 w-4" />
-              Create Opening
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/residents")}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              View Residents
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/referrals")}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Review Referrals
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/messages")}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Messages
-            </Button>
+            {canManageOpenings && (
+              <Button
+                variant="healthcare"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/openings/create")}
+              >
+                <Bed className="mr-2 h-4 w-4" />
+                Create Opening
+              </Button>
+            )}
+            {canViewResidents && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/residents")}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                View Residents
+              </Button>
+            )}
+            {canViewReferrals && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/referrals")}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Review Referrals
+              </Button>
+            )}
+            {canManageMessages && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/messages")}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Messages
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -751,54 +792,66 @@ export default function ProviderDashboard() {
             <CardDescription>Manage your organization</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/homes")}
-            >
-              <HomeIcon className="mr-2 h-4 w-4" />
-              Homes
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/openings")}
-            >
-              <Bed className="mr-2 h-4 w-4" />
-              Bed Management
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/services")}
-            >
-              <Package className="mr-2 h-4 w-4" />
-              Services
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/licenses")}
-            >
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Licenses
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/analytics")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Analytics
-            </Button>
-            <Button
-              variant="healthcareSecondary"
-              className="w-full justify-start"
-              onClick={() => router.push("/provider/settings")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
+            {canManageHomes && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/homes")}
+              >
+                <HomeIcon className="mr-2 h-4 w-4" />
+                Homes
+              </Button>
+            )}
+            {canManageOpenings && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/openings")}
+              >
+                <Bed className="mr-2 h-4 w-4" />
+                Bed Management
+              </Button>
+            )}
+            {canManageServices && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/services")}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Services
+              </Button>
+            )}
+            {canManageLicenses && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/licenses")}
+              >
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Licenses
+              </Button>
+            )}
+            {canViewAnalytics && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/analytics")}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Analytics
+              </Button>
+            )}
+            {canManageSettings && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/provider/settings")}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -816,14 +869,16 @@ export default function ProviderDashboard() {
                 <CardTitle>Recent Placements</CardTitle>
                 <CardDescription>Latest successful placements</CardDescription>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/provider/placements")}
-              >
-                View All
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
+              {(canManagePlacements || canViewResidents) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/provider/placements")}
+                >
+                  View All
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -865,5 +920,17 @@ export default function ProviderDashboard() {
         )}
       </FeatureGate>
     </div>
+  );
+}
+
+export default function ProviderDashboard() {
+  return (
+    <RequirePermission
+      permission={PROVIDER_CAPABILITIES.DASHBOARD_VIEW}
+      title="Access Restricted"
+      description="You don't have permission to access the provider dashboard."
+    >
+      <ProviderDashboardContent />
+    </RequirePermission>
   );
 }
