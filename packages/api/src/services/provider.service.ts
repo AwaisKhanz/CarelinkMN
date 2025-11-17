@@ -238,7 +238,6 @@ export class ProviderService {
             select: {
               licenseType: true,
               licenseNumber: true,
-              issuingState: true,
               expirationDate: true,
             },
           },

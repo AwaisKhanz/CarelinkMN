@@ -1,7 +1,9 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useSubscription, SubscriptionTier } from "@/hooks/use-subscription";
+import { useSubscription } from "@/hooks/use-subscription";
+import { SubscriptionTier } from "@/types/subscription";
+import { PLAN_HIERARCHY } from "@/lib/constants/subscription";
 import { UpgradeBanner } from "./upgrade-banner";
 import { Loader2 } from "lucide-react";
 
@@ -14,13 +16,6 @@ export interface FeatureGateProps {
   bannerDescription?: string;
   compact?: boolean;
 }
-
-const PLAN_HIERARCHY: Record<SubscriptionTier, number> = {
-  FREE: 0,
-  PRO: 1,
-  PREMIUM: 2,
-  ENTERPRISE: 3,
-};
 
 /**
  * Component that gates features based on subscription tier

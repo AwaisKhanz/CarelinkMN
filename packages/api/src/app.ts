@@ -31,6 +31,8 @@ import serviceRoutes from "./routes/service.routes";
 import analyticsRoutes from "./routes/analytics.routes";
 import messagingRoutes from "./routes/messaging.routes";
 import referralRoutes from "./routes/referral.routes";
+import aiSearchRoutes from "./routes/ai-search.routes";
+import notificationRoutes from "./routes/notification.routes";
 
 // Import middleware
 import {
@@ -51,6 +53,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://nominatim.openstreetmap.org", "https://*.openstreetmap.org"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -163,6 +166,8 @@ app.use("/api", serviceRoutes);
 app.use("/api", analyticsRoutes);
 app.use("/api", messagingRoutes);
 app.use("/api", referralRoutes);
+app.use("/api", aiSearchRoutes);
+app.use("/api", notificationRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

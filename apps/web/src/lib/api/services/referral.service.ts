@@ -11,6 +11,7 @@ import {
   GetReferralsParams,
   PaginatedReferrals,
   ApiResponse,
+  MessageThread,
 } from '@carelink/types';
 
 export class ReferralService {
@@ -107,19 +108,20 @@ export class ReferralService {
    */
   async batchAddToShortlist(
     referralId: string,
-    providerIds: string[]
+    providerIds: string[],
+    notes?: string
   ): Promise<ApiResponse<ReferralShortlist[]>> {
     return apiService.post<ReferralShortlist[]>(
       `/api/referrals/${referralId}/shortlist/batch`,
-      { providerIds }
+      { providerIds, notes }
     );
   }
 
   /**
    * Batch message providers
    */
-  async batchMessageProviders(data: BatchMessageData): Promise<ApiResponse<any[]>> {
-    return apiService.post<any[]>(`/api/referrals/batch-message`, data);
+  async batchMessageProviders(data: BatchMessageData): Promise<ApiResponse<MessageThread[]>> {
+    return apiService.post<MessageThread[]>(`/api/referrals/batch-message`, data);
   }
 }
 

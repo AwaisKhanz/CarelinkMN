@@ -1,5 +1,6 @@
 import { db } from "@carelink/database";
-import { OpeningStatus, LicenseStatus } from "@prisma/client";
+import { OpeningStatus, LicenseStatus, NotificationType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { EmailService } from "./email.service";
 import { LicenseService } from "./license.service";
 import { OpeningService } from "./opening.service";
@@ -164,7 +165,7 @@ export class ScheduledJobService {
 
       let reminderCount = 0;
 
-      for (const opening of expiringOpenings as any[]) {
+      for (const opening of expiringOpenings) {
         // Calculate hours until 48h expiry
         const hoursSinceFreshness =
           (now.getTime() - new Date(opening.freshnessTimestamp).getTime()) /
@@ -176,12 +177,12 @@ export class ScheduledJobService {
 
         // Send emails to provider owners/staff
         if (opening.provider?.organization?.users) {
-          for (const user of opening.provider.organization.users as any[]) {
+          for (const user of opening.provider.organization.users) {
             // Skip if a recent notification was already sent to this user for this opening
             const recentNotif = await db.notification.findFirst({
               where: {
                 userId: user.id,
-                type: "OPENING_EXPIRING" as any,
+                type: NotificationType.OPENING_EXPIRING,
                 createdAt: {
                   gte: new Date(now.getTime() - 30 * 60 * 60 * 1000), // within last 30 hours
                 },
@@ -211,12 +212,12 @@ export class ScheduledJobService {
 
         // Create in-app notifications for each user
         if (opening.provider?.organization?.users) {
-          for (const user of opening.provider.organization.users as any[]) {
+          for (const user of opening.provider.organization.users) {
             // Skip if a recent notification was already created
             const recentNotif = await db.notification.findFirst({
               where: {
                 userId: user.id,
-                type: "OPENING_EXPIRING" as any,
+                type: NotificationType.OPENING_EXPIRING,
                 createdAt: {
                   gte: new Date(now.getTime() - 30 * 60 * 60 * 1000),
                 },
@@ -226,15 +227,17 @@ export class ScheduledJobService {
             if (recentNotif) continue;
 
             try {
-              await db.notification.create({
-                data: {
-                  userId: user.id,
-                  type: "OPENING_EXPIRING" as any,
-                  title: "Opening Expiring Soon",
-                  message: `Opening at ${opening.home?.name ?? "home"} will expire in ~${hoursUntilExpiry} hours if not refreshed.`,
-                  channels: ["IN_APP", "EMAIL"],
-                  actionUrl: `/provider/openings/${opening.id}`,
-                },
+              const { NotificationService } = await import(
+                "./notification.service"
+              );
+              const notificationService = new NotificationService();
+              await notificationService.createNotification({
+                userId: user.id,
+                type: NotificationType.OPENING_EXPIRING,
+                title: "Opening Expiring Soon",
+                message: `Opening at ${opening.home?.name ?? "home"} will expire in ~${hoursUntilExpiry} hours if not refreshed.`,
+                channels: ["IN_APP", "EMAIL"],
+                actionUrl: `/provider/openings/${opening.id}`,
               });
             } catch (notifError) {
               console.error(
@@ -370,6 +373,21 @@ export class ScheduledJobService {
                   expirationDate: license.expirationDate,
                   daysUntilExpiry: 30,
                 });
+
+                // Create in-app notification
+                const { NotificationService } = await import(
+                  "./notification.service"
+                );
+                const notificationService = new NotificationService();
+                await notificationService.createNotification({
+                  userId: user.id,
+                  type: NotificationType.LICENSE_EXPIRING,
+                  title: "License Expiring Soon",
+                  message: `Your ${license.licenseType} license (${license.licenseNumber}) will expire in 30 days.`,
+                  channels: ["IN_APP", "EMAIL"],
+                  actionUrl: `/provider/licenses`,
+                });
+
                 remindersSent30++;
               } catch (emailError) {
                 console.error(
@@ -396,6 +414,21 @@ export class ScheduledJobService {
                   expirationDate: license.expirationDate,
                   daysUntilExpiry: 7,
                 });
+
+                // Create in-app notification
+                const { NotificationService } = await import(
+                  "./notification.service"
+                );
+                const notificationService = new NotificationService();
+                await notificationService.createNotification({
+                  userId: user.id,
+                  type: NotificationType.LICENSE_EXPIRING,
+                  title: "License Expiring Soon",
+                  message: `Your ${license.licenseType} license (${license.licenseNumber}) will expire in 7 days.`,
+                  channels: ["IN_APP", "EMAIL"],
+                  actionUrl: `/provider/licenses`,
+                });
+
                 remindersSent7++;
               } catch (emailError) {
                 console.error(
@@ -443,6 +476,217 @@ export class ScheduledJobService {
   }
 
   /**
+   * Check for expiring case manager licenses and send reminder emails
+   * Sends reminders at 30 days and 7 days before expiry
+   */
+  async checkCaseManagerLicenseExpiry(): Promise<void> {
+    try {
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(
+        now.getTime() + 30 * 24 * 60 * 60 * 1000
+      );
+      const sevenDaysFromNow = new Date(
+        now.getTime() + 7 * 24 * 60 * 60 * 1000
+      );
+
+      // Find case managers with licenses expiring in 30 days (within next 24 hours)
+      const thirtyDayThreshold = new Date(
+        thirtyDaysFromNow.getTime() - 24 * 60 * 60 * 1000
+      );
+      const caseManagersExpiringIn30Days = await db.caseManager.findMany({
+        where: {
+          licenseExpiry: {
+            gte: thirtyDayThreshold,
+            lte: thirtyDaysFromNow,
+          },
+          isActive: true,
+          licenseNumber: {
+            not: null,
+          },
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          licenseNumber: true,
+          licenseExpiry: true,
+          licenseDocumentUrl: true,
+          licenseFileName: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Find case managers with licenses expiring in 7 days (within next 24 hours)
+      const sevenDayThreshold = new Date(
+        sevenDaysFromNow.getTime() - 24 * 60 * 60 * 1000
+      );
+      const caseManagersExpiringIn7Days = await db.caseManager.findMany({
+        where: {
+          licenseExpiry: {
+            gte: sevenDayThreshold,
+            lte: sevenDaysFromNow,
+          },
+          isActive: true,
+          licenseNumber: {
+            not: null,
+          },
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          licenseNumber: true,
+          licenseExpiry: true,
+          licenseDocumentUrl: true,
+          licenseFileName: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      let remindersSent30 = 0;
+      let remindersSent7 = 0;
+
+      // Send 30-day reminders
+      for (const caseManager of caseManagersExpiringIn30Days) {
+        if (caseManager.email && caseManager.licenseExpiry) {
+          try {
+            await this.emailService.sendLicenseExpiryReminder({
+              to: caseManager.email,
+              licenseId: caseManager.id,
+              licenseType: "Case Manager License",
+              licenseNumber: caseManager.licenseNumber || "N/A",
+              expirationDate: caseManager.licenseExpiry,
+              daysUntilExpiry: 30,
+            });
+
+            // Find user associated with this case manager to create notification
+            const user = await db.user.findFirst({
+              where: {
+                email: caseManager.email,
+                organizationId: caseManager.organizationId,
+              },
+            });
+
+            if (user) {
+              const { NotificationService } = await import(
+                "./notification.service"
+              );
+              const notificationService = new NotificationService();
+              await notificationService.createNotification({
+                userId: user.id,
+                type: NotificationType.LICENSE_EXPIRING,
+                title: "License Expiring Soon",
+                message: `Your Case Manager license (${caseManager.licenseNumber || "N/A"}) will expire in 30 days.`,
+                channels: ["IN_APP", "EMAIL"],
+                actionUrl: `/case-manager/settings`,
+              });
+            }
+
+            remindersSent30++;
+          } catch (emailError) {
+            console.error(
+              `Failed to send 30-day reminder to ${caseManager.email}:`,
+              emailError
+            );
+          }
+        }
+      }
+
+      // Send 7-day reminders
+      for (const caseManager of caseManagersExpiringIn7Days) {
+        if (caseManager.email && caseManager.licenseExpiry) {
+          try {
+            await this.emailService.sendLicenseExpiryReminder({
+              to: caseManager.email,
+              licenseId: caseManager.id,
+              licenseType: "Case Manager License",
+              licenseNumber: caseManager.licenseNumber || "N/A",
+              expirationDate: caseManager.licenseExpiry,
+              daysUntilExpiry: 7,
+            });
+
+            // Find user associated with this case manager to create notification
+            const user = await db.user.findFirst({
+              where: {
+                email: caseManager.email,
+                organizationId: caseManager.organizationId,
+              },
+            });
+
+            if (user) {
+              const { NotificationService } = await import(
+                "./notification.service"
+              );
+              const notificationService = new NotificationService();
+              await notificationService.createNotification({
+                userId: user.id,
+                type: NotificationType.LICENSE_EXPIRING,
+                title: "License Expiring Soon",
+                message: `Your Case Manager license (${caseManager.licenseNumber || "N/A"}) will expire in 7 days.`,
+                channels: ["IN_APP", "EMAIL"],
+                actionUrl: `/case-manager/settings`,
+              });
+            }
+
+            remindersSent7++;
+          } catch (emailError) {
+            console.error(
+              `Failed to send 7-day reminder to ${caseManager.email}:`,
+              emailError
+            );
+          }
+        }
+      }
+
+      // Find expired case manager licenses and mark as inactive
+      const expiredCaseManagers = await db.caseManager.findMany({
+        where: {
+          licenseExpiry: {
+            lt: now,
+          },
+          isActive: true,
+          licenseNumber: {
+            not: null,
+          },
+        },
+      });
+
+      let expiredCount = 0;
+      for (const caseManager of expiredCaseManagers) {
+        await db.caseManager.update({
+          where: { id: caseManager.id },
+          data: {
+            isActive: false,
+          },
+        });
+        expiredCount++;
+      }
+
+      console.log(
+        `[Scheduled Job] Case Manager license expiry check: ${remindersSent30} 30-day reminders, ${remindersSent7} 7-day reminders, ${expiredCount} case managers marked as inactive`
+      );
+
+      return;
+    } catch (error) {
+      console.error(
+        "[Scheduled Job] Error checking case manager license expiry:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Run all scheduled jobs
    * This should be called by a cron job or scheduler
    */
@@ -453,6 +697,7 @@ export class ScheduledJobService {
         this.enforceOpeningFreshness(),
         this.sendOpeningExpiryReminders(),
         this.checkLicenseExpiry(),
+        this.checkCaseManagerLicenseExpiry(),
       ]);
       console.log("[Scheduled Job] All scheduled jobs completed");
     } catch (error) {

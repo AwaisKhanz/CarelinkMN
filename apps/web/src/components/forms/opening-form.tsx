@@ -70,23 +70,29 @@ const baseOpeningSchema = z.object({
     .optional()
     .nullable(),
   ageMin: z
-    .number({
-      invalid_type_error: "Minimum age must be a number",
-    })
-    .int("Minimum age must be a whole number")
-    .min(0, "Minimum age cannot be negative")
-    .max(150, "Minimum age cannot exceed 150")
+    .union([
+      z.number({
+        invalid_type_error: "Minimum age must be a number",
+      }).int("Minimum age must be a whole number").min(0, "Minimum age cannot be negative").max(150, "Minimum age cannot exceed 150"),
+      z.literal(""),
+      z.null(),
+      z.undefined(),
+    ])
     .optional()
-    .nullable(),
+    .nullable()
+    .transform((val) => (val === "" ? undefined : val)),
   ageMax: z
-    .number({
-      invalid_type_error: "Maximum age must be a number",
-    })
-    .int("Maximum age must be a whole number")
-    .min(0, "Maximum age cannot be negative")
-    .max(150, "Maximum age cannot exceed 150")
+    .union([
+      z.number({
+        invalid_type_error: "Maximum age must be a number",
+      }).int("Maximum age must be a whole number").min(0, "Maximum age cannot be negative").max(150, "Maximum age cannot exceed 150"),
+      z.literal(""),
+      z.null(),
+      z.undefined(),
+    ])
     .optional()
-    .nullable(),
+    .nullable()
+    .transform((val) => (val === "" ? undefined : val)),
   genderPreference: z
     .nativeEnum(Gender, {
       errorMap: () => ({ message: "Please select a valid gender preference" }),
@@ -103,13 +109,17 @@ const baseOpeningSchema = z.object({
     )
     .min(1, "At least one accepted payer is required"),
   privatePayRate: z
-    .number({
-      invalid_type_error: "Private pay rate must be a number",
-    })
-    .min(0, "Private pay rate cannot be negative")
-    .max(999999.99, "Private pay rate is too high")
+    .union([
+      z.number({
+        invalid_type_error: "Private pay rate must be a number",
+      }).min(0, "Private pay rate cannot be negative").max(999999.99, "Private pay rate is too high"),
+      z.literal(""),
+      z.null(),
+      z.undefined(),
+    ])
     .optional()
-    .nullable(),
+    .nullable()
+    .transform((val) => (val === "" ? undefined : val)),
 });
 
 // Create schema with refinements

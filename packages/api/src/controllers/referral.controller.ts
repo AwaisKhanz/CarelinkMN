@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ReferralService } from "../services/referral.service";
 import { ApiResponse, AuthenticatedRequest } from "../types";
 import { validationResult } from "express-validator";
+import { ReferralStatus, Urgency, Payer } from "@carelink/types";
 
 export class ReferralController {
   private referralService: ReferralService;
@@ -102,9 +103,9 @@ export class ReferralController {
       const filters = {
         page: page ? parseInt(page as string, 10) : undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
-        status: status as string | undefined,
-        urgency: urgency as string | undefined,
-        primaryPayer: primaryPayer as string | undefined,
+        status: status ? (status as ReferralStatus) : undefined,
+        urgency: urgency ? (urgency as Urgency) : undefined,
+        primaryPayer: primaryPayer ? (primaryPayer as Payer) : undefined,
         search: search as string | undefined,
       };
 
@@ -492,7 +493,7 @@ export class ReferralController {
 
       const { id } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
-      const { providerIds } = req.body;
+      const { providerIds, notes } = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -506,7 +507,8 @@ export class ReferralController {
       const shortlist = await this.referralService.batchAddToShortlist(
         id,
         user.id,
-        providerIds
+        providerIds,
+        notes
       );
 
       res.status(200).json({

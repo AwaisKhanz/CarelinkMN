@@ -8,6 +8,7 @@ import {
   Referral,
   ProviderService as ProviderServiceType,
   Service,
+  SubscriptionTier,
 } from '@carelink/types';
 
 import { Home, ProviderHomesResponse } from './home.service';
@@ -23,7 +24,9 @@ export interface Provider {
   responseTimeHours?: number;
   verified?: boolean;
   verifiedAt?: string | null;
-  subscriptionTier?: string;
+  verificationNotes?: string | null;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionId?: string | null;
   createdAt: string;
   updatedAt: string;
   organization?: {
@@ -49,10 +52,10 @@ export interface ProviderLicense {
   providerId: string;
   licenseType: string;
   licenseNumber: string;
-  issuingState: string;
   issueDate: string;
   expirationDate: string;
   documentUrl?: string;
+  fileName?: string;
   status: LicenseStatus;
   verifiedAt?: string;
   verifiedBy?: string;
@@ -75,10 +78,10 @@ export interface UpdateProviderData extends Partial<CreateProviderData> {
 export interface CreateProviderLicenseData {
   licenseType: string;
   licenseNumber: string;
-  issuingState: string;
   issueDate: string;
   expirationDate: string;
   documentUrl: string;
+  fileName?: string;
 }
 
 export interface UpdateProviderLicenseData extends Partial<CreateProviderLicenseData> {
@@ -106,9 +109,19 @@ export interface ProviderReferralsResponse {
   };
 }
 
+export interface GetProvidersResponse {
+  providers: Provider[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
 export class ProviderService {
   // Get all providers with pagination and filters
-  async getProviders(params: GetProvidersParams = {}) {
+  async getProviders(params: GetProvidersParams = {}): Promise<ApiResponse<GetProvidersResponse>> {
     const { page = 1, limit = 10, search, status, organizationType, city, state, county } = params;
 
     const searchParams = new URLSearchParams({
@@ -123,7 +136,7 @@ export class ProviderService {
     if (state) searchParams.append('state', state);
     if (county) searchParams.append('county', county);
 
-    return await apiService.get(`/api/providers?${searchParams}`);
+    return await apiService.get<GetProvidersResponse>(`/api/providers?${searchParams}`);
   }
 
   // Get provider by ID
@@ -135,7 +148,12 @@ export class ProviderService {
   // Get provider by user ID
   async getProviderByUserId(userId: string): Promise<Provider> {
     const response = await apiService.get<Provider>(`/api/providers/by-user/${userId}`);
-    return response.data!;
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Provider not found");
+    }
+    // Validate response matches schema
+    const { validateProviderResponse } = await import("@/lib/utils/api-validation");
+    return validateProviderResponse(response.data);
   }
 
   // Get provider by organization ID
@@ -166,7 +184,20 @@ export class ProviderService {
     const url = status
       ? `/api/providers/${providerId}/licenses?status=${status}`
       : `/api/providers/${providerId}/licenses`;
-    return await apiService.get<License[]>(url);
+    const response = await apiService.get<License[]>(url);
+    
+    // Validate response if successful
+    if (response.success && response.data) {
+      const { validateLicensesResponse } = await import("@/lib/utils/api-validation");
+      try {
+        response.data = validateLicensesResponse(response.data);
+      } catch (error) {
+        console.error("License validation failed:", error);
+        // Return original response but log warning
+      }
+    }
+    
+    return response;
   }
 
   // Create provider license

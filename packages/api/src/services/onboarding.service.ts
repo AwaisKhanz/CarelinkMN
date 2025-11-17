@@ -42,20 +42,37 @@ export class OnboardingService {
     if (data == null || typeof data !== "object") {
       throw new Error("Invalid organization data");
     }
-    // Optional basic keys (name, contact, address) if provided should be strings
+    // Optional basic keys (name/organizationName, contact, address) if provided should be strings
     const keysToCheck = [
-      "name",
+      "organizationName", // Frontend uses organizationName
+      "name", // Backward compatibility
+      "organizationType",
       "email",
       "phone",
       "addressLine1",
+      "addressLine2",
       "city",
       "state",
       "zipCode",
       "county",
+      "website",
+      "ein",
+      "npi",
+      "fax",
+      "primaryLicenseType", // Provider field
+      "acceptsReferrals", // Provider field (boolean)
+      "responseTimeHours", // Provider field (number)
     ];
     for (const key of keysToCheck) {
-      if (data[key] != null && typeof data[key] !== "string") {
-        throw new Error(`Invalid organization data: ${key} must be a string`);
+      if (data[key] != null) {
+        // Special handling for boolean and number fields
+        if (key === "acceptsReferrals" && typeof data[key] !== "boolean") {
+          throw new Error(`Invalid organization data: ${key} must be a boolean`);
+        } else if (key === "responseTimeHours" && typeof data[key] !== "number") {
+          throw new Error(`Invalid organization data: ${key} must be a number`);
+        } else if (key !== "acceptsReferrals" && key !== "responseTimeHours" && typeof data[key] !== "string") {
+          throw new Error(`Invalid organization data: ${key} must be a string`);
+        }
       }
     }
   }
@@ -71,6 +88,7 @@ export class OnboardingService {
       }
       for (const lic of data.licenses) {
         if (lic && typeof lic === "object") {
+          // Required fields
           if (lic.licenseType != null && typeof lic.licenseType !== "string") {
             throw new Error(
               "Invalid license data: licenseType must be a string"
@@ -82,6 +100,27 @@ export class OnboardingService {
           ) {
             throw new Error(
               "Invalid license data: licenseNumber must be a string"
+            );
+          }
+          // Optional fields
+          if (lic.issueDate != null && typeof lic.issueDate !== "string") {
+            throw new Error(
+              "Invalid license data: issueDate must be a string (ISO date)"
+            );
+          }
+          if (lic.expirationDate != null && typeof lic.expirationDate !== "string") {
+            throw new Error(
+              "Invalid license data: expirationDate must be a string (ISO date)"
+            );
+          }
+          if (lic.documentUrl != null && typeof lic.documentUrl !== "string") {
+            throw new Error(
+              "Invalid license data: documentUrl must be a string"
+            );
+          }
+          if (lic.fileName != null && typeof lic.fileName !== "string") {
+            throw new Error(
+              "Invalid license data: fileName must be a string"
             );
           }
         }
@@ -110,6 +149,10 @@ export class OnboardingService {
   private validateSubscriptionData(data: any) {
     if (data == null || typeof data !== "object") {
       throw new Error("Invalid subscription data");
+    }
+    // Accept both 'tier' and 'subscriptionTier' for backward compatibility
+    if (data.subscriptionTier != null && typeof data.subscriptionTier !== "string") {
+      throw new Error("Invalid subscription data: subscriptionTier must be a string");
     }
     if (data.tier != null && typeof data.tier !== "string") {
       throw new Error("Invalid subscription data: tier must be a string");

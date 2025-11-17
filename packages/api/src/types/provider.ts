@@ -30,7 +30,6 @@ export type UpdateProviderRequest = z.infer<typeof UpdateProviderSchema>;
 export const CreateLicenseSchema = z.object({
   licenseType: z.string().min(1, "License type is required"),
   licenseNumber: z.string().min(1, "License number is required"),
-  issuingState: z.string().length(2, "Issuing state must be 2 characters").optional().default("MN"),
   issueDate: z.string().datetime("Valid issue date is required"),
   expirationDate: z.string().datetime("Valid expiration date is required"),
   documentUrl: z.string().url("Document URL must be a valid URL"),
@@ -169,7 +168,6 @@ export interface ProviderPublicProfile {
   licenses: Array<{
     licenseType: string;
     licenseNumber: string;
-    issuingState: string;
     expirationDate: Date;
   }>;
   homes: Array<{

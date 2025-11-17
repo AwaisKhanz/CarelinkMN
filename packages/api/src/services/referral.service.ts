@@ -1,5 +1,5 @@
 import { db } from "@carelink/database";
-import { Prisma } from "@prisma/client";
+import { Prisma, EventType, NotificationType } from "@prisma/client";
 import {
   Referral,
   CreateReferralData,
@@ -17,9 +17,37 @@ import {
   Urgency,
   Payer,
   PlacementStatus,
+  NotificationPreferences,
+  MessageThread,
+  Placement,
+  PlacementReferralInfo,
+  Gender,
+  UserRole,
 } from "@carelink/types";
 import { normalizeDate } from "@carelink/utils";
 import { MessagingService } from "./messaging.service";
+
+// Standard include structure for referral queries
+type ReferralInclude = {
+  caseManager: { select: { id: true; firstName: true; lastName: true; email: true; role: true } };
+  caseManagerProfile: true;
+  shortlist: true;
+  messages: true;
+  placements: true;
+};
+
+type ReferralPayload = Prisma.ReferralGetPayload<{ include: ReferralInclude }>;
+
+type ShortlistInclude = {
+  referral: {
+    include: {
+      caseManager: { select: { id: true; firstName: true; lastName: true; email: true; role: true } };
+      caseManagerProfile: true;
+    };
+  };
+};
+
+type ShortlistPayload = Prisma.ReferralShortlistGetPayload<{ include: ShortlistInclude }>;
 
 export class ReferralService {
   /**
@@ -96,6 +124,58 @@ export class ReferralService {
         });
       }
 
+      // Create notification for new referral (respect user preferences)
+      try {
+        const channels: string[] = [];
+        const prefs = caseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
+        if (prefs) {
+          if (prefs.inAppNotifications && prefs.inAppNewReferrals) {
+            channels.push("IN_APP");
+          }
+          if (prefs.emailNotifications && prefs.emailNewReferrals) {
+            channels.push("EMAIL");
+          }
+        } else {
+          // Default to both if preferences not set
+          channels.push("IN_APP", "EMAIL");
+        }
+
+        if (channels.length > 0) {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+          await notificationService.createNotification({
+            userId: userId,
+            type: NotificationType.REFERRAL_NEW,
+            title: "New Referral Created",
+            message: `Referral ${referral.referralNumber} has been created successfully.`,
+            channels: channels,
+            actionUrl: `/case-manager/referrals/${referral.id}`,
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create referral notification:", notifError);
+        // Don't throw - notification failure shouldn't break referral creation
+      }
+
+      // Track analytics event
+      try {
+        await db.analyticsEvent.create({
+          data: {
+            eventType: EventType.REFERRAL_CREATED,
+            userId: userId,
+            referralId: referral.id,
+            eventData: {
+              referralNumber: referral.referralNumber,
+              urgency: referral.urgency,
+              primaryPayer: referral.primaryPayer,
+            },
+          },
+        });
+      } catch (analyticsError) {
+        console.error("Failed to track referral creation analytics:", analyticsError);
+        // Don't throw - analytics failure shouldn't break referral creation
+      }
+
       // Fetch full referral with relations
       return this.getReferralById(referral.id, userId);
     } catch (error) {
@@ -128,49 +208,17 @@ export class ReferralService {
             },
           },
           caseManagerProfile: true,
-          shortlist: {
-            include: {
-              provider: {
-                include: {
-                  organization: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                  homes: {
-                    select: {
-                      id: true,
-                      name: true,
-                      city: true,
-                      state: true,
-                    },
-                    take: 5, // Limit homes for performance
-                  },
-                },
-              },
-            },
-          },
-          messages: {
-            take: 5, // Limit messages for list view
-            orderBy: {
-              lastMessageAt: "desc",
-            },
-          },
-          placements: {
-            take: 10,
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
+          shortlist: true,
+          messages: true,
+          placements: true,
+        } satisfies ReferralInclude,
       });
 
       if (!referral) {
         throw new Error("Referral not found");
       }
 
-      return this.mapReferralToType(referral);
+      return await this.mapReferralToType(referral);
     } catch (error) {
       console.error("Get referral by ID error:", error);
       throw new Error("Failed to retrieve referral");
@@ -245,28 +293,10 @@ export class ReferralService {
               },
             },
             caseManagerProfile: true,
-            shortlist: {
-              take: 5, // Limit for list view
-              include: {
-                provider: {
-                  include: {
-                    organization: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            placements: {
-              take: 1,
-              orderBy: {
-                createdAt: "desc",
-              },
-            },
-          },
+            shortlist: true,
+            placements: true,
+            messages: true,
+          } as ReferralInclude,
           orderBy: {
             createdAt: "desc",
           },
@@ -279,7 +309,7 @@ export class ReferralService {
       const pages = Math.ceil(total / limit);
 
       return {
-        referrals: referrals.map((r) => this.mapReferralToType(r)),
+        referrals: await Promise.all(referrals.map((r) => this.mapReferralToType(r as ReferralPayload))),
         pagination: {
           total,
           pages,
@@ -362,10 +392,75 @@ export class ReferralService {
         }
       }
 
-      await db.referral.update({
+      const updatedReferral = await db.referral.update({
         where: { id: referralId },
         data: updateData,
       });
+
+      // Create notification for referral update (respect user preferences)
+      try {
+        // Get case manager profile for preferences
+        const caseManagerProfile = await db.caseManager.findFirst({
+          where: {
+            organization: {
+              users: {
+                some: { id: userId },
+              },
+            },
+          },
+        });
+
+        const channels: string[] = [];
+        const prefs = caseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
+        if (prefs) {
+          // For referral updates, check if user wants notifications for provider responses or placement updates
+          // Since there's no specific "referral update" preference, we'll use provider responses as the closest match
+          if (prefs.inAppNotifications && (prefs.inAppProviderResponses || prefs.inAppPlacementUpdates)) {
+            channels.push("IN_APP");
+          }
+          if (prefs.emailNotifications && (prefs.emailProviderResponses || prefs.emailPlacementUpdates)) {
+            channels.push("EMAIL");
+          }
+        } else {
+          // Default to both if preferences not set
+          channels.push("IN_APP", "EMAIL");
+        }
+
+        if (channels.length > 0) {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+          await notificationService.createNotification({
+            userId: userId,
+            type: NotificationType.REFERRAL_UPDATE,
+            title: "Referral Updated",
+            message: `Referral ${updatedReferral.referralNumber} has been updated.`,
+            channels: channels,
+            actionUrl: `/case-manager/referrals/${referralId}`,
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create referral update notification:", notifError);
+        // Don't throw - notification failure shouldn't break referral update
+      }
+
+      // Track analytics event
+      try {
+        await db.analyticsEvent.create({
+          data: {
+            eventType: EventType.REFERRAL_UPDATE,
+            userId: userId,
+            referralId: referralId,
+            eventData: {
+              referralNumber: updatedReferral.referralNumber,
+              status: updatedReferral.status,
+              urgency: updatedReferral.urgency,
+            },
+          },
+        });
+      } catch (analyticsError) {
+        console.error("Failed to track referral update analytics:", analyticsError);
+        // Don't throw - analytics failure shouldn't break referral update
+      }
 
       return this.getReferralById(referralId, userId);
     } catch (error) {
@@ -448,6 +543,24 @@ export class ReferralService {
         )
       );
 
+      // Track analytics event
+      try {
+        await db.analyticsEvent.create({
+          data: {
+            eventType: EventType.REFERRAL_SHORTLIST_ADDED,
+            userId: userId,
+            referralId: referralId,
+            eventData: {
+              providerCount: data.providerIds.length,
+              providerIds: data.providerIds,
+            },
+          },
+        });
+      } catch (analyticsError) {
+        console.error("Failed to track shortlist analytics:", analyticsError);
+        // Don't throw - analytics failure shouldn't break shortlist addition
+      }
+
       // Fetch full shortlist with relations
       return this.getShortlist(referralId, userId);
     } catch (error) {
@@ -497,30 +610,46 @@ export class ReferralService {
         where: { id: shortlistId },
         data: updateData,
         include: {
-          referral: true,
-          provider: {
+          referral: {
             include: {
-              organization: {
+              caseManager: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  role: true,
                 },
               },
-              homes: {
-                select: {
-                  id: true,
-                  name: true,
-                  city: true,
-                  state: true,
-                },
-                take: 5,
-              },
+              caseManagerProfile: true,
+            },
+          },
+        } as ShortlistInclude,
+      });
+
+      // Fetch provider data
+      const provider = await db.provider.findUnique({
+        where: { id: updated.providerId },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          homes: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              state: true,
             },
           },
         },
       });
 
-      return this.mapShortlistToType(updated);
+      return await this.mapShortlistToType(updated, provider ?? undefined);
     } catch (error) {
       console.error("Update shortlist status error:", error);
       throw new Error("Failed to update shortlist status");
@@ -579,33 +708,56 @@ export class ReferralService {
       const shortlist = await db.referralShortlist.findMany({
         where: { referralId },
         include: {
-          referral: true,
-          provider: {
+          referral: {
             include: {
-              organization: {
+              caseManager: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  role: true,
                 },
               },
-              homes: {
-                select: {
-                  id: true,
-                  name: true,
-                  city: true,
-                  state: true,
-                },
-                take: 5,
-              },
+              caseManagerProfile: true,
             },
           },
-        },
+        } as ShortlistInclude,
         orderBy: {
           addedAt: "desc",
         },
       });
 
-      return shortlist.map((s) => this.mapShortlistToType(s));
+      // Fetch provider data for each shortlist item (providerId is not a relation in schema)
+      const providerIds = [...new Set(shortlist.map((s) => s.providerId))];
+      const providers = await db.provider.findMany({
+        where: { id: { in: providerIds } },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          homes: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              state: true,
+            },
+          },
+        },
+      });
+      const providerMap = new Map(providers.map((p) => [p.id, p]));
+
+      return Promise.all(
+        shortlist.map((s) => {
+          const provider = providerMap.get(s.providerId);
+          return this.mapShortlistToType(s, provider);
+        })
+      );
     } catch (error) {
       console.error("Get shortlist error:", error);
       throw new Error("Failed to retrieve shortlist");
@@ -618,10 +770,12 @@ export class ReferralService {
   async batchAddToShortlist(
     referralId: string,
     userId: string,
-    providerIds: string[]
+    providerIds: string[],
+    notes?: string
   ): Promise<ReferralShortlist[]> {
     return this.addToShortlist(referralId, userId, {
       providerIds,
+      notes,
     });
   }
 
@@ -631,7 +785,7 @@ export class ReferralService {
   async batchMessageProviders(
     data: BatchMessageData,
     userId: string
-  ): Promise<any[]> {
+  ): Promise<MessageThread[]> {
     try {
       // Verify user owns all referrals
       const referrals = await db.referral.findMany({
@@ -661,7 +815,7 @@ export class ReferralService {
 
             if (existingThread) {
               // Send message to existing thread
-              return messaging.sendMessage(
+              const message = await messaging.sendMessage(
                 {
                   threadId: existingThread.id,
                   content: data.message,
@@ -669,9 +823,29 @@ export class ReferralService {
                 },
                 userId
               );
+
+              // Track analytics
+              try {
+                await db.analyticsEvent.create({
+                  data: {
+                    eventType: EventType.REFERRAL_MESSAGE_SENT,
+                    userId: userId,
+                    referralId: referralId,
+                    eventData: {
+                      providerId: providerId,
+                      threadId: existingThread.id,
+                      isNewThread: false,
+                    },
+                  },
+                });
+              } catch (analyticsError) {
+                console.error("Failed to track message analytics:", analyticsError);
+              }
+
+              return message;
             } else {
               // Create new thread and send message
-              return messaging.createThread(
+              const thread = await messaging.createThread(
                 {
                   providerId,
                   referralId,
@@ -680,12 +854,32 @@ export class ReferralService {
                 },
                 userId
               );
+
+              // Track analytics
+              try {
+                await db.analyticsEvent.create({
+                  data: {
+                    eventType: EventType.REFERRAL_MESSAGE_SENT,
+                    userId: userId,
+                    referralId: referralId,
+                    eventData: {
+                      providerId: providerId,
+                      threadId: thread.id,
+                      isNewThread: true,
+                    },
+                  },
+                });
+              } catch (analyticsError) {
+                console.error("Failed to track message analytics:", analyticsError);
+              }
+
+              return thread;
             }
           })
         )
       );
 
-      return threads;
+      return threads.filter((t): t is MessageThread => 'providerId' in t && 'initiatorId' in t);
     } catch (error) {
       console.error("Batch message providers error:", error);
       throw new Error("Failed to send batch messages");
@@ -705,17 +899,19 @@ export class ReferralService {
           caseManagerId: userId,
         },
         include: {
-          placements: {
-            where: {
-              status: {
-                in: [
-                  PlacementStatus.PENDING,
-                  PlacementStatus.CONFIRMED,
-                  PlacementStatus.IN_PROGRESS,
-                ],
-              },
+          caseManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
             },
           },
+          caseManagerProfile: true,
+          shortlist: true,
+          messages: true,
+          placements: true,
         },
       });
 
@@ -784,39 +980,45 @@ export class ReferralService {
         totalMessages > 0 ? (respondedMessages / totalMessages) * 100 : 0;
 
       // Get recent referrals
-      const recentReferrals = referrals
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
-        .slice(0, 5)
-        .map((r) => this.mapReferralToType(r));
+      const recentReferrals = await Promise.all(
+        referrals
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          .slice(0, 5)
+          .map((r) => this.mapReferralToType(r as ReferralPayload))
+      );
 
       // Get urgent referrals
-      const urgentReferrals = referrals
-        .filter((r) => r.urgency === Urgency.URGENT)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
-        .slice(0, 5)
-        .map((r) => this.mapReferralToType(r));
+      const urgentReferrals = await Promise.all(
+        referrals
+          .filter((r) => r.urgency === Urgency.URGENT)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          .slice(0, 5)
+          .map((r) => this.mapReferralToType(r as ReferralPayload))
+      );
 
       // Map recent placements
-      const recentPlacementsData = placements
+      const recentPlacementsData: Placement[] = placements
         .slice(0, 5)
         .map((p) => {
-          // Map placement to Placement type (simplified)
-          return {
+          // Map placement to Placement type
+          const placement: Placement = {
             id: p.id,
-            referralId: p.referralId,
+            referralId: p.referralId || undefined,
             providerId: p.providerId,
             openingId: p.openingId,
             placementDate: p.placementDate.toISOString(),
             moveInDate: p.moveInDate?.toISOString(),
-            status: p.status,
+            status: p.status as PlacementStatus,
             createdAt: p.createdAt.toISOString(),
             updatedAt: p.updatedAt.toISOString(),
+            confirmedAt: p.confirmedAt?.toISOString(),
+            completedAt: p.completedAt?.toISOString(),
             referral: p.referral
               ? {
                   id: p.referral.id,
@@ -824,9 +1026,10 @@ export class ReferralService {
                   clientInitials: p.referral.clientInitials,
                   clientAge: p.referral.clientAge,
                   primaryPayer: p.referral.primaryPayer,
-                }
+                } as PlacementReferralInfo
               : undefined,
           };
+          return placement;
         });
 
       return {
@@ -840,7 +1043,7 @@ export class ReferralService {
         },
         recentReferrals,
         urgentReferrals,
-        recentPlacements: recentPlacementsData as any,
+        recentPlacements: recentPlacementsData,
       };
     } catch (error) {
       console.error("Get case manager dashboard error:", error);
@@ -851,66 +1054,87 @@ export class ReferralService {
   /**
    * Map Prisma referral to Referral type
    */
-  private mapReferralToType(referral: any): Referral {
+  private async mapReferralToType(referral: ReferralPayload): Promise<Referral> {
     return {
       id: referral.id,
       referralNumber: referral.referralNumber,
       caseManagerId: referral.caseManagerId,
-      caseManagerProfileId: referral.caseManagerProfileId,
+      caseManagerProfileId: referral.caseManagerProfileId ?? undefined,
       organizationId: referral.organizationId,
       clientAge: referral.clientAge,
-      clientGender: referral.clientGender,
+      clientGender: referral.clientGender as Gender,
       clientInitials: referral.clientInitials,
       careLevels: referral.careLevels,
       servicesNeeded: referral.servicesNeeded,
-      mobilityLevel: referral.mobilityLevel,
+      mobilityLevel: referral.mobilityLevel ?? undefined,
       behavioralNeeds: referral.behavioralNeeds,
       medicalNeeds: referral.medicalNeeds,
       preferredCounties: referral.preferredCounties,
       preferredCities: referral.preferredCities,
-      maxDistance: referral.maxDistance,
-      primaryPayer: referral.primaryPayer,
-      secondaryPayer: referral.secondaryPayer,
+      maxDistance: referral.maxDistance ?? undefined,
+      primaryPayer: referral.primaryPayer as Payer,
+      secondaryPayer: referral.secondaryPayer ? (referral.secondaryPayer as Payer) : undefined,
       targetMoveDate: referral.targetMoveDate?.toISOString(),
-      urgency: referral.urgency,
-      status: referral.status,
-      internalNotes: referral.internalNotes,
+      urgency: referral.urgency as Urgency,
+      status: referral.status as ReferralStatus,
+      internalNotes: referral.internalNotes ?? undefined,
       createdAt: referral.createdAt.toISOString(),
       updatedAt: referral.updatedAt.toISOString(),
       placedAt: referral.placedAt?.toISOString(),
       closedAt: referral.closedAt?.toISOString(),
-      caseManager: referral.caseManager,
+      caseManager: referral.caseManager
+        ? {
+            id: referral.caseManager.id,
+            firstName: referral.caseManager.firstName,
+            lastName: referral.caseManager.lastName,
+            email: referral.caseManager.email,
+            role: referral.caseManager.role as UserRole,
+          }
+        : undefined,
       caseManagerProfile: referral.caseManagerProfile
         ? {
             id: referral.caseManagerProfile.id,
             firstName: referral.caseManagerProfile.firstName,
             lastName: referral.caseManagerProfile.lastName,
             email: referral.caseManagerProfile.email,
-            phone: referral.caseManagerProfile.phone,
+            phone: referral.caseManagerProfile.phone ?? undefined,
             organizationId: referral.caseManagerProfile.organizationId,
           }
         : undefined,
-      shortlist: referral.shortlist?.map((s: any) =>
-        this.mapShortlistToType(s)
+      shortlist: await Promise.all(
+        referral.shortlist.map(async (s) => {
+          const provider = await db.provider.findUnique({
+            where: { id: s.providerId },
+            include: {
+              organization: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              homes: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  name: true,
+                  city: true,
+                  state: true,
+                },
+              },
+            },
+          });
+          return await this.mapShortlistToType(s as ShortlistPayload, provider ?? undefined);
+        })
       ),
-      messages: referral.messages?.map((m: any) => ({
-        id: m.id,
-        threadId: m.threadId,
-        senderId: m.senderId,
-        content: m.content,
-        isRead: m.isRead,
-        readAt: m.readAt?.toISOString(),
-        createdAt: m.createdAt.toISOString(),
-        editedAt: m.editedAt?.toISOString(),
-      })),
-      placements: referral.placements?.map((p: any) => ({
+      messages: undefined, // Messages are MessageThreads, not included in Referral type
+      placements: referral.placements.map((p) => ({
         id: p.id,
-        referralId: p.referralId,
+        referralId: p.referralId ?? undefined,
         providerId: p.providerId,
         openingId: p.openingId,
         placementDate: p.placementDate.toISOString(),
         moveInDate: p.moveInDate?.toISOString(),
-        status: p.status,
+        status: p.status as PlacementStatus,
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       })),
@@ -920,29 +1144,39 @@ export class ReferralService {
   /**
    * Map Prisma shortlist to ReferralShortlist type
    */
-  private mapShortlistToType(shortlist: any): ReferralShortlist {
+  private async mapShortlistToType(
+    shortlist: ShortlistPayload | Prisma.ReferralShortlistGetPayload<{}>,
+    provider?: Prisma.ProviderGetPayload<{
+      include: {
+        organization: { select: { id: true; name: true } };
+        homes: { select: { id: true; name: true; city: true; state: true } };
+      };
+    }>
+  ): Promise<ReferralShortlist> {
+    const referral = 'referral' in shortlist && shortlist.referral
+      ? await this.mapReferralToType(shortlist.referral as ReferralPayload)
+      : undefined;
+
     return {
       id: shortlist.id,
       referralId: shortlist.referralId,
       providerId: shortlist.providerId,
-      status: shortlist.status,
+      status: shortlist.status as ShortlistStatus,
       addedAt: shortlist.addedAt.toISOString(),
       contactedAt: shortlist.contactedAt?.toISOString(),
       respondedAt: shortlist.respondedAt?.toISOString(),
-      notes: shortlist.notes,
-      referral: shortlist.referral
-        ? this.mapReferralToType(shortlist.referral)
-        : undefined,
-      provider: shortlist.provider
+      notes: shortlist.notes ?? undefined,
+      referral,
+      provider: provider
         ? {
-            id: shortlist.provider.id,
-            organization: shortlist.provider.organization
+            id: provider.id,
+            organization: provider.organization
               ? {
-                  id: shortlist.provider.organization.id,
-                  name: shortlist.provider.organization.name,
+                  id: provider.organization.id,
+                  name: provider.organization.name,
                 }
               : undefined,
-            homes: shortlist.provider.homes?.map((h: any) => ({
+            homes: provider.homes.map((h) => ({
               id: h.id,
               name: h.name,
               city: h.city,

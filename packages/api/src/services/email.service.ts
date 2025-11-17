@@ -123,6 +123,32 @@ export class EmailService {
     html: string;
     text: string;
   }): Promise<void> {
+    // Skip email sending in development mode
+    const isDevelopment = process.env.NODE_ENV === "development";
+    
+    // Check for RFC 2606 reserved domains (example.com, example.org, example.net, test.com, etc.)
+    const reservedDomains = ['example.com', 'example.org', 'example.net', 'test.com', 'localhost'];
+    const emailDomain = options.to.split('@')[1]?.toLowerCase();
+    const isReservedDomain = emailDomain && reservedDomains.some(domain => emailDomain.includes(domain));
+    
+    // Skip if: development mode AND (no email host OR localhost OR reserved domain)
+    const skipEmail = isDevelopment && (
+      !process.env.EMAIL_HOST || 
+      process.env.EMAIL_HOST === "localhost" ||
+      isReservedDomain
+    );
+    
+    if (skipEmail) {
+      console.log("📧 [DEV MODE] Email sending skipped:");
+      console.log(`   To: ${options.to}`);
+      console.log(`   Subject: ${options.subject}`);
+      const urlMatch = options.html.match(/https?:\/\/[^\s"<>]+/);
+      if (urlMatch) {
+        console.log(`   Verification URL: ${urlMatch[0]}`);
+      }
+      return;
+    }
+
     try {
       const result = await this.transporter.sendMail({
         from: this.fromAddress,
@@ -137,6 +163,11 @@ export class EmailService {
       console.log(`   Subject: ${options.subject}`);
     } catch (error) {
       console.error("❌ Failed to send email:", error);
+      // In development, don't throw error if email fails
+      if (isDevelopment) {
+        console.warn("⚠️  [DEV MODE] Continuing despite email failure");
+        return;
+      }
       throw new Error("Failed to send email");
     }
   }
@@ -904,5 +935,94 @@ This is an automated reminder.
         "As a Super Administrator, you have full system access and control.",
     };
     return content[role] || "";
+  }
+
+  /**
+   * Send notification email
+   */
+  async sendNotificationEmail(data: {
+    to: string;
+    subject: string;
+    message: string;
+    actionUrl?: string;
+    userName: string;
+  }): Promise<void> {
+    const template = this.getNotificationEmailTemplate(data);
+    await this.sendEmail({
+      to: data.to,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    });
+  }
+
+  /**
+   * Notification email template
+   */
+  private getNotificationEmailTemplate(data: {
+    subject: string;
+    message: string;
+    actionUrl?: string;
+    userName: string;
+  }): EmailTemplate {
+    const subject = data.subject;
+    const actionButton = data.actionUrl
+      ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${this.baseUrl}${data.actionUrl}" class="button">View Details</a>
+        </div>
+      `
+      : "";
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${data.subject} - CareLinkMN</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8fafc; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b; }
+          .message { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>CareLinkMN</h1>
+        </div>
+        <div class="content">
+          <h2>${data.subject}</h2>
+          <p>Hello ${data.userName},</p>
+          <div class="message">
+            <p>${data.message}</p>
+          </div>
+          ${actionButton}
+          <div class="footer">
+            <p>This is an automated notification from CareLinkMN.</p>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      ${data.subject}
+
+      Hello ${data.userName},
+
+      ${data.message}
+
+      ${data.actionUrl ? `View details: ${this.baseUrl}${data.actionUrl}` : ""}
+
+      This is an automated notification from CareLinkMN.
+      If you have any questions, please contact our support team.
+    `;
+
+    return { subject, html, text };
   }
 }

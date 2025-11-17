@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Search, Settings, Menu, X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Bell, Search, Settings, Menu, CheckCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/contexts/auth-context";
 import { useProvider } from "@/contexts/provider-context";
+import { notificationService, Notification } from "@/lib/api";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface HeaderProps {
   title: string;
@@ -34,7 +39,12 @@ export function Header({
   className,
 }: HeaderProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   
   // Get provider from context (if available)
   let providerLogo: string | undefined = undefined;
@@ -45,6 +55,85 @@ export function Header({
     // Provider context not available (user is not a provider)
     // This is fine, providerLogo will remain undefined
   }
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoadingNotifications(true);
+      const response = await notificationService.getNotifications({
+        limit: 10,
+        isRead: false,
+      });
+      
+      if (response.success && response.data) {
+        setNotifications(response.data.notifications);
+        setUnreadCount(response.data.unreadCount);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  }, [user]);
+
+  // Fetch notifications on mount and set up polling
+  useEffect(() => {
+    if (!user) return;
+    
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [user, fetchNotifications]);
+
+  // Handle notification click
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      try {
+        await notificationService.markAsRead(notification.id);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, isRead: true } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error);
+      }
+    }
+
+    // Navigate to action URL if available
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl);
+    }
+  };
+
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      setIsMarkingAllRead(true);
+      const response = await notificationService.markAllAsRead();
+      if (response.success) {
+        setNotifications((prev) =>
+          prev.map((n) => ({ ...n, isRead: true }))
+        );
+        setUnreadCount(0);
+        toast.success("All notifications marked as read");
+      }
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+      toast.error("Failed to mark all notifications as read");
+    } finally {
+      setIsMarkingAllRead(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -100,41 +189,84 @@ export function Header({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="relative">
                 <Bell className="h-4 w-4" />
-                <Badge
-                  variant="healthcareError"
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  3
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="healthcareError"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-80 max-h-[500px] overflow-y-auto">
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={handleMarkAllAsRead}
+                    disabled={isMarkingAllRead}
+                  >
+                    {isMarkingAllRead ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <CheckCheck className="h-3 w-3 mr-1" />
+                    )}
+                    Mark all read
+                  </Button>
+                )}
+              </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">New referral received</p>
-                  <p className="text-xs text-muted-foreground">2 minutes ago</p>
+              {isLoadingNotifications ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">
-                    Bed availability updated
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    15 minutes ago
-                  </p>
+              ) : notifications.length === 0 ? (
+                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                  No new notifications
                 </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">
-                    System maintenance scheduled
-                  </p>
-                  <p className="text-xs text-muted-foreground">1 hour ago</p>
-                </div>
-              </DropdownMenuItem>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className={`cursor-pointer ${!notification.isRead ? "bg-muted/50" : ""}`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex flex-col space-y-1 w-full">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm font-medium ${!notification.isRead ? "font-semibold" : ""}`}>
+                          {notification.title}
+                        </p>
+                        {!notification.isRead && (
+                          <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(notification.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </p>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+              {notifications.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-center justify-center text-xs text-muted-foreground cursor-pointer"
+                    onClick={() => router.push("/notifications")}
+                  >
+                    View all notifications
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

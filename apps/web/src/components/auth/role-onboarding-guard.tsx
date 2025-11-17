@@ -8,6 +8,7 @@ import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { caseManagerService } from "@/lib/api";
 
 interface RoleOnboardingGuardProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ export function RoleOnboardingGuard({
       // Only check for the specific role
       if (!isAuthenticated || !user || user.role !== requiredRole) {
         setIsChecking(false);
+        setIsLoading(false);
         return;
       }
 
@@ -48,15 +50,28 @@ export function RoleOnboardingGuard({
         
         switch (requiredRole) {
           case UserRole.CASE_MANAGER:
-            const caseManagerResponse = await fetch(`/api/case-managers/by-user/${user.id}`, {
-              headers: {
-                "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
-              },
-            });
-            if (caseManagerResponse.ok) {
-              const caseManagerData = await caseManagerResponse.json();
-              needsOnboarding = !caseManagerData.data?.licenseNumber;
-            } else {
+            try {
+              const caseManagerResponse = await caseManagerService.getCaseManagerByUserId(user.id);
+              if (caseManagerResponse.success && caseManagerResponse.data) {
+                const caseManager = caseManagerResponse.data;
+                // Check if organization is verified (approved)
+                // Organization status must be VERIFIED for onboarding to be considered complete
+                const isOrganizationVerified = caseManager.organization?.status === "VERIFIED";
+                const hasLicense = !!caseManager.licenseNumber;
+                const hasCompleteOrganization = caseManager.organization?.name && 
+                  caseManager.organization.name !== "Case Manager - Case Management (Pending Setup)" &&
+                  caseManager.organization.city !== "City to be provided";
+                
+                // Needs onboarding if:
+                // 1. Organization is not verified (not approved yet), OR
+                // 2. Organization setup is incomplete, OR
+                // 3. License is missing
+                needsOnboarding = !isOrganizationVerified || !hasCompleteOrganization || !hasLicense;
+              } else {
+                needsOnboarding = true;
+              }
+            } catch (error) {
+              // If 404 or error, case manager doesn't exist yet - needs onboarding
               needsOnboarding = true;
             }
             break;

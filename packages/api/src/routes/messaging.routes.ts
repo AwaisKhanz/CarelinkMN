@@ -136,6 +136,14 @@ router.post(
   messagingController.markAsRead.bind(messagingController)
 );
 
+// Mark a single message as read
+router.post(
+  "/messages/:messageId/read",
+  [param("messageId").isUUID().withMessage("Invalid message ID")],
+  validate([]),
+  messagingController.markMessageAsRead.bind(messagingController)
+);
+
 // Update thread status
 router.patch(
   "/messages/threads/:threadId/status",

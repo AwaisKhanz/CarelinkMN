@@ -33,6 +33,7 @@ export class ProviderController {
     this.getOrganizationStaff = this.getOrganizationStaff.bind(this);
     this.inviteStaff = this.inviteStaff.bind(this);
     this.removeStaff = this.removeStaff.bind(this);
+    this.getProviderStats = this.getProviderStats.bind(this);
   }
 
   // Create new provider
@@ -300,7 +301,6 @@ export class ProviderController {
       const {
         licenseType,
         licenseNumber,
-        issuingState = "MN",
         issueDate,
         expirationDate,
         documentUrl,
@@ -309,10 +309,9 @@ export class ProviderController {
       const licenseData = {
         licenseType,
         licenseNumber,
-        issuingState,
         issueDate: new Date(issueDate),
         expirationDate: new Date(expirationDate),
-        documentUrl,
+        documentUrl: documentUrl,
       };
 
       const result = await this.licenseService.createLicense(providerId, licenseData, user.id);
@@ -466,7 +465,6 @@ export class ProviderController {
       const {
         licenseType,
         licenseNumber,
-        issuingState,
         issueDate,
         expirationDate,
         documentUrl,
@@ -475,7 +473,6 @@ export class ProviderController {
       const updateData: any = {};
       if (licenseType) updateData.licenseType = licenseType;
       if (licenseNumber) updateData.licenseNumber = licenseNumber;
-      if (issuingState) updateData.issuingState = issuingState;
       if (issueDate) updateData.issueDate = new Date(issueDate);
       if (expirationDate) updateData.expirationDate = new Date(expirationDate);
       if (documentUrl) updateData.documentUrl = documentUrl;
@@ -1002,6 +999,58 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while removing staff member",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get provider statistics
+   * GET /api/providers/:providerId/stats
+   */
+  async getProviderStats(req: Request, res: Response): Promise<void> {
+    try {
+      const { providerId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Verify user has access to this provider
+      const hasAccess = await this.providerService.verifyProviderAccess(
+        user.id,
+        providerId
+      );
+      if (!hasAccess) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You do not have access to this provider's statistics",
+        } as ApiResponse);
+        return;
+      }
+
+      const stats = await this.providerService.getProviderStats(providerId);
+
+      res.status(200).json({
+        success: true,
+        data: stats,
+        message: "Provider statistics retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get provider stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Statistics retrieval failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving provider statistics",
       } as ApiResponse);
     }
   }

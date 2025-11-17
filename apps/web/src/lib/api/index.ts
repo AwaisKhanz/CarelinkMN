@@ -35,6 +35,8 @@ export {
 } from "./services/upload.service";
 export { referralService, ReferralService } from "./services/referral.service";
 export { caseManagerService, CaseManagerService } from "./services/case-manager.service";
+export { aiSearchService, AISearchService } from "./services/ai-search.service";
+export { notificationService } from "./services/notification.service";
 
 // Export types
 export type {
@@ -124,6 +126,11 @@ export type {
   CaseManagerStats,
   UpdateCaseManagerData,
 } from "@carelink/types";
+export type {
+  Notification,
+  GetNotificationsParams,
+  GetNotificationsResponse,
+} from "./services/notification.service";
 // Export shared types from @carelink/types
 export type {
   Service,

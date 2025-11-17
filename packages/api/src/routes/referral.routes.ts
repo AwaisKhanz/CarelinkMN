@@ -238,6 +238,11 @@ router.post(
     body("providerIds.*")
       .isUUID()
       .withMessage("Each provider ID must be a valid UUID"),
+    body("notes")
+      .optional()
+      .isString()
+      .isLength({ max: 1000 })
+      .withMessage("Notes must be less than 1000 characters"),
   ],
   validate([]),
   referralController.batchAddToShortlist.bind(referralController)

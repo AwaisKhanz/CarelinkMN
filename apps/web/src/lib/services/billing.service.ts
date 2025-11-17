@@ -1,136 +1,76 @@
+import { apiService } from "@/lib/api/config";
+import { Subscription } from "@/types/subscription";
+
 export class BillingService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.API_URL ||
-      "http://localhost:3001";
-  }
-
-  private getAuthHeaders() {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-    return {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    };
-  }
-
   async createCheckoutSession(
     tier: "PRO" | "PREMIUM",
     context: "onboarding" | "settings" = "settings"
   ) {
-    const res = await fetch(
-      `${this.baseUrl}/api/billing/create-checkout-session`,
-      {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ tier, context }),
-      }
+    const response = await apiService.post<{ url: string }>(
+      "/api/billing/create-checkout-session",
+      { tier, context }
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to create checkout session");
     }
-    const json = await res.json();
-    return json.data?.url as string;
+    return response.data.url;
   }
 
   async createPortalSession() {
-    const res = await fetch(
-      `${this.baseUrl}/api/billing/create-portal-session`,
-      {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-      }
+    const response = await apiService.post<{ url: string }>(
+      "/api/billing/create-portal-session",
+      {}
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to create portal session");
     }
-    const json = await res.json();
-    return json.data?.url as string;
+    return response.data.url;
   }
 
   async getSubscription() {
-    const res = await fetch(`${this.baseUrl}/api/billing/subscription`, {
-      method: "GET",
-      headers: this.getAuthHeaders(),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
+    const response = await apiService.get<Subscription | null>(
+      "/api/billing/subscription"
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to get subscription");
     }
-    const json = await res.json();
-    return json.data as Subscription | null;
+    return response.data || null;
   }
 
   async cleanupDuplicateSubscriptions() {
-    const res = await fetch(`${this.baseUrl}/api/billing/cleanup-duplicates`, {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
+    const response = await apiService.post(
+      "/api/billing/cleanup-duplicates",
+      {}
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to cleanup duplicates");
     }
-    const json = await res.json();
-    return json.data;
+    return response.data;
   }
 
   async scheduleDowngrade() {
-    const res = await fetch(`${this.baseUrl}/api/billing/downgrade`, {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
-    }
-    const json = await res.json();
-    return json.data as {
+    const response = await apiService.post<{
       cancelAt: string | null;
       currentPeriodEnd: string | null;
       stripeStatus: string;
-    };
+    }>("/api/billing/downgrade", {});
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to schedule downgrade");
+    }
+    return response.data;
   }
 
   async cancelScheduledDowngrade() {
-    const res = await fetch(
-      `${this.baseUrl}/api/billing/downgrade/cancel`,
-      {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-      }
-    );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
-    }
-    const json = await res.json();
-    return json.data as {
+    const response = await apiService.post<{
       cancelAt: string | null;
       stripeStatus: string;
       currentPeriodEnd?: string | null;
-    };
+    }>("/api/billing/downgrade/cancel", {});
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to cancel downgrade");
+    }
+    return response.data;
   }
-}
-
-export interface Subscription {
-  id: string;
-  stripeCustomerId: string;
-  stripeSubscriptionId: string;
-  organizationId: string;
-  productType: string;
-  tier: string;
-  status: "ACTIVE" | "CANCELLED" | "PAST_DUE" | "UNPAID" | "TRIALING";
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
-  cancelAt?: string | null;
-  canceledAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export const billingService = new BillingService();

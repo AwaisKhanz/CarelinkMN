@@ -1,14 +1,18 @@
 import { Request, Response } from "express";
 import { BillingService } from "../services/billing.service";
+import { ProviderService } from "../services/provider.service";
 import { AuthenticatedRequest } from "../types/auth";
 import { ApiResponse } from "../types/common";
 import { SubscriptionTier } from "@carelink/database";
+import { db } from "@carelink/database";
 
 export class BillingController {
   private billingService: BillingService;
+  private providerService: ProviderService;
 
   constructor() {
     this.billingService = new BillingService();
+    this.providerService = new ProviderService();
     this.createCheckoutSession = this.createCheckoutSession.bind(this);
     this.createPortalSession = this.createPortalSession.bind(this);
     this.getSubscription = this.getSubscription.bind(this);
@@ -21,11 +25,38 @@ export class BillingController {
   async createCheckoutSession(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
           message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      // If organizationId is not on user, try to fetch it from the database
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        // For provider roles, also try fetching from provider record
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
         } as ApiResponse);
         return;
       }
@@ -60,7 +91,7 @@ export class BillingController {
       }
 
       const url = await this.billingService.createCheckoutSession({
-        organizationId: user.organizationId,
+        organizationId,
         email: user.email,
         tier,
         successUrl,
@@ -84,7 +115,7 @@ export class BillingController {
   async createPortalSession(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
@@ -93,11 +124,38 @@ export class BillingController {
         return;
       }
 
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      // If organizationId is not on user, try to fetch it from the database
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        // For provider roles, also try fetching from provider record
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
+        } as ApiResponse);
+        return;
+      }
+
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
       const returnUrl = `${frontendUrl}/provider/settings`;
 
       const url = await this.billingService.createPortalSession(
-        user.organizationId,
+        organizationId,
         returnUrl
       );
 
@@ -118,7 +176,7 @@ export class BillingController {
   async getSubscription(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
@@ -127,8 +185,35 @@ export class BillingController {
         return;
       }
 
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      // If organizationId is not on user, try to fetch it from the database
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        // For provider roles, also try fetching from provider record
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
+        } as ApiResponse);
+        return;
+      }
+
       const subscription = await this.billingService.getSubscription(
-        user.organizationId
+        organizationId
       );
 
       res.status(200).json({
@@ -148,7 +233,7 @@ export class BillingController {
   async cleanupDuplicates(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
@@ -157,8 +242,33 @@ export class BillingController {
         return;
       }
 
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
+        } as ApiResponse);
+        return;
+      }
+
       const result = await this.billingService.cleanupDuplicateSubscriptions(
-        user.organizationId
+        organizationId
       );
 
       res.status(200).json({
@@ -179,7 +289,7 @@ export class BillingController {
   async scheduleDowngrade(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
@@ -188,8 +298,33 @@ export class BillingController {
         return;
       }
 
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
+        } as ApiResponse);
+        return;
+      }
+
       const result = await this.billingService.scheduleDowngradeToFree(
-        user.organizationId
+        organizationId
       );
 
       res.status(200).json({
@@ -214,7 +349,7 @@ export class BillingController {
   async cancelDowngrade(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as unknown as AuthenticatedRequest).user;
-      if (!user || !user.organizationId) {
+      if (!user) {
         res.status(401).json({
           success: false,
           error: "Unauthorized",
@@ -223,8 +358,33 @@ export class BillingController {
         return;
       }
 
+      // Get organizationId from user or fetch from provider/database
+      let organizationId = user.organizationId;
+      
+      if (!organizationId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { organizationId: true },
+        });
+        organizationId = dbUser?.organizationId || undefined;
+        
+        if (!organizationId && (user.role === "PROVIDER_OWNER" || user.role === "PROVIDER_STAFF")) {
+          const provider = await this.providerService.getProviderByUserId(user.id);
+          organizationId = provider?.organizationId || undefined;
+        }
+      }
+
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "Organization not found. Please complete your registration.",
+        } as ApiResponse);
+        return;
+      }
+
       const result = await this.billingService.cancelScheduledDowngrade(
-        user.organizationId
+        organizationId
       );
 
       res.status(200).json({

@@ -1,12 +1,12 @@
 import { db } from "@carelink/database";
-import { Prisma, ThreadStatus } from "@prisma/client";
+import { Prisma, ThreadStatus as PrismaThreadStatus, NotificationType } from "@prisma/client";
 import {
   MessageThread,
   Message,
   CreateMessageData,
   CreateThreadData,
   GetThreadsParams,
-  ThreadStatus as ThreadStatusType,
+  ThreadStatus,
 } from "@carelink/types";
 
 export class MessagingService {
@@ -199,18 +199,54 @@ export class MessagingService {
     );
 
     // Transform to include initiator and unread count
-    const transformedThreads = threads.map((thread) => ({
+    const transformedThreads: MessageThread[] = threads.map((thread: any) => ({
       ...thread,
-      initiator: initiatorMap.get(thread.initiatorId),
+      id: thread.id,
+      referralId: thread.referralId ?? undefined,
+      providerId: thread.providerId,
+      initiatorId: thread.initiatorId,
+      status: thread.status as ThreadStatus,
+      firstResponseAt: thread.firstResponseAt?.toISOString(),
+      avgResponseTime: thread.avgResponseTime ?? undefined,
+      createdAt: thread.createdAt.toISOString(),
+      updatedAt: thread.updatedAt.toISOString(),
+      closedAt: thread.closedAt?.toISOString(),
+      lastMessageAt: thread.lastMessageAt?.toISOString(),
+      referral: thread.referral ? {
+        id: thread.referral.id,
+        referralNumber: thread.referral.referralNumber,
+        clientInitials: thread.referral.clientInitials,
+        clientAge: thread.referral.clientAge,
+        primaryPayer: thread.referral.primaryPayer as string,
+      } : undefined,
+      initiator: initiatorMap.get(thread.initiatorId) ?? undefined,
       unreadCount: unreadCountMap.get(thread.id) || 0,
-      messages: thread.messages.map((msg: any) => ({
+      messages: Array.isArray(thread.messages) ? thread.messages.map((msg: any) => ({
         ...msg,
+        id: msg.id,
+        threadId: msg.threadId,
+        senderId: msg.senderId,
+        content: msg.content,
+        isRead: msg.isRead,
+        readAt: msg.readAt?.toISOString(),
+        createdAt: msg.createdAt.toISOString(),
+        editedAt: msg.editedAt?.toISOString(),
         sender: msg.sender,
-      })),
+        attachments: Array.isArray(msg.attachments) ? msg.attachments.map((att: any) => ({
+          ...att,
+          id: att.id,
+          messageId: att.messageId,
+          url: att.url,
+          fileName: att.fileName,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          createdAt: att.createdAt.toISOString(),
+        })) : [],
+      })) : [],
     }));
 
     return {
-      threads: transformedThreads as any,
+      threads: transformedThreads,
       pagination: {
         total,
         pages: Math.ceil(total / limit),
@@ -327,9 +363,42 @@ export class MessagingService {
 
     return {
       ...thread,
-      initiator,
+      id: thread.id,
+      referralId: thread.referralId ?? undefined,
+      providerId: thread.providerId,
+      initiatorId: thread.initiatorId,
+      status: thread.status as ThreadStatus,
+      firstResponseAt: thread.firstResponseAt?.toISOString(),
+      avgResponseTime: thread.avgResponseTime ?? undefined,
+      createdAt: thread.createdAt.toISOString(),
+      updatedAt: thread.updatedAt.toISOString(),
+      closedAt: thread.closedAt?.toISOString(),
+      lastMessageAt: thread.lastMessageAt?.toISOString(),
+      initiator: initiator ?? undefined,
       unreadCount,
-    } as any;
+      messages: thread.messages.map((msg) => ({
+        ...msg,
+        id: msg.id,
+        threadId: msg.threadId,
+        senderId: msg.senderId,
+        content: msg.content,
+        isRead: msg.isRead,
+        readAt: msg.readAt?.toISOString(),
+        createdAt: msg.createdAt.toISOString(),
+        editedAt: msg.editedAt?.toISOString(),
+        sender: msg.sender,
+        attachments: msg.attachments.map((att) => ({
+          ...att,
+          id: att.id,
+          messageId: att.messageId,
+          url: att.url,
+          fileName: att.fileName,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          createdAt: att.createdAt.toISOString(),
+        })),
+      })),
+    } as MessageThread;
   }
 
   /**
@@ -354,7 +423,7 @@ export class MessagingService {
           referralId,
           dischargeCaseId,
           initiatorId: userId,
-          status: ThreadStatus.OPEN,
+          status: PrismaThreadStatus.OPEN,
         },
       });
 
@@ -420,7 +489,7 @@ export class MessagingService {
       throw new Error("Thread not found");
     }
 
-    if (thread.status === ThreadStatus.CLOSED) {
+    if (thread.status === PrismaThreadStatus.CLOSED) {
       throw new Error("Cannot send message to a closed thread");
     }
 
@@ -494,11 +563,11 @@ export class MessagingService {
           );
           updateData.firstResponseAt = new Date();
           updateData.avgResponseTime = responseTimeMinutes;
-          updateData.status = ThreadStatus.AWAITING_RESPONSE;
+          updateData.status = PrismaThreadStatus.AWAITING_RESPONSE;
         }
       } else if (!isProviderResponse) {
         // If initiator responds, change status back to OPEN
-        updateData.status = ThreadStatus.OPEN;
+        updateData.status = PrismaThreadStatus.OPEN;
       }
 
       await tx.messageThread.update({
@@ -509,7 +578,102 @@ export class MessagingService {
       return message;
     });
 
-    return result as any;
+      // Create notification for the recipient (not the sender)
+      try {
+        const threadWithContext = await db.messageThread.findUnique({
+          where: { id: threadId },
+          include: {
+            referral: {
+              select: {
+                id: true,
+                referralNumber: true,
+              },
+            },
+            dischargeCase: {
+              select: {
+                id: true,
+                caseNumber: true,
+              },
+            },
+            provider: {
+              include: {
+                organization: {
+                  select: {
+                    users: {
+                      select: { id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (threadWithContext) {
+          // Determine recipient IDs (opposite of sender)
+          const recipientIds: string[] = [];
+          if (isProviderResponse) {
+            // Provider sent message, notify initiator (case manager)
+            recipientIds.push(thread.initiatorId);
+          } else {
+            // Case manager sent message, notify all provider users
+            if (threadWithContext.provider?.organization?.users) {
+              recipientIds.push(
+                ...threadWithContext.provider.organization.users
+                  .filter((u) => u.id !== userId)
+                  .map((u) => u.id)
+              );
+            }
+          }
+
+          // Create notifications for recipients
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+
+          const contextInfo = threadWithContext.referral
+            ? `Referral ${threadWithContext.referral.referralNumber}`
+            : threadWithContext.dischargeCase
+              ? `Discharge Case ${threadWithContext.dischargeCase.caseNumber}`
+              : "General inquiry";
+
+          for (const recipientId of recipientIds) {
+            await notificationService.createNotification({
+              userId: recipientId,
+              type: NotificationType.MESSAGE_NEW,
+              title: "New Message",
+              message: `You have a new message regarding ${contextInfo}.`,
+              channels: ["IN_APP", "EMAIL"],
+              actionUrl: `/messages?threadId=${threadId}`,
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error("Failed to create message notification:", notifError);
+        // Don't throw - notification failure shouldn't break message sending
+      }
+
+      return {
+        ...result,
+        id: result.id,
+        threadId: result.threadId,
+        senderId: result.senderId,
+        content: result.content,
+        isRead: result.isRead,
+        readAt: result.readAt?.toISOString(),
+        createdAt: result.createdAt.toISOString(),
+        editedAt: result.editedAt?.toISOString(),
+        sender: result.sender,
+        attachments: result.attachments.map((att) => ({
+          ...att,
+          id: att.id,
+          messageId: att.messageId,
+          url: att.url,
+          fileName: att.fileName,
+          fileType: att.fileType,
+          fileSize: att.fileSize,
+          createdAt: att.createdAt.toISOString(),
+        })),
+      } as Message;
   }
 
   /**
@@ -536,11 +700,44 @@ export class MessagingService {
   }
 
   /**
+   * Mark a single message as read
+   */
+  async markMessageAsRead(messageId: string, userId: string): Promise<void> {
+    // Get message to verify access
+    const message = await db.message.findUnique({
+      where: { id: messageId },
+      include: {
+        thread: true,
+      },
+    });
+
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Verify user has access to the thread
+    if (!(await this.verifyThreadAccess(userId, message.threadId))) {
+      throw new Error("Access denied");
+    }
+
+    // Only mark as read if user is not the sender
+    if (message.senderId !== userId && !message.isRead) {
+      await db.message.update({
+        where: { id: messageId },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+    }
+  }
+
+  /**
    * Update thread status
    */
   async updateThreadStatus(
     threadId: string,
-    status: ThreadStatusType,
+    status: ThreadStatus,
     userId: string
   ): Promise<MessageThread> {
     if (!(await this.verifyThreadAccess(userId, threadId))) {
@@ -548,11 +745,11 @@ export class MessagingService {
     }
 
     const updateData: Prisma.MessageThreadUpdateInput = {
-      status: status as ThreadStatus,
+      status: status as PrismaThreadStatus,
       updatedAt: new Date(),
     };
 
-    if (status === ThreadStatusType.CLOSED) {
+    if (status === ThreadStatus.CLOSED) {
       updateData.closedAt = new Date();
     }
 

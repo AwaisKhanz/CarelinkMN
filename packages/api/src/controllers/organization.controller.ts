@@ -1,13 +1,16 @@
 import { Request, Response } from "express";
 import { OrganizationService } from "../services/organization.service";
+import { CaseManagerService } from "../services/case-manager.service";
 import { ApiResponse } from "../types";
 import { AuthenticatedRequest } from "../types/auth";
 
 export class OrganizationController {
   private organizationService: OrganizationService;
+  private caseManagerService: CaseManagerService;
 
   constructor() {
     this.organizationService = new OrganizationService();
+    this.caseManagerService = new CaseManagerService();
   }
 
   // Get all organizations
@@ -134,6 +137,89 @@ export class OrganizationController {
         success: false,
         error: "Organization search failed",
         message: "An error occurred while searching organizations",
+      } as ApiResponse);
+    }
+  }
+
+  // Update organization
+  async updateOrganization(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Verify user has access to this organization
+      let hasAccess = user.organizationId === id || user.role === "ADMIN";
+      
+      // For case managers, also check if the organization belongs to their case manager record
+      if (!hasAccess && user.role === "CASE_MANAGER") {
+        try {
+          const caseManager = await this.caseManagerService.getCaseManagerByUserId(user.id);
+          if (caseManager?.organizationId === id) {
+            hasAccess = true;
+          }
+        } catch (err) {
+          // If we can't fetch case manager, deny access
+          console.error("Error checking case manager organization:", err);
+        }
+      }
+
+      if (!hasAccess) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You do not have permission to update this organization",
+        } as ApiResponse);
+        return;
+      }
+
+      // Prevent organization type from being changed - it's set during registration based on user role
+      if (req.body.type || req.body.organizationType) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid update",
+          message: "Organization type cannot be changed. It is determined by your registration role.",
+        } as ApiResponse);
+        return;
+      }
+
+      const organizationData = req.body;
+      const organization = await this.organizationService.updateOrganization(
+        id,
+        organizationData
+      );
+
+      res.status(200).json({
+        success: true,
+        data: organization,
+        message: "Organization updated successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Update organization error:", error);
+      
+      // Handle unique constraint violation (e.g., duplicate EIN)
+      if (error && typeof error === 'object' && 'code' in error && error.code === "P2002") {
+        const field = (error as any).meta?.target?.[0] || "field";
+        res.status(400).json({
+          success: false,
+          error: "Duplicate entry",
+          message: `An organization with this ${field} already exists. Please use a different ${field} or contact support.`,
+        } as ApiResponse);
+        return;
+      }
+
+      res.status(400).json({
+        success: false,
+        error: "Organization update failed",
+        message: error instanceof Error ? error.message : "An error occurred while updating the organization",
       } as ApiResponse);
     }
   }

@@ -66,3 +66,20 @@ export function isWithinBusinessHours(openTime: string, closeTime: string): bool
   const currentTime = format(now, 'HH:mm');
   return currentTime >= openTime && currentTime <= closeTime;
 }
+
+/**
+ * Normalizes a date value to a Date object
+ */
+export function normalizeDate(
+  date: Date | string | null | undefined
+): Date | null {
+  if (date === null || date === undefined) {
+    return null;
+  }
+  
+  if (typeof date === "string") {
+    return new Date(date);
+  }
+  
+  return date;
+}

@@ -2,6 +2,7 @@ import { db } from "@carelink/database";
 import {
   Prisma,
   PlacementStatus,
+  NotificationType,
 } from "@prisma/client";
 import { OpeningService } from "./opening.service";
 
@@ -576,6 +577,7 @@ export class PlacementService {
             select: {
               id: true,
               referralNumber: true,
+              caseManagerId: true,
               clientAge: true,
               clientGender: true,
               clientInitials: true,
@@ -591,6 +593,7 @@ export class PlacementService {
             select: {
               id: true,
               caseNumber: true,
+              socialWorkerId: true,
               patientAge: true,
               patientGender: true,
               patientInitials: true,
@@ -625,6 +628,37 @@ export class PlacementService {
           },
         },
       });
+
+      // Create notification when placement is confirmed
+      if (data.status === PlacementStatus.CONFIRMED) {
+        try {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+
+          const recipientId = placement.referral?.caseManagerId || placement.dischargeCase?.socialWorkerId;
+          if (recipientId) {
+            const contextInfo = placement.referral
+              ? `Referral ${placement.referral.referralNumber}`
+              : placement.dischargeCase
+                ? `Discharge Case ${placement.dischargeCase.caseNumber}`
+                : "Placement";
+
+            await notificationService.createNotification({
+              userId: recipientId,
+              type: NotificationType.PLACEMENT_CONFIRMED,
+              title: "Placement Confirmed",
+              message: `Placement for ${contextInfo} has been confirmed at ${placement.opening?.home?.name || "provider facility"}.`,
+              channels: ["IN_APP", "EMAIL"],
+              actionUrl: placement.referral
+                ? `/case-manager/referrals/${placement.referral.id}`
+                : `/placements/${placementId}`,
+            });
+          }
+        } catch (notifError) {
+          console.error("Failed to create placement confirmation notification:", notifError);
+          // Don't throw - notification failure shouldn't break placement update
+        }
+      }
 
       return placement;
     } catch (error) {

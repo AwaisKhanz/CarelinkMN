@@ -1,67 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { providerService } from "@/lib/api";
+import { SubscriptionTier, SubscriptionLimits } from "@/types/subscription";
+import { PLAN_LIMITS } from "@/lib/constants/subscription";
 
-export type SubscriptionTier = "FREE" | "PRO" | "PREMIUM" | "ENTERPRISE";
-
-export interface SubscriptionLimits {
-  maxPhotos: number; // FREE: 1, PRO: 5, PREMIUM/ENTERPRISE: unlimited (999)
-  maxServices: number; // FREE: 10, others: unlimited (999)
-  hasAnalytics: boolean; // PRO and above
-  hasPriorityPlacement: boolean; // PRO and above
-  hasAdvancedProfile: boolean; // PRO and above
-  hasMaxBoost: boolean; // PREMIUM and above
-  hasPrioritySupport: boolean; // PREMIUM and above
-  hasApiAccess: boolean; // PREMIUM and above
-  hasDedicatedManager: boolean; // ENTERPRISE only
-}
-
-const PLAN_LIMITS: Record<SubscriptionTier, SubscriptionLimits> = {
-  FREE: {
-    maxPhotos: 1,
-    maxServices: 10,
-    hasAnalytics: false,
-    hasPriorityPlacement: false,
-    hasAdvancedProfile: false,
-    hasMaxBoost: false,
-    hasPrioritySupport: false,
-    hasApiAccess: false,
-    hasDedicatedManager: false,
-  },
-  PRO: {
-    maxPhotos: 5,
-    maxServices: 999, // unlimited
-    hasAnalytics: true,
-    hasPriorityPlacement: true,
-    hasAdvancedProfile: true,
-    hasMaxBoost: false,
-    hasPrioritySupport: false,
-    hasApiAccess: false,
-    hasDedicatedManager: false,
-  },
-  PREMIUM: {
-    maxPhotos: 999, // unlimited
-    maxServices: 999, // unlimited
-    hasAnalytics: true,
-    hasPriorityPlacement: true,
-    hasAdvancedProfile: true,
-    hasMaxBoost: true,
-    hasPrioritySupport: true,
-    hasApiAccess: true,
-    hasDedicatedManager: false,
-  },
-  ENTERPRISE: {
-    maxPhotos: 999, // unlimited
-    maxServices: 999, // unlimited
-    hasAnalytics: true,
-    hasPriorityPlacement: true,
-    hasAdvancedProfile: true,
-    hasMaxBoost: true,
-    hasPrioritySupport: true,
-    hasApiAccess: true,
-    hasDedicatedManager: true,
-  },
-};
+// Re-export types for backward compatibility
+export type { SubscriptionTier, SubscriptionLimits };
 
 export interface UseSubscriptionReturn {
   tier: SubscriptionTier;
@@ -86,15 +30,18 @@ export function useSubscription(): UseSubscriptionReturn {
 
   useEffect(() => {
     const fetchSubscriptionTier = async () => {
-      if (!user?.organizationId) {
+      // Only fetch for provider roles
+      if (
+        !user?.id ||
+        !["PROVIDER_OWNER", "PROVIDER_STAFF"].includes(user.role)
+      ) {
         setIsLoading(false);
+        setTier("FREE");
         return;
       }
 
       try {
-        const provider = await providerService.getProviderByOrganizationId(
-          user.organizationId
-        );
+        const provider = await providerService.getProviderByUserId(user.id);
         setTier((provider.subscriptionTier as SubscriptionTier) || "FREE");
       } catch (error) {
         console.error("Error fetching subscription tier:", error);
@@ -104,8 +51,12 @@ export function useSubscription(): UseSubscriptionReturn {
       }
     };
 
-    fetchSubscriptionTier();
-  }, [user?.organizationId]);
+    if (user) {
+      fetchSubscriptionTier();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user?.id, user?.role]);
 
   const limits = PLAN_LIMITS[tier];
 

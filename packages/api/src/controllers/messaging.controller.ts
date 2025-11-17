@@ -17,6 +17,7 @@ export class MessagingController {
     this.createThread = this.createThread.bind(this);
     this.sendMessage = this.sendMessage.bind(this);
     this.markAsRead = this.markAsRead.bind(this);
+    this.markMessageAsRead = this.markMessageAsRead.bind(this);
     this.updateThreadStatus = this.updateThreadStatus.bind(this);
   }
 
@@ -333,6 +334,57 @@ export class MessagingController {
           error instanceof Error
             ? error.message
             : "An error occurred while marking messages as read",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Mark a single message as read
+   * POST /api/messages/:messageId/read
+   */
+  async markMessageAsRead(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: "Please check your input data",
+          details: errors.array(),
+        } as ApiResponse);
+        return;
+      }
+
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { messageId } = req.params;
+
+      await this.messagingService.markMessageAsRead(messageId, user.id);
+
+      res.status(200).json({
+        success: true,
+        message: "Message marked as read",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Mark message as read error:", error);
+      const statusCode =
+        error instanceof Error && error.message === "Access denied" ? 403 :
+        error instanceof Error && error.message === "Message not found" ? 404 : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to mark message as read",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while marking message as read",
       } as ApiResponse);
     }
   }

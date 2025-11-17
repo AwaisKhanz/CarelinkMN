@@ -65,7 +65,17 @@ router.post(
     body("county").trim().isLength({ min: 1 }).withMessage("County is required"),
     body("ein").optional().trim(),
     body("npi").optional().trim(),
-    body("website").optional().isURL().withMessage("Valid URL is required if website is provided"),
+    body("website").optional({ values: 'falsy' }).custom((value) => {
+      // Allow empty string, null, undefined, or valid URL
+      if (!value || value.trim() === "") {
+        return true; // Empty is allowed
+      }
+      // If provided, must be a valid URL
+      if (!/^https?:\/\/.+/.test(value)) {
+        throw new Error("Valid URL is required if website is provided");
+      }
+      return true;
+    }),
     body("fax").optional().trim(),
   ],
   validate([]),
@@ -78,6 +88,40 @@ router.get(
   [param("id").isUUID().withMessage("Invalid organization ID")],
   validate([]),
   organizationController.getOrganizationById.bind(organizationController)
+);
+
+// Update organization
+router.put(
+  "/organizations/:id",
+  authMiddleware.requireAuth,
+  [
+    param("id").isUUID().withMessage("Invalid organization ID"),
+    body("name").optional().trim().isLength({ min: 1 }).withMessage("Organization name cannot be empty"),
+    body("email").optional().isEmail().normalizeEmail().withMessage("Valid email is required"),
+    body("phone").optional().matches(/^[\d\s\-\+\(\)]+$/).withMessage("Valid phone number is required"),
+    body("addressLine1").optional().trim().isLength({ min: 1 }).withMessage("Address line 1 cannot be empty"),
+    body("addressLine2").optional().trim(),
+    body("city").optional().trim().isLength({ min: 1 }).withMessage("City cannot be empty"),
+    body("state").optional().trim().isLength({ min: 2, max: 2 }).withMessage("Valid 2-letter state code is required"),
+    body("zipCode").optional().isPostalCode("US").withMessage("Valid US zip code is required"),
+    body("county").optional().trim().isLength({ min: 1 }).withMessage("County cannot be empty"),
+    body("ein").optional().trim(),
+    body("npi").optional().trim(),
+    body("website").optional({ values: 'falsy' }).custom((value) => {
+      // Allow empty string, null, undefined, or valid URL
+      if (!value || value.trim() === "") {
+        return true; // Empty is allowed
+      }
+      // If provided, must be a valid URL
+      if (!/^https?:\/\/.+/.test(value)) {
+        throw new Error("Valid URL is required if website is provided");
+      }
+      return true;
+    }),
+    body("fax").optional().trim(),
+  ],
+  validate([]),
+  organizationController.updateOrganization.bind(organizationController)
 );
 
 export default router;

@@ -5,7 +5,17 @@
  * Import from here instead of hardcoding values in individual components.
  */
 
-import { Check, Star, Zap, Crown, CheckCircle, Calendar, Clock, AlertCircle as AlertCircleIcon } from "lucide-react";
+import {
+  Check,
+  Star,
+  Zap,
+  Crown,
+  CheckCircle,
+  Calendar,
+  Clock,
+  AlertCircle as AlertCircleIcon,
+  XCircle,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   ReferralStatus,
@@ -13,6 +23,8 @@ import {
   Urgency,
   Payer,
   Gender,
+  OpeningStatus,
+  PlacementStatus,
 } from "@carelink/types";
 import type { BadgeProps } from "@/components/ui/badge";
 
@@ -718,6 +730,14 @@ export function getPayerLabel(payer: Payer): string {
   return PAYER_LABELS[payer] || payer;
 }
 
+// Gender labels as a map for quick lookups
+export const GENDER_LABELS: Partial<Record<Gender, string>> = {
+  [Gender.MALE]: "Male",
+  [Gender.FEMALE]: "Female",
+  [Gender.OTHER]: "Other",
+  [Gender.NO_PREFERENCE]: "No Preference",
+};
+
 export function getGenderLabel(gender: Gender): string {
   return GENDER_OPTIONS.find((opt) => opt.value === gender)?.label || gender;
 }
@@ -741,3 +761,74 @@ export function getMedicalNeedLabel(need: string): string {
 export function getMobilityLevelLabel(level: string): string {
   return MOBILITY_LEVELS.find((opt) => opt.value === level)?.label || level;
 }
+
+// ============================================
+// OPENING STATUS CONFIGURATION
+// ============================================
+
+export interface OpeningStatusConfig {
+  label: string;
+  color: BadgeProps["variant"];
+  icon: LucideIcon;
+}
+
+export const OPENING_STATUS_CONFIG: Record<
+  OpeningStatus,
+  OpeningStatusConfig
+> = {
+  [OpeningStatus.OPEN]: {
+    label: "Open",
+    color: "healthcareSuccess",
+    icon: CheckCircle,
+  },
+  [OpeningStatus.PENDING]: {
+    label: "Pending",
+    color: "healthcareWarning",
+    icon: Clock,
+  },
+  [OpeningStatus.FILLED]: {
+    label: "Filled",
+    color: "healthcareInfo",
+    icon: CheckCircle,
+  },
+  [OpeningStatus.EXPIRED]: {
+    label: "Expired",
+    color: "secondary",
+    icon: XCircle,
+  },
+};
+
+// ============================================
+// PLACEMENT STATUS CONFIGURATION
+// ============================================
+
+export interface PlacementStatusConfig {
+  label: string;
+  variant: BadgeProps["variant"];
+}
+
+export const PLACEMENT_STATUS_CONFIG: Record<
+  PlacementStatus,
+  PlacementStatusConfig
+> = {
+  [PlacementStatus.PENDING]: {
+    label: "Pending",
+    variant: "healthcareWarning",
+  },
+  [PlacementStatus.CONFIRMED]: {
+    label: "Confirmed",
+    variant: "healthcareSuccess",
+  },
+  [PlacementStatus.IN_PROGRESS]: {
+    label: "In Progress",
+    variant: "healthcareInfo",
+  },
+  [PlacementStatus.COMPLETED]: {
+    label: "Completed",
+    variant: "healthcareSuccess",
+  },
+  [PlacementStatus.CANCELLED]: {
+    label: "Cancelled",
+    variant: "healthcareError",
+  },
+};

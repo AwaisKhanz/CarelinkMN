@@ -178,7 +178,7 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
         ...baseItems,
         {
           title: "My Cases",
-          href: "/case-manager/cases",
+          href: "/case-manager/referrals",
           icon: FileText,
         },
         {
@@ -197,6 +197,11 @@ const getNavItems = (role: UserRole, canManageSettings: boolean = true, canManag
           icon: AlertTriangle,
           badge: "4",
           variant: "healthcareError",
+        },
+        {
+          title: "Messages",
+          href: "/case-manager/messages",
+          icon: MessageSquare,
         },
         {
           title: "Settings",

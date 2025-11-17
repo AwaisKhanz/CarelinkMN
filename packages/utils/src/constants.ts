@@ -191,3 +191,18 @@ export const AUDIT_ACTIONS = {
   PLACEMENT_ACCEPT: 'placement.accept',
   DISCHARGE_INITIATE: 'discharge.initiate',
 } as const;
+
+// Opening freshness constants (from PRD requirement)
+export const OPENING_EXPIRY_HOURS = 48; // 48-hour freshness enforcement
+export const OPENING_EXPIRY_WARNING_HOURS = 12; // Warning threshold before expiry
+
+// Data fetching limits
+export const MAX_OPENINGS_FETCH_LIMIT = 100;
+export const RECENT_ITEMS_LIMIT = 5;
+
+// Pagination defaults
+export const PAGINATION_DEFAULTS = {
+  PAGE: 1,
+  LIMIT: 20,
+  MAX_LIMIT: 100,
+} as const;

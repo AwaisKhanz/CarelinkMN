@@ -6,10 +6,10 @@ import { AuditResult } from "@prisma/client";
 export interface CreateLicenseData {
   licenseType: string;
   licenseNumber: string;
-  issuingState: string;
   issueDate: Date;
   expirationDate: Date;
   documentUrl: string;
+  fileName?: string;
 }
 
 export interface VerifyLicenseData {
@@ -27,7 +27,6 @@ export class LicenseService {
         where: {
           providerId,
           licenseNumber: data.licenseNumber,
-          issuingState: data.issuingState,
         },
       });
 
@@ -40,10 +39,10 @@ export class LicenseService {
           providerId,
           licenseType: data.licenseType,
           licenseNumber: data.licenseNumber,
-          issuingState: data.issuingState,
           issueDate: data.issueDate,
           expirationDate: data.expirationDate,
           documentUrl: data.documentUrl,
+          fileName: data.fileName,
           status: "PENDING", // New licenses start as pending
         },
         include: {
@@ -65,7 +64,6 @@ export class LicenseService {
           providerId,
           licenseType: data.licenseType,
           licenseNumber: data.licenseNumber,
-          issuingState: data.issuingState,
         },
         undefined,
         undefined,
@@ -336,7 +334,7 @@ export class LicenseService {
   }
 
   // Validate license with external system (placeholder for MN state integration)
-  async validateLicenseWithState(licenseNumber: string, issuingState: string): Promise<{
+  async validateLicense(licenseNumber: string): Promise<{
     valid: boolean;
     status?: string;
     expirationDate?: Date;
@@ -350,7 +348,7 @@ export class LicenseService {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Mock validation logic
-      const isValid = licenseNumber.length >= 6 && issuingState === "MN";
+      const isValid = licenseNumber.length >= 6;
       
       if (isValid) {
         return {

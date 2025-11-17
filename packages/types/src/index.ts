@@ -39,6 +39,14 @@ export enum OrganizationStatus {
   DEACTIVATED = "DEACTIVATED",
 }
 
+// Subscription tier enum
+export enum SubscriptionTier {
+  FREE = "FREE",
+  PRO = "PRO",
+  PREMIUM = "PREMIUM",
+  ENTERPRISE = "ENTERPRISE",
+}
+
 // Service types - shared between frontend and backend
 export interface Service {
   id: string;
@@ -280,6 +288,7 @@ export interface License {
   verifiedAt?: string;
   verifiedBy?: string;
   documentUrl?: string;
+  fileName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -291,6 +300,7 @@ export interface CreateLicenseData {
   issueDate: string | Date;
   expirationDate: string | Date;
   documentUrl: string;
+  fileName?: string;
 }
 
 export interface UpdateLicenseData extends Partial<CreateLicenseData> {
@@ -745,6 +755,29 @@ export interface PaginatedReferrals {
 // CASE MANAGER TYPES
 // ============================================
 
+export interface NotificationPreferences {
+  emailNotifications: boolean;
+  emailNewReferrals: boolean;
+  emailProviderResponses: boolean;
+  emailPlacementUpdates: boolean;
+  emailUrgentCases: boolean;
+  inAppNotifications: boolean;
+  inAppNewReferrals: boolean;
+  inAppProviderResponses: boolean;
+  inAppPlacementUpdates: boolean;
+  inAppUrgentCases: boolean;
+}
+
+export interface DefaultReferralSettings {
+  defaultUrgency: Urgency;
+  defaultPrimaryPayer?: Payer;
+  defaultPreferredCounties: string[];
+  defaultPreferredCities: string[];
+  defaultMaxDistance?: number;
+  defaultCareLevels: string[];
+  defaultServicesNeeded: string[];
+}
+
 export interface CaseManager {
   id: string;
   organizationId: string;
@@ -754,13 +787,18 @@ export interface CaseManager {
   phone?: string;
   licenseNumber?: string;
   licenseExpiry?: string;
+  licenseDocumentUrl?: string;
+  licenseFileName?: string;
   isActive: boolean;
+  notificationPreferences?: NotificationPreferences;
+  defaultReferralSettings?: DefaultReferralSettings;
   createdAt: string;
   updatedAt: string;
   organization?: {
     id: string;
     name: string;
     type: OrganizationType;
+    status?: OrganizationStatus;
     email: string;
     phone: string;
     city: string;
@@ -774,7 +812,11 @@ export interface UpdateCaseManagerData {
   phone?: string;
   licenseNumber?: string;
   licenseExpiry?: string | Date;
+  licenseDocumentUrl?: string;
+  licenseFileName?: string;
   isActive?: boolean;
+  notificationPreferences?: NotificationPreferences;
+  defaultReferralSettings?: DefaultReferralSettings;
 }
 
 // Case Manager Dashboard
@@ -804,4 +846,90 @@ export interface CaseManagerStats {
   referralsByStatus: Record<ReferralStatus, number>;
   referralsByUrgency: Record<Urgency, number>;
   referralsByPayer: Record<Payer, number>;
+}
+
+// Case Manager Onboarding Types
+export interface CaseManagerOnboardingOrganizationData {
+  organizationName?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  county?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  ein?: string;
+  fax?: string;
+  description?: string;
+}
+
+export interface CaseManagerOnboardingLicenseData {
+  license?: {
+    id?: string;
+    licenseNumber: string;
+    expirationDate: string;
+    documentUrl?: string;
+    fileName?: string;
+  };
+}
+
+// Case Manager Client Summary (for clients page)
+export interface CaseManagerClientSummary {
+  initials: string;
+  age: number;
+  gender: string;
+  referralCount: number;
+  latestReferral: Referral;
+  status: ReferralStatus;
+  urgency: Urgency;
+}
+
+// Provider with Availability (for case manager search)
+// Note: Provider type is defined in frontend service, this extends it
+// For now, we'll define a minimal interface that can be extended
+export interface ProviderWithAvailability {
+  id: string;
+  organizationId: string;
+  primaryLicenseType: string;
+  description?: string;
+  logo?: string;
+  coverImage?: string;
+  acceptsReferrals: boolean;
+  responseTimeHours?: number;
+  verified?: boolean;
+  verifiedAt?: string | null;
+  verificationNotes?: string | null;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  organization?: {
+    id: string;
+    name: string;
+    type: OrganizationType;
+    status?: OrganizationStatus;
+    email: string;
+    phone: string;
+    city: string;
+    state: string;
+    county?: string;
+  };
+  licenses?: Array<{
+    id: string;
+    licenseType: string;
+  }>;
+  homes?: Array<{
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+  }>;
+  // Additional fields for case manager search
+  openHomesCount?: number;
+  totalOpenings?: number;
+  matchingServices?: string[];
+  acceptsPayer?: boolean;
+  avgResponseTime?: number;
 }

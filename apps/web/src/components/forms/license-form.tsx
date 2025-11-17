@@ -24,24 +24,93 @@ import {
 import { Save, Loader2 } from "lucide-react";
 import { FileUploader, UploadedFile } from "@/components/ui/file-uploader";
 import { License, CreateLicenseData, UpdateLicenseData } from "@carelink/types";
-import { LICENSE_TYPES, US_STATES } from "@/lib/constants";
+import { LICENSE_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const licenseSchema = z.object({
-  licenseType: z.string().min(1, "License type is required"),
-  licenseNumber: z.string().min(1, "License number is required"),
-  issuingState: z.string().min(2, "Issuing state is required").max(2, "State must be 2 characters"),
-  issueDate: z.string().min(1, "Issue date is required"),
-  expirationDate: z.string().min(1, "Expiration date is required"),
-  documentUrl: z.string().url("Document URL must be a valid URL").optional().or(z.literal("")),
-}).refine((data) => {
-  const issueDate = new Date(data.issueDate);
-  const expirationDate = new Date(data.expirationDate);
-  return expirationDate > issueDate;
-}, {
-  message: "Expiration date must be after issue date",
-  path: ["expirationDate"],
-});
+const licenseSchema = z
+  .object({
+    licenseType: z.string().min(1, "License type is required"),
+    licenseNumber: z
+      .string()
+      .min(1, "License number is required")
+      .max(100, "License number must be less than 100 characters")
+      .regex(
+        /^[A-Za-z0-9\s\-_]+$/,
+        "License number can only contain letters, numbers, spaces, hyphens, and underscores"
+      ),
+    issueDate: z
+      .string()
+      .min(1, "Issue date is required")
+      .refine(
+        (date) => {
+          const parsedDate = new Date(date);
+          return !isNaN(parsedDate.getTime());
+        },
+        {
+          message: "Please select a valid issue date",
+        }
+      )
+      .refine(
+        (date) => {
+          const parsedDate = new Date(date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return parsedDate <= today;
+        },
+        {
+          message: "Issue date cannot be in the future",
+        }
+      ),
+    expirationDate: z
+      .string()
+      .min(1, "Expiration date is required")
+      .refine(
+        (date) => {
+          const parsedDate = new Date(date);
+          return !isNaN(parsedDate.getTime());
+        },
+        {
+          message: "Please select a valid expiration date",
+        }
+      ),
+    documentUrl: z
+      .union([
+        z.string().url("Document URL must be a valid URL"),
+        z.literal(""),
+        z.null(),
+        z.undefined(),
+      ])
+      .optional()
+      .nullable()
+      .refine(
+        (url) => {
+          // If URL is provided, it must be a valid URL
+          if (url && url !== "") {
+            try {
+              new URL(url);
+              return true;
+            } catch {
+              return false;
+            }
+          }
+          return true; // Empty/null/undefined is allowed
+        },
+        {
+          message: "Document URL must be a valid URL",
+        }
+      ),
+  })
+  .refine(
+    (data) => {
+      const issueDate = new Date(data.issueDate);
+      const expirationDate = new Date(data.expirationDate);
+      return expirationDate > issueDate;
+    },
+    {
+      message: "Expiration date must be after issue date",
+      path: ["expirationDate"],
+    }
+  );
 
 export type LicenseFormData = z.infer<typeof licenseSchema>;
 
@@ -76,7 +145,6 @@ export function LicenseForm({
       ? {
           licenseType: initialData.licenseType || "",
           licenseNumber: initialData.licenseNumber || "",
-          issuingState: initialData.issuingState || "MN",
           issueDate: initialData.issueDate
             ? new Date(initialData.issueDate).toISOString().split("T")[0]
             : "",
@@ -86,7 +154,6 @@ export function LicenseForm({
           documentUrl: initialData.documentUrl || "",
         }
       : {
-          issuingState: "MN",
           documentUrl: "",
         },
   });
@@ -115,7 +182,6 @@ export function LicenseForm({
     const submitData: CreateLicenseData | UpdateLicenseData = {
       licenseType: data.licenseType,
       licenseNumber: data.licenseNumber,
-      issuingState: data.issuingState,
       issueDate: data.issueDate,
       expirationDate: data.expirationDate,
       documentUrl: data.documentUrl || "",
@@ -190,36 +256,6 @@ export function LicenseForm({
             )}
           </div>
 
-          {/* Issuing State */}
-          <div className="space-y-2">
-            <Label htmlFor="issuingState">
-              Issuing State <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={watch("issuingState")}
-              onValueChange={(value) => setValue("issuingState", value)}
-            >
-              <SelectTrigger
-                id="issuingState"
-                className={cn(errors.issuingState && "border-destructive")}
-              >
-                <SelectValue placeholder="Select state" />
-              </SelectTrigger>
-              <SelectContent>
-                {US_STATES.map((state) => (
-                  <SelectItem key={state.value} value={state.value}>
-                    {state.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.issuingState && (
-              <p className="text-sm text-destructive">
-                {errors.issuingState.message}
-              </p>
-            )}
-          </div>
-
           {/* Issue Date and Expiration Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -259,7 +295,9 @@ export function LicenseForm({
 
           {/* Document Upload */}
           <div className="space-y-2">
-            <Label>License Document</Label>
+            <Label>
+              License Document <span className="text-destructive">*</span>
+            </Label>
             <FileUploader
               documentType="license"
               folder="licenses"
@@ -299,7 +337,8 @@ export function LicenseForm({
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              {submitLabel || (mode === "create" ? "Add License" : "Update License")}
+              {submitLabel ||
+                (mode === "create" ? "Add License" : "Update License")}
             </>
           )}
         </Button>
@@ -307,4 +346,3 @@ export function LicenseForm({
     </form>
   );
 }
-
