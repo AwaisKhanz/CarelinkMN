@@ -99,6 +99,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   openingController.getOpenings.bind(openingController)
 );
 
@@ -122,6 +123,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   openingController.getOpeningById.bind(openingController)
 );
 

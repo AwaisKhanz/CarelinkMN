@@ -14,6 +14,7 @@ export interface ParsedQueryFilters {
 export interface ParseQueryResponse {
   query: string;
   filters: ParsedQueryFilters;
+  explanation?: string;
 }
 
 export class AISearchService {

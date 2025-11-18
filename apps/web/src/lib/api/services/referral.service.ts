@@ -97,10 +97,42 @@ export class ReferralService {
   }
 
   /**
+   * Assign referral to another case manager
+   */
+  async assignReferral(
+    referralId: string,
+    assignedToUserId: string,
+    notes?: string
+  ): Promise<ApiResponse<Referral>> {
+    return apiService.post<Referral>(`/api/referrals/${referralId}/assign`, {
+      assignedToUserId,
+      notes,
+    });
+  }
+
+  /**
    * Get shortlist for a referral
    */
   async getShortlist(referralId: string): Promise<ApiResponse<ReferralShortlist[]>> {
     return apiService.get<ReferralShortlist[]>(`/api/referrals/${referralId}/shortlist`);
+  }
+
+  /**
+   * Get referral timeline events
+   */
+  async getReferralTimeline(
+    referralId: string
+  ): Promise<ApiResponse<Array<{
+    id: string;
+    eventType: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    userId?: string;
+    userName?: string;
+    eventData?: any;
+  }>>> {
+    return apiService.get(`/api/referrals/${referralId}/timeline`);
   }
 
   /**

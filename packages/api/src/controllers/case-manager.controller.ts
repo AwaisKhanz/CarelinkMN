@@ -14,6 +14,7 @@ export class CaseManagerController {
     this.updateCaseManager = this.updateCaseManager.bind(this);
     this.getDashboard = this.getDashboard.bind(this);
     this.getStats = this.getStats.bind(this);
+    this.getCaseManagersInOrganization = this.getCaseManagersInOrganization.bind(this);
   }
 
   /**
@@ -235,6 +236,40 @@ export class CaseManagerController {
         success: false,
         error: "Statistics retrieval failed",
         message: "An error occurred while retrieving statistics",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get all case managers in the same organization
+   * GET /api/case-managers/organization/members
+   */
+  async getCaseManagersInOrganization(req: Request, res: Response): Promise<void> {
+    try {
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const caseManagers = await this.caseManagerService.getCaseManagersInOrganization(user.id);
+
+      res.status(200).json({
+        success: true,
+        data: caseManagers,
+        message: "Case managers retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get case managers in organization error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Case managers retrieval failed",
+        message: "An error occurred while retrieving case managers",
       } as ApiResponse);
     }
   }

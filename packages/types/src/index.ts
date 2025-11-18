@@ -848,6 +848,264 @@ export interface CaseManagerStats {
   referralsByPayer: Record<Payer, number>;
 }
 
+// ============================================
+// HOSPITAL SOCIAL WORKER / DISCHARGE CASE TYPES
+// ============================================
+
+export enum DischargeStatus {
+  INTAKE = "INTAKE",
+  MATCHING = "MATCHING",
+  INVITES_SENT = "INVITES_SENT",
+  RESPONSES_PENDING = "RESPONSES_PENDING",
+  PLACEMENT_CONFIRMED = "PLACEMENT_CONFIRMED",
+  DISCHARGED = "DISCHARGED",
+  FOLLOW_UP = "FOLLOW_UP",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum InviteResponse {
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  NO_AVAILABILITY = "NO_AVAILABILITY",
+}
+
+export interface DischargeCase {
+  id: string;
+  caseNumber: string;
+  hospitalId: string;
+  socialWorkerId: string;
+  hospitalStaffId?: string;
+
+  // Patient (Minimal PHI)
+  patientInitials: string;
+  patientAge: number;
+  patientGender: Gender;
+
+  // Medical
+  diagnosisCodes: string[];
+  mobilityStatus: string;
+  cognitiveStatus?: string;
+  behavioralConcerns: string[];
+
+  // Equipment Needs
+  dmeNeeds: string[];
+  medicationManagement: boolean;
+
+  // Discharge Planning
+  currentLocation: string;
+  targetDischargeDate: string | Date;
+  actualDischargeDate?: string | Date;
+
+  // Geography
+  preferredCounties: string[];
+  preferredCities: string[];
+  requiresProximity: boolean;
+  proximityZipCode?: string;
+  maxDistanceMiles?: number;
+
+  // Payer
+  primaryInsurance: Payer;
+  secondaryInsurance?: Payer;
+
+  // Status
+  status: DischargeStatus;
+
+  // Transport
+  needsTransport: boolean;
+  transportType?: string;
+
+  // Timestamps
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  matchedAt?: string | Date;
+  invitesSentAt?: string | Date;
+  placedAt?: string | Date;
+
+  // Relations
+  socialWorker?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  hospitalStaff?: {
+    id: string;
+    department?: string;
+    title?: string;
+  };
+  invitations?: DischargeInvitation[];
+  messages?: MessageThread[];
+  placement?: Placement;
+  transportBooking?: {
+    id: string;
+    transportType: string;
+    scheduledDate?: string | Date;
+    status: string;
+  };
+  checklist?: DischargeChecklist;
+  consent?: {
+    id: string;
+    obtainedAt: string | Date;
+    version: string;
+  };
+}
+
+export interface DischargeInvitation {
+  id: string;
+  dischargeCaseId: string;
+  providerId: string;
+  provider?: {
+    id: string;
+    organization?: {
+      id: string;
+      name: string;
+    };
+    homes?: Array<{
+      id: string;
+      name: string;
+      city: string;
+      state: string;
+    }>;
+  };
+
+  invitedAt: string | Date;
+  expiresAt: string | Date;
+  respondedAt?: string | Date;
+
+  response?: InviteResponse;
+  responseNotes?: string;
+
+  reminderSentAt?: string | Date;
+  escalatedAt?: string | Date;
+}
+
+export interface DischargeChecklist {
+  id: string;
+  dischargeCaseId: string;
+
+  // Pre-discharge
+  consentObtained: boolean;
+  insuranceVerified: boolean;
+  medsReconciled: boolean;
+  equipmentOrdered: boolean;
+  transportArranged: boolean;
+
+  // During discharge
+  patientEducated: boolean;
+  documentsSent: boolean;
+  followUpScheduled: boolean;
+
+  // Post-discharge
+  day1Contact: boolean;
+  day2Contact: boolean;
+  day7Contact: boolean;
+  day30Contact: boolean;
+
+  updatedAt: string | Date;
+}
+
+export interface CreateDischargeCaseData {
+  hospitalId: string;
+  patientInitials: string;
+  patientAge: number;
+  patientGender: Gender;
+  diagnosisCodes: string[];
+  mobilityStatus: string;
+  cognitiveStatus?: string;
+  behavioralConcerns: string[];
+  dmeNeeds: string[];
+  medicationManagement: boolean;
+  currentLocation: string;
+  targetDischargeDate: string | Date;
+  preferredCounties: string[];
+  preferredCities: string[];
+  requiresProximity: boolean;
+  proximityZipCode?: string;
+  maxDistanceMiles?: number;
+  primaryInsurance: Payer;
+  secondaryInsurance?: Payer;
+  needsTransport: boolean;
+  transportType?: string;
+}
+
+export interface UpdateDischargeCaseData extends Partial<CreateDischargeCaseData> {
+  status?: DischargeStatus;
+  actualDischargeDate?: string | Date;
+}
+
+export interface DischargeCaseFilters {
+  status?: DischargeStatus;
+  hospitalId?: string;
+  socialWorkerId?: string;
+  search?: string;
+  targetDischargeDateFrom?: string | Date;
+  targetDischargeDateTo?: string | Date;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedDischargeCases {
+  cases: DischargeCase[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export interface HospitalSWDashboard {
+  stats: {
+    activeCases: number;
+    pendingPlacements: number;
+    completedThisMonth: number;
+    urgentCases: number;
+  };
+  recentCases: DischargeCase[];
+  upcomingDischarges: DischargeCase[];
+}
+
+export interface HospitalSWAnalytics {
+  summary: {
+    totalCases: number;
+    activeCases: number;
+    completedCases: number;
+    cancelledCases: number;
+  };
+  statusBreakdown: {
+    status: DischargeStatus;
+    count: number;
+    percentage: number;
+  }[];
+  averagePlacementTime: number; // hours
+  responseRate: number; // percentage
+  payerMix: {
+    payer: Payer;
+    count: number;
+    percentage: number;
+  }[];
+  transportStats: {
+    totalWithTransport: number;
+    transportTypes: {
+      type: string;
+      count: number;
+    }[];
+  };
+}
+
+export interface AIMatchingResult {
+  providers: Array<{
+    id: string;
+    organization?: {
+      name: string;
+    };
+    matchScore: number;
+    matchReasons: string[];
+  }>;
+  explanation: string;
+}
+
 // Case Manager Onboarding Types
 export interface CaseManagerOnboardingOrganizationData {
   organizationName?: string;

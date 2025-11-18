@@ -6,7 +6,13 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { referralService, type Referral, ReferralStatus, Urgency, Payer } from "@/lib/api";
+import {
+  referralService,
+  type Referral,
+  ReferralStatus,
+  Urgency,
+  Payer,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { useCaseManagerId } from "@/hooks/use-case-manager-data";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -160,5 +166,3 @@ export function useCaseManagerReferrals(
     refetch,
   };
 }
-
-

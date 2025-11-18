@@ -88,7 +88,10 @@ function CaseManagerSearchPageContent() {
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
   const { setTitle, setDescription } = usePageMetadata();
-  const { canUseAISearch } = useRolePermissions();
+  const { canUseAISearch, hasCapability } = useRolePermissions();
+  const canManageShortlist = hasCapability(
+    CASE_MANAGER_CAPABILITIES.SHORTLIST_MANAGE
+  );
 
   const referralId = searchParams.get("referralId");
   const referralNumber = searchParams.get("referralNumber");
@@ -126,6 +129,7 @@ function CaseManagerSearchPageContent() {
   // CareBot AI Search
   const [useAISearch, setUseAISearch] = useState(false);
   const [isParsingQuery, setIsParsingQuery] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
   useEffect(() => {
     setTitle("Search Providers");
@@ -141,10 +145,17 @@ function CaseManagerSearchPageContent() {
       if (!user?.id) return;
 
       setIsParsingQuery(true);
+      setAiExplanation(null);
       try {
         const response = await aiSearchService.parseQuery(query);
-        if (response.success && response.data?.filters) {
+        if (response.success && response.data) {
           const filters = response.data.filters;
+          const explanation = response.data.explanation;
+
+          // Store explanation for display
+          if (explanation) {
+            setAiExplanation(explanation);
+          }
 
           // Apply parsed filters
           if (filters.counties && filters.counties.length > 0) {
@@ -171,6 +182,7 @@ function CaseManagerSearchPageContent() {
       } catch (err) {
         console.error("AI search error:", err);
         // Fallback to regular search - don't show error, just use manual filters
+        setAiExplanation(null);
       } finally {
         setIsParsingQuery(false);
       }
@@ -486,6 +498,7 @@ function CaseManagerSearchPageContent() {
     setSelectedServices([]);
     setSelectedPayers([]);
     setAvailabilityFilter("all");
+    setAiExplanation(null);
   };
 
   if (isLoading && providers.length === 0) {
@@ -619,6 +632,21 @@ function CaseManagerSearchPageContent() {
                     Use natural language to search. AI will parse your query and
                     apply filters automatically.
                   </p>
+                )}
+                {aiExplanation && (
+                  <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-foreground mb-1">
+                          CareBot Explanation
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {aiExplanation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -819,9 +847,12 @@ function CaseManagerSearchPageContent() {
                   provider={provider}
                   isSelected={selectedProviders.includes(provider.id)}
                   onSelect={() => handleSelectProvider(provider.id)}
-                  onView={() =>
-                    router.push(`/case-manager/search/${provider.id}`)
-                  }
+                  onView={() => {
+                    const url = referralId
+                      ? `/case-manager/providers/${provider.id}?referralId=${referralId}`
+                      : `/case-manager/providers/${provider.id}`;
+                    router.push(url);
+                  }}
                   referralId={referralId || undefined}
                 />
               ))}

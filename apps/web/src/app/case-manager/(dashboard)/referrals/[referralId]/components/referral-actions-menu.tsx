@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Clock, CheckCircle, Trash2 } from "lucide-react";
+import { MoreVertical, Clock, CheckCircle, Trash2, UserPlus } from "lucide-react";
 import { ReferralStatus } from "@carelink/types";
 import { Referral } from "@/lib/api";
 
@@ -17,8 +17,10 @@ interface ReferralActionsMenuProps {
   onUpdateStatus: () => void;
   onCloseReferral: () => void;
   onDelete: () => void;
+  onAssign?: () => void;
   canUpdate?: boolean;
   canDelete?: boolean;
+  canAssign?: boolean;
 }
 
 export function ReferralActionsMenu({
@@ -26,8 +28,10 @@ export function ReferralActionsMenu({
   onUpdateStatus,
   onCloseReferral,
   onDelete,
+  onAssign,
   canUpdate = true,
   canDelete = true,
+  canAssign = false,
 }: ReferralActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -51,9 +55,18 @@ export function ReferralActionsMenu({
             )}
           </>
         )}
-        {canDelete && (
+        {canAssign && onAssign && (
           <>
             {canUpdate && <DropdownMenuSeparator />}
+            <DropdownMenuItem onClick={onAssign}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Assign to Case Manager
+            </DropdownMenuItem>
+          </>
+        )}
+        {canDelete && (
+          <>
+            {(canUpdate || canAssign) && <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={onDelete} className="text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete

@@ -2,24 +2,26 @@
 
 import { ReactNode, useMemo } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { AccessRestricted } from "@/components/provider/access-restricted";
 import { ProviderCapability } from "@/lib/permissions/provider-capabilities";
+import { Capability } from "@/lib/permissions/capabilities";
 
 interface RequirePermissionProps {
   /**
-   * Single permission to check
+   * Single permission to check (supports all capability types)
    */
-  permission?: ProviderCapability;
+  permission?: ProviderCapability | Capability;
 
   /**
-   * Multiple permissions - user must have ANY of these
+   * Multiple permissions - user must have ANY of these (supports all capability types)
    */
-  anyPermission?: ProviderCapability[];
+  anyPermission?: (ProviderCapability | Capability)[];
 
   /**
-   * Multiple permissions - user must have ALL of these
+   * Multiple permissions - user must have ALL of these (supports all capability types)
    */
-  allPermissions?: ProviderCapability[];
+  allPermissions?: (ProviderCapability | Capability)[];
 
   /**
    * Custom permission check function
@@ -92,24 +94,8 @@ export function RequirePermission({
   fallback,
   showLoading = false,
 }: RequirePermissionProps) {
-  const {
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    canManageHomes,
-    canManageServices,
-    canManageOpenings,
-    canManagePlacements,
-    canManageLicenses,
-    canManageStaff,
-    canManageSettings,
-    canViewDashboard,
-    canViewAnalytics,
-    canViewReferrals,
-    canViewResidents,
-    canManageMessages,
-    canRespondToReferrals,
-  } = usePermissions();
+  const providerPermissions = usePermissions();
+  const rolePermissions = useRolePermissions();
 
   // Determine if user has required permission
   const hasAccess = useMemo(() => {
@@ -125,17 +111,44 @@ export function RequirePermission({
 
     // Single permission check
     if (permission) {
-      return hasPermission(permission);
+      // Check if it's a provider capability (for backward compatibility)
+      if (permission.startsWith("provider:")) {
+        return providerPermissions.hasPermission(
+          permission as ProviderCapability
+        );
+      }
+      // Otherwise use role permissions which supports all capability types
+      return rolePermissions.hasCapability(permission as Capability);
     }
 
     // Any of multiple permissions
     if (anyPermission && anyPermission.length > 0) {
-      return hasAnyPermission(anyPermission);
+      // Check if all are provider capabilities
+      const allProviderCaps = anyPermission.every((cap) =>
+        cap.startsWith("provider:")
+      );
+      if (allProviderCaps) {
+        return providerPermissions.hasAnyPermission(
+          anyPermission as ProviderCapability[]
+        );
+      }
+      // Otherwise use role permissions
+      return rolePermissions.hasAnyCapability(anyPermission as Capability[]);
     }
 
     // All of multiple permissions
     if (allPermissions && allPermissions.length > 0) {
-      return hasAllPermissions(allPermissions);
+      // Check if all are provider capabilities
+      const allProviderCaps = allPermissions.every((cap) =>
+        cap.startsWith("provider:")
+      );
+      if (allProviderCaps) {
+        return providerPermissions.hasAllPermissions(
+          allPermissions as ProviderCapability[]
+        );
+      }
+      // Otherwise use role permissions
+      return rolePermissions.hasAllCapabilities(allPermissions as Capability[]);
     }
 
     // If no permission check specified, deny access by default
@@ -148,23 +161,8 @@ export function RequirePermission({
     permission,
     anyPermission,
     allPermissions,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    // Include all permission checks in dependencies for custom check functions
-    canManageHomes,
-    canManageServices,
-    canManageOpenings,
-    canManagePlacements,
-    canManageLicenses,
-    canManageStaff,
-    canManageSettings,
-    canViewDashboard,
-    canViewAnalytics,
-    canViewReferrals,
-    canViewResidents,
-    canManageMessages,
-    canRespondToReferrals,
+    providerPermissions,
+    rolePermissions,
   ]);
 
   // Show loading state if requested

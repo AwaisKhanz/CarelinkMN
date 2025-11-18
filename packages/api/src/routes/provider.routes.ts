@@ -361,4 +361,24 @@ router.get(
   providerController.getProviderStats
 );
 
+// Respond to referral - Update provider's own shortlist status
+router.post(
+  "/providers/:providerId/referrals/:referralId/respond",
+  [
+    param("providerId").isUUID().withMessage("Invalid provider ID"),
+    param("referralId").isUUID().withMessage("Invalid referral ID"),
+    body("status")
+      .isIn(["ADDED", "CONTACTED", "RESPONDED", "TOURING", "DECLINED"])
+      .withMessage("Invalid shortlist status"),
+    body("notes")
+      .optional()
+      .isString()
+      .isLength({ max: 1000 })
+      .withMessage("Notes must be less than 1000 characters"),
+  ],
+  validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.REFERRALS_RESPOND),
+  providerController.respondToReferral
+);
+
 export default router;

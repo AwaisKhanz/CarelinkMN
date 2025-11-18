@@ -58,6 +58,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProviderDeleteDialog } from "@/components/provider";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface HomeFilters {
   search: string;
@@ -70,6 +71,7 @@ function ProviderHomesPageContent() {
   const router = useRouter();
   const { user, token } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
+  const { canManageHomes } = usePermissions();
   const [homes, setHomes] = useState<Home[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);

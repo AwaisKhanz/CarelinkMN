@@ -8,6 +8,7 @@ import { MapPin, Clock, Building, CheckCircle2, Plus } from "lucide-react";
 import { ProviderWithAvailability } from "@carelink/types";
 import { referralService } from "@/lib/api";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface ProviderSearchResultCardProps {
   provider: ProviderWithAvailability;
@@ -24,6 +25,16 @@ export function ProviderSearchResultCard({
   onView,
   referralId,
 }: ProviderSearchResultCardProps) {
+  const router = useRouter();
+
+  const handleView = () => {
+    if (referralId) {
+      router.push(`/case-manager/providers/${provider.id}?referralId=${referralId}`);
+    } else {
+      router.push(`/case-manager/providers/${provider.id}`);
+    }
+  };
+
   const handleAddToShortlist = async () => {
     if (!referralId) {
       toast.error("No referral selected");
@@ -143,7 +154,7 @@ export function ProviderSearchResultCard({
 
             {/* Actions */}
             <div className="flex items-center gap-2 pt-3 border-t border-border">
-              <Button variant="outline" size="sm" onClick={onView}>
+              <Button variant="outline" size="sm" onClick={handleView}>
                 View Details
               </Button>
               {referralId && (

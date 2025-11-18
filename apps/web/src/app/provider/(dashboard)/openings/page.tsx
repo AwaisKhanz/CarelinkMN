@@ -575,8 +575,155 @@ function OpeningsPageContent() {
     0
   );
 
+  // Calculate stale and expiring openings for alerts
+  const staleOpenings = useMemo(() => {
+    return openings.filter((opening) => {
+      const hoursUntilExpiry = calculateHoursUntilExpiry(
+        opening.freshnessTimestamp
+      );
+      return hoursUntilExpiry < 0;
+    });
+  }, [openings]);
+
+  const expiringSoonOpenings = useMemo(() => {
+    return openings.filter((opening) => {
+      const hoursUntilExpiry = calculateHoursUntilExpiry(
+        opening.freshnessTimestamp
+      );
+      return hoursUntilExpiry >= 0 && hoursUntilExpiry <= 12;
+    });
+  }, [openings]);
+
   return (
     <div className="space-y-6">
+      {/* Stale Openings Alert Banner */}
+      {staleOpenings.length > 0 && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-destructive mb-1">
+                  {staleOpenings.length} Opening{staleOpenings.length !== 1 ? "s" : ""} Expired
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {staleOpenings.length === 1
+                    ? "This opening has expired and will not appear in search results. Refresh it to make it active again."
+                    : "These openings have expired and will not appear in search results. Refresh them to make them active again."}
+                </p>
+                {canManageOpenings && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsBulkUpdating(true);
+                      try {
+                        const results = await Promise.allSettled(
+                          staleOpenings.map((opening) =>
+                            openingService.refreshOpening(opening.id)
+                          )
+                        );
+                        const successful = results.filter(
+                          (r) => r.status === "fulfilled"
+                        ).length;
+                        if (successful > 0) {
+                          toast.success(
+                            `Refreshed ${successful} opening${successful > 1 ? "s" : ""}`
+                          );
+                          await fetchOpenings();
+                        }
+                      } catch (err) {
+                        console.error("Error refreshing openings:", err);
+                        toast.error("Failed to refresh openings");
+                      } finally {
+                        setIsBulkUpdating(false);
+                      }
+                    }}
+                    disabled={isBulkUpdating}
+                  >
+                    {isBulkUpdating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh All Expired
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Expiring Soon Alert Banner */}
+      {expiringSoonOpenings.length > 0 && staleOpenings.length === 0 && (
+        <Card className="border-warning bg-warning/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-warning mb-1">
+                  {expiringSoonOpenings.length} Opening{expiringSoonOpenings.length !== 1 ? "s" : ""} Expiring Soon
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {expiringSoonOpenings.length === 1
+                    ? "This opening will expire within 12 hours. Refresh it to extend its freshness."
+                    : "These openings will expire within 12 hours. Refresh them to extend their freshness."}
+                </p>
+                {canManageOpenings && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsBulkUpdating(true);
+                      try {
+                        const results = await Promise.allSettled(
+                          expiringSoonOpenings.map((opening) =>
+                            openingService.refreshOpening(opening.id)
+                          )
+                        );
+                        const successful = results.filter(
+                          (r) => r.status === "fulfilled"
+                        ).length;
+                        if (successful > 0) {
+                          toast.success(
+                            `Refreshed ${successful} opening${successful > 1 ? "s" : ""}`
+                          );
+                          await fetchOpenings();
+                        }
+                      } catch (err) {
+                        console.error("Error refreshing openings:", err);
+                        toast.error("Failed to refresh openings");
+                      } finally {
+                        setIsBulkUpdating(false);
+                      }
+                    }}
+                    disabled={isBulkUpdating}
+                  >
+                    {isBulkUpdating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh All Expiring
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

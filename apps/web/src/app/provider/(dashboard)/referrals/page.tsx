@@ -36,7 +36,19 @@ import {
   MapPin,
   Loader2,
   FileText,
+  Send,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -75,6 +87,12 @@ function ProviderReferralsPageContent() {
     total: 0,
     pages: 0,
   });
+  const [selectedReferrals, setSelectedReferrals] = useState<Set<string>>(
+    new Set()
+  );
+  const [batchMessageDialogOpen, setBatchMessageDialogOpen] = useState(false);
+  const [batchMessageContent, setBatchMessageContent] = useState("");
+  const [isSendingBatch, setIsSendingBatch] = useState(false);
 
   useEffect(() => {
     setTitle("Referrals");
@@ -185,9 +203,135 @@ function ProviderReferralsPageContent() {
     };
   }, [referrals, providerId]);
 
+  // Handle selection
+  const handleToggleSelection = (referralId: string) => {
+    setSelectedReferrals((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(referralId)) {
+        newSet.delete(referralId);
+      } else {
+        newSet.add(referralId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedReferrals(new Set(filteredReferrals.map((r) => r.id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedReferrals(new Set());
+  };
+
+  // Handle batch messaging
+  const handleBatchMessage = async () => {
+    if (selectedReferrals.size === 0 || !batchMessageContent.trim()) return;
+
+    setIsSendingBatch(true);
+    try {
+      const referralIds = Array.from(selectedReferrals);
+      const results = await Promise.allSettled(
+        referralIds.map(async (referralId) => {
+          // Find or create message thread for each referral
+          const referral = referrals.find((r) => r.id === referralId);
+          if (!referral || !providerId) return;
+
+          // Get or create thread
+          const threadsResponse = await messagingService.getThreads({
+            providerId,
+            referralId,
+          });
+
+          let threadId: string;
+          if (
+            threadsResponse.success &&
+            threadsResponse.data &&
+            threadsResponse.data.threads &&
+            threadsResponse.data.threads.length > 0
+          ) {
+            threadId = threadsResponse.data.threads[0].id;
+          } else {
+            // Create new thread
+            const createResponse = await messagingService.createThread({
+              providerId,
+              referralId,
+              initialMessage: "Initial message",
+            });
+            if (!createResponse.success || !createResponse.data) {
+              throw new Error("Failed to create thread");
+            }
+            threadId = createResponse.data.id;
+          }
+
+          // Send message
+          const sendResponse = await messagingService.sendMessage({
+            threadId,
+            content: batchMessageContent.trim(),
+          });
+
+          if (!sendResponse.success) {
+            throw new Error(sendResponse.message || "Failed to send message");
+          }
+        })
+      );
+
+      const successful = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (successful > 0) {
+        toast.success(
+          `Message sent to ${successful} referral${successful > 1 ? "s" : ""}`
+        );
+        setBatchMessageDialogOpen(false);
+        setBatchMessageContent("");
+        setSelectedReferrals(new Set());
+        await fetchReferrals();
+      }
+      if (failed > 0) {
+        toast.error(
+          `Failed to send message to ${failed} referral${failed > 1 ? "s" : ""}`
+        );
+      }
+    } catch (err) {
+      console.error("Error sending batch messages:", err);
+      toast.error("Failed to send batch messages");
+    } finally {
+      setIsSendingBatch(false);
+    }
+  };
+
   // Define table columns
   const columns: ColumnDef<Referral>[] = useMemo(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              filteredReferrals.length > 0 &&
+              filteredReferrals.every((r) => selectedReferrals.has(r.id))
+            }
+            onCheckedChange={(checked) => {
+              if (checked) {
+                handleSelectAll();
+              } else {
+                handleDeselectAll();
+              }
+            }}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={selectedReferrals.has(row.original.id)}
+            onCheckedChange={() => handleToggleSelection(row.original.id)}
+            aria-label={`Select ${row.original.referralNumber}`}
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
       {
         accessorKey: "referralNumber",
         header: "Referral #",
@@ -343,7 +487,12 @@ function ProviderReferralsPageContent() {
         },
       },
     ],
-    [canRespondToReferrals, canViewReferrals]
+    [
+      canRespondToReferrals,
+      canViewReferrals,
+      selectedReferrals,
+      filteredReferrals,
+    ]
   );
 
   return (
@@ -446,22 +595,103 @@ function ProviderReferralsPageContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={columns}
-            data={filteredReferrals}
-            isLoading={isLoading}
-            variant="healthcare"
-            enablePagination={true}
-            currentPage={pagination.page}
-            totalPages={pagination.pages}
-            totalItems={pagination.total}
-            onPageChange={(page) =>
-              setPagination((prev) => ({ ...prev, page }))
-            }
-            emptyMessage="No referrals found. Referrals will appear here when case managers send them to your organization."
-          />
+          <div className="space-y-4">
+            {/* Bulk Actions Toolbar */}
+            {canRespondToReferrals &&
+              selectedReferrals.size > 0 && (
+                <BulkActionsToolbar
+                  selectedCount={selectedReferrals.size}
+                  totalCount={filteredReferrals.length}
+                  onSelectAll={handleSelectAll}
+                  onDeselectAll={handleDeselectAll}
+                  actions={[
+                    {
+                      label: "Send Message",
+                      icon: <Send className="h-4 w-4" />,
+                      onClick: () => setBatchMessageDialogOpen(true),
+                      variant: "default",
+                    },
+                  ]}
+                />
+              )}
+
+            <DataTable
+              columns={columns}
+              data={filteredReferrals}
+              isLoading={isLoading}
+              variant="healthcare"
+              enablePagination={true}
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              onPageChange={(page) =>
+                setPagination((prev) => ({ ...prev, page }))
+              }
+              emptyMessage="No referrals found. Referrals will appear here when case managers send them to your organization."
+            />
+          </div>
         </CardContent>
       </Card>
+
+      {/* Batch Message Dialog */}
+      <Dialog
+        open={batchMessageDialogOpen}
+        onOpenChange={setBatchMessageDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Send Batch Message</DialogTitle>
+            <DialogDescription>
+              Send a message to {selectedReferrals.size} selected referral
+              {selectedReferrals.size !== 1 ? "s" : ""}. The message will be
+              sent to each referral's message thread.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="batch-message">Message</Label>
+              <Textarea
+                id="batch-message"
+                placeholder="Enter your message here..."
+                value={batchMessageContent}
+                onChange={(e) => setBatchMessageContent(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBatchMessageDialogOpen(false);
+                  setBatchMessageContent("");
+                }}
+                disabled={isSendingBatch}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBatchMessage}
+                disabled={!batchMessageContent.trim() || isSendingBatch}
+                variant="healthcare"
+              >
+                {isSendingBatch ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send to {selectedReferrals.size} Referral
+                    {selectedReferrals.size !== 1 ? "s" : ""}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

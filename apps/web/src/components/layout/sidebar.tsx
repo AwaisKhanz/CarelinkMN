@@ -261,6 +261,11 @@ const getNavItems = (
           icon: AlertTriangle,
         },
         {
+          title: "Analytics",
+          href: "/case-manager/analytics",
+          icon: BarChart3,
+        },
+        {
           title: "Messages",
           href: "/case-manager/messages",
           icon: MessageSquare,

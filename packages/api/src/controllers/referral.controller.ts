@@ -22,6 +22,8 @@ export class ReferralController {
     this.getShortlist = this.getShortlist.bind(this);
     this.batchAddToShortlist = this.batchAddToShortlist.bind(this);
     this.batchMessageProviders = this.batchMessageProviders.bind(this);
+    this.assignReferral = this.assignReferral.bind(this);
+    this.getReferralTimeline = this.getReferralTimeline.bind(this);
   }
 
   /**
@@ -51,10 +53,9 @@ export class ReferralController {
         return;
       }
 
-      const referralData = req.body;
       const referral = await this.referralService.createReferral(
         user.id,
-        referralData
+        req.body
       );
 
       res.status(201).json({
@@ -66,7 +67,7 @@ export class ReferralController {
       console.error("Create referral error:", error);
       res.status(500).json({
         success: false,
-        error: "Referral creation failed",
+        error: "Failed to create referral",
         message:
           error instanceof Error
             ? error.message
@@ -76,7 +77,7 @@ export class ReferralController {
   }
 
   /**
-   * Get referrals with filtering and pagination
+   * Get all referrals for the authenticated user
    * GET /api/referrals
    */
   async getReferrals(req: Request, res: Response): Promise<void> {
@@ -92,35 +93,36 @@ export class ReferralController {
       }
 
       const {
-        page,
-        limit,
         status,
         urgency,
-        primaryPayer,
+        payer,
+        page = "1",
+        limit = "20",
         search,
       } = req.query;
 
-      const filters = {
-        page: page ? parseInt(page as string, 10) : undefined,
-        limit: limit ? parseInt(limit as string, 10) : undefined,
-        status: status ? (status as ReferralStatus) : undefined,
-        urgency: urgency ? (urgency as Urgency) : undefined,
-        primaryPayer: primaryPayer ? (primaryPayer as Payer) : undefined,
-        search: search as string | undefined,
-      };
+      const filters: any = {};
+      if (status) filters.status = status as ReferralStatus;
+      if (urgency) filters.urgency = urgency as Urgency;
+      if (payer) filters.primaryPayer = payer as Payer;
+      if (search) filters.search = search as string;
 
-      const result = await this.referralService.getReferrals(user.id, filters);
+      const referrals = await this.referralService.getReferrals(user.id, {
+        ...filters,
+        page: parseInt(page as string, 10),
+        limit: parseInt(limit as string, 10),
+      });
 
       res.status(200).json({
         success: true,
-        data: result,
+        data: referrals,
         message: "Referrals retrieved successfully",
       } as ApiResponse);
     } catch (error) {
       console.error("Get referrals error:", error);
       res.status(500).json({
         success: false,
-        error: "Referral retrieval failed",
+        error: "Failed to retrieve referrals",
         message: "An error occurred while retrieving referrals",
       } as ApiResponse);
     }
@@ -154,12 +156,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Get referral by ID error:", error);
       const statusCode =
-        error instanceof Error && error.message === "Referral not found"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Referral retrieval failed",
+        error: "Failed to retrieve referral",
         message:
           error instanceof Error
             ? error.message
@@ -185,9 +187,8 @@ export class ReferralController {
         return;
       }
 
-      const { id } = req.params;
+      const { id: referralId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
-      const updateData = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -199,9 +200,9 @@ export class ReferralController {
       }
 
       const referral = await this.referralService.updateReferral(
-        id,
+        referralId,
         user.id,
-        updateData
+        req.body
       );
 
       res.status(200).json({
@@ -212,13 +213,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Update referral error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Referral not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Referral update failed",
+        error: "Failed to update referral",
         message:
           error instanceof Error
             ? error.message
@@ -233,7 +233,7 @@ export class ReferralController {
    */
   async deleteReferral(req: Request, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id: referralId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
 
       if (!user) {
@@ -245,7 +245,7 @@ export class ReferralController {
         return;
       }
 
-      await this.referralService.deleteReferral(id, user.id);
+      await this.referralService.deleteReferral(referralId, user.id);
 
       res.status(200).json({
         success: true,
@@ -254,13 +254,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Delete referral error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Referral not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Referral deletion failed",
+        error: "Failed to delete referral",
         message:
           error instanceof Error
             ? error.message
@@ -270,7 +269,7 @@ export class ReferralController {
   }
 
   /**
-   * Add providers to shortlist
+   * Add provider to shortlist
    * POST /api/referrals/:id/shortlist
    */
   async addToShortlist(req: Request, res: Response): Promise<void> {
@@ -286,9 +285,8 @@ export class ReferralController {
         return;
       }
 
-      const { id } = req.params;
+      const { id: referralId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
-      const { providerIds, notes } = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -299,37 +297,37 @@ export class ReferralController {
         return;
       }
 
-      const shortlist = await this.referralService.addToShortlist(id, user.id, {
-        providerIds,
-        notes,
-      });
+      const shortlist = await this.referralService.addToShortlist(
+        referralId,
+        user.id,
+        req.body
+      );
 
-      res.status(200).json({
+      res.status(201).json({
         success: true,
         data: shortlist,
-        message: "Providers added to shortlist successfully",
+        message: "Provider added to shortlist successfully",
       } as ApiResponse);
     } catch (error) {
       console.error("Add to shortlist error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Referral not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Shortlist update failed",
+        error: "Failed to add provider to shortlist",
         message:
           error instanceof Error
             ? error.message
-            : "An error occurred while adding providers to shortlist",
+            : "An error occurred while adding provider to shortlist",
       } as ApiResponse);
     }
   }
 
   /**
    * Update shortlist status
-   * PUT /api/referrals/:id/shortlist/:shortlistId
+   * PATCH /api/referrals/:id/shortlist/:shortlistId
    */
   async updateShortlistStatus(req: Request, res: Response): Promise<void> {
     try {
@@ -344,9 +342,8 @@ export class ReferralController {
         return;
       }
 
-      const { id, shortlistId } = req.params;
+      const { id: referralId, shortlistId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
-      const { status, notes } = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -360,10 +357,7 @@ export class ReferralController {
       const shortlist = await this.referralService.updateShortlistStatus(
         shortlistId,
         user.id,
-        {
-          status,
-          notes,
-        }
+        req.body
       );
 
       res.status(200).json({
@@ -374,13 +368,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Update shortlist status error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Shortlist not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Shortlist update failed",
+        error: "Failed to update shortlist status",
         message:
           error instanceof Error
             ? error.message
@@ -395,7 +388,7 @@ export class ReferralController {
    */
   async removeFromShortlist(req: Request, res: Response): Promise<void> {
     try {
-      const { id, shortlistId } = req.params;
+      const { id: referralId, shortlistId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
 
       if (!user) {
@@ -416,13 +409,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Remove from shortlist error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Shortlist not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Shortlist removal failed",
+        error: "Failed to remove provider from shortlist",
         message:
           error instanceof Error
             ? error.message
@@ -437,7 +429,7 @@ export class ReferralController {
    */
   async getShortlist(req: Request, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id: referralId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
 
       if (!user) {
@@ -449,7 +441,10 @@ export class ReferralController {
         return;
       }
 
-      const shortlist = await this.referralService.getShortlist(id, user.id);
+      const shortlist = await this.referralService.getShortlist(
+        referralId,
+        user.id
+      );
 
       res.status(200).json({
         success: true,
@@ -459,23 +454,22 @@ export class ReferralController {
     } catch (error) {
       console.error("Get shortlist error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Referral not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Shortlist retrieval failed",
+        error: "Failed to retrieve shortlist",
         message:
           error instanceof Error
             ? error.message
-            : "An error occurred while retrieving shortlist",
+            : "An error occurred while retrieving the shortlist",
       } as ApiResponse);
     }
   }
 
   /**
-   * Batch add to shortlist
+   * Batch add providers to shortlist
    * POST /api/referrals/:id/shortlist/batch
    */
   async batchAddToShortlist(req: Request, res: Response): Promise<void> {
@@ -491,9 +485,8 @@ export class ReferralController {
         return;
       }
 
-      const { id } = req.params;
+      const { id: referralId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
-      const { providerIds, notes } = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -505,13 +498,12 @@ export class ReferralController {
       }
 
       const shortlist = await this.referralService.batchAddToShortlist(
-        id,
+        referralId,
         user.id,
-        providerIds,
-        notes
+        req.body
       );
 
-      res.status(200).json({
+      res.status(201).json({
         success: true,
         data: shortlist,
         message: "Providers added to shortlist successfully",
@@ -519,13 +511,12 @@ export class ReferralController {
     } catch (error) {
       console.error("Batch add to shortlist error:", error);
       const statusCode =
-        error instanceof Error &&
-        error.message === "Referral not found or access denied"
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Batch shortlist update failed",
+        error: "Failed to add providers to shortlist",
         message:
           error instanceof Error
             ? error.message
@@ -552,7 +543,6 @@ export class ReferralController {
       }
 
       const user = (req as unknown as AuthenticatedRequest).user;
-      const { referralIds, providerIds, message, attachments } = req.body;
 
       if (!user) {
         res.status(401).json({
@@ -563,37 +553,134 @@ export class ReferralController {
         return;
       }
 
-      const threads = await this.referralService.batchMessageProviders(
-        {
-          referralIds,
-          providerIds,
-          message,
-          attachments,
-        },
+      const result = await this.referralService.batchMessageProviders(
+        req.body,
         user.id
       );
 
       res.status(200).json({
         success: true,
-        data: threads,
-        message: "Messages sent successfully",
+        data: result,
+        message: "Batch message sent successfully",
       } as ApiResponse);
     } catch (error) {
       console.error("Batch message providers error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to send batch message",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while sending batch message",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Assign referral to another case manager
+   * POST /api/referrals/:id/assign
+   */
+  async assignReferral(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: "Please check your input data",
+          details: errors.array(),
+        } as ApiResponse);
+        return;
+      }
+
+      const { id: referralId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { assignedToUserId, notes } = req.body;
+
+      const referral = await this.referralService.assignReferral(
+        referralId,
+        user.id,
+        assignedToUserId,
+        notes
+      );
+
+      res.status(200).json({
+        success: true,
+        data: referral,
+        message: "Referral assigned successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Assign referral error:", error);
       const statusCode =
         error instanceof Error &&
-        error.message === "Some referrals not found or access denied"
+        (error.message.includes("not found") ||
+          error.message.includes("Access denied") ||
+          error.message.includes("not a case manager"))
+          ? 400
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to assign referral",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while assigning the referral",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get referral timeline events
+   * GET /api/referrals/:id/timeline
+   */
+  async getReferralTimeline(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: referralId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const timeline = await this.referralService.getReferralTimeline(
+        referralId,
+        user.id
+      );
+
+      res.status(200).json({
+        success: true,
+        data: timeline,
+        message: "Referral timeline retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get referral timeline error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
           ? 404
           : 500;
       res.status(statusCode).json({
         success: false,
-        error: "Batch messaging failed",
+        error: "Failed to retrieve referral timeline",
         message:
           error instanceof Error
             ? error.message
-            : "An error occurred while sending batch messages",
+            : "An error occurred while retrieving the referral timeline",
       } as ApiResponse);
     }
   }
 }
-

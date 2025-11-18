@@ -127,6 +127,22 @@ export class PlacementService {
       { reason }
     );
   }
+
+  async generatePacket(
+    placementId: string
+  ): Promise<ApiResponse<{ packetUrl: string }>> {
+    return await apiService.post<{ packetUrl: string }>(
+      `/api/placements/${placementId}/packet`
+    );
+  }
+
+  async getPacketAccessLogs(
+    placementId: string
+  ): Promise<ApiResponse<any[]>> {
+    return await apiService.get<any[]>(
+      `/api/placements/${placementId}/packet/access-logs`
+    );
+  }
 }
 
 export const placementService = new PlacementService();

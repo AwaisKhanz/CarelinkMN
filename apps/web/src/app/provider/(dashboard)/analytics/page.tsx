@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { ProviderSubscriptionGuard } from "@/components/auth/provider-subscription-guard";
 import {
@@ -28,12 +28,17 @@ import {
   FileText,
   Loader2,
   Download,
+  FileDown,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { usePageMetadata } from "../use-page-metadata";
 import { analyticsService, type ProviderAnalytics } from "@/lib/api";
 import { useProviderId } from "@/hooks/use-provider-data";
+import { useProviderHomes } from "@/hooks/use-provider-homes";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { MapPin } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
 import {
   ChartContainer,
@@ -76,6 +81,7 @@ function ProviderAnalyticsPageContent() {
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "custom">(
     "30d"
   );
+  const { homes } = useProviderHomes();
 
   useEffect(() => {
     setTitle("Analytics Dashboard");
@@ -127,6 +133,37 @@ function ProviderAnalyticsPageContent() {
 
     fetchAnalytics();
   }, [providerId, dateRange]);
+
+  // Calculate coverage by county/city - MUST be before any conditional returns
+  const coverageData = useMemo(() => {
+    const coverageMap = new Map<
+      string,
+      { county: string; city: string; homes: number; placements: number }
+    >();
+
+    // Count homes by county/city
+    homes.forEach((home) => {
+      const key = `${home.county || "Unknown"}|${home.city || "Unknown"}`;
+      const existing = coverageMap.get(key) || {
+        county: home.county || "Unknown",
+        city: home.city || "Unknown",
+        homes: 0,
+        placements: 0,
+      };
+      existing.homes += 1;
+      coverageMap.set(key, existing);
+    });
+
+    // Convert to array and sort by homes count
+    return Array.from(coverageMap.values())
+      .sort((a, b) => b.homes - a.homes)
+      .slice(0, 10); // Top 10 areas
+  }, [homes]);
+
+  // Calculate max for heatmap intensity
+  const maxHomes = coverageData.length > 0 
+    ? Math.max(...coverageData.map((d) => d.homes))
+    : 1;
 
   if (isLoading) {
     return (
@@ -183,6 +220,21 @@ function ProviderAnalyticsPageContent() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Select
+              value={dateRange}
+              onValueChange={(value: "7d" | "30d" | "90d" | "custom") =>
+                setDateRange(value)
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               onClick={() => {
@@ -271,27 +323,283 @@ function ProviderAnalyticsPageContent() {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                toast.success("Analytics data exported successfully");
+                toast.success("Analytics data exported to CSV successfully");
               }}
             >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              CSV
             </Button>
-            <Select
-              value={dateRange}
-              onValueChange={(value: "7d" | "30d" | "90d" | "custom") =>
-                setDateRange(value)
-              }
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!analytics) return;
+
+                try {
+                  const doc = new jsPDF();
+                  const fileName = `analytics-${dateRange}-${format(
+                    new Date(),
+                    "yyyy-MM-dd"
+                  )}.pdf`;
+
+                  // Title
+                  doc.setFontSize(18);
+                  doc.text("Provider Analytics Report", 14, 20);
+                  doc.setFontSize(12);
+                  doc.text(
+                    `Date Range: ${dateRange} | Generated: ${format(
+                      new Date(),
+                      "MMM d, yyyy"
+                    )}`,
+                    14,
+                    30
+                  );
+
+                  let yPos = 40;
+
+                  // Summary Metrics
+                  doc.setFontSize(14);
+                  doc.text("Summary Metrics", 14, yPos);
+                  yPos += 8;
+                  autoTable(doc, {
+                    startY: yPos,
+                    head: [["Metric", "Value"]],
+                    body: [
+                      ["Total Homes", analytics.summary.totalHomes.toString()],
+                      [
+                        "Active Openings",
+                        analytics.summary.activeOpenings.toString(),
+                      ],
+                      [
+                        "Total Placements",
+                        analytics.summary.totalPlacements.toString(),
+                      ],
+                      [
+                        "Completed Placements",
+                        analytics.summary.completedPlacements.toString(),
+                      ],
+                    ],
+                    theme: "striped",
+                    headStyles: { fillColor: [59, 130, 246] },
+                  });
+                  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+                  // Response Time Metrics
+                  doc.setFontSize(14);
+                  doc.text("Response Time Metrics", 14, yPos);
+                  yPos += 8;
+                  autoTable(doc, {
+                    startY: yPos,
+                    head: [["Metric", "Value"]],
+                    body: [
+                      [
+                        "Average Response Time (hours)",
+                        analytics.responseTime.averageResponseTime.toFixed(2),
+                      ],
+                      [
+                        "Response Rate (%)",
+                        analytics.responseTime.responseRate.toFixed(2),
+                      ],
+                      [
+                        "Total Messages",
+                        analytics.responseTime.totalMessages.toString(),
+                      ],
+                      [
+                        "Responded Messages",
+                        analytics.responseTime.respondedMessages.toString(),
+                      ],
+                    ],
+                    theme: "striped",
+                    headStyles: { fillColor: [59, 130, 246] },
+                  });
+                  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+                  // Fill Time Metrics
+                  doc.setFontSize(14);
+                  doc.text("Fill Time Metrics", 14, yPos);
+                  yPos += 8;
+                  autoTable(doc, {
+                    startY: yPos,
+                    head: [["Metric", "Value"]],
+                    body: [
+                      [
+                        "Average Fill Time (hours)",
+                        analytics.fillTime.averageFillTime.toFixed(2),
+                      ],
+                      [
+                        "Filled Openings",
+                        analytics.fillTime.filledOpenings.toString(),
+                      ],
+                    ],
+                    theme: "striped",
+                    headStyles: { fillColor: [59, 130, 246] },
+                  });
+                  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+                  // Conversion Funnel
+                  doc.setFontSize(14);
+                  doc.text("Conversion Funnel", 14, yPos);
+                  yPos += 8;
+                  autoTable(doc, {
+                    startY: yPos,
+                    head: [["Stage", "Count", "Conversion Rate"]],
+                    body: [
+                      [
+                        "Views",
+                        analytics.funnel.views.toString(),
+                        "100%",
+                      ],
+                      [
+                        "Inquiries",
+                        analytics.funnel.inquiries.toString(),
+                        `${analytics.funnel.conversionRate.viewsToInquiries.toFixed(2)}%`,
+                      ],
+                      [
+                        "Placements",
+                        analytics.funnel.placements.toString(),
+                        `${analytics.funnel.conversionRate.inquiriesToPlacements.toFixed(2)}%`,
+                      ],
+                    ],
+                    theme: "striped",
+                    headStyles: { fillColor: [59, 130, 246] },
+                  });
+                  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+                  // Payer Mix
+                  doc.setFontSize(14);
+                  doc.text("Payer Mix", 14, yPos);
+                  yPos += 8;
+                  autoTable(doc, {
+                    startY: yPos,
+                    head: [["Payer", "Count", "Percentage"]],
+                    body: analytics.payerMix.map((item) => [
+                      item.payer,
+                      item.count.toString(),
+                      `${item.percentage.toFixed(2)}%`,
+                    ]),
+                    theme: "striped",
+                    headStyles: { fillColor: [59, 130, 246] },
+                  });
+
+                  doc.save(fileName);
+                  toast.success("Analytics data exported to PDF successfully");
+                } catch (err) {
+                  console.error("Error generating PDF:", err);
+                  toast.error("Failed to export PDF");
+                }
+              }}
             >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!analytics) return;
+
+                try {
+                  // Create Excel-compatible CSV with BOM for UTF-8
+                  const csvRows: string[] = [];
+
+                  // Add BOM for Excel UTF-8 support
+                  const BOM = "\uFEFF";
+
+                  // Summary section
+                  csvRows.push("Summary Metrics");
+                  csvRows.push("Metric,Value");
+                  csvRows.push(`Total Homes,${analytics.summary.totalHomes}`);
+                  csvRows.push(
+                    `Active Openings,${analytics.summary.activeOpenings}`
+                  );
+                  csvRows.push(
+                    `Total Placements,${analytics.summary.totalPlacements}`
+                  );
+                  csvRows.push(
+                    `Completed Placements,${analytics.summary.completedPlacements}`
+                  );
+                  csvRows.push("");
+
+                  // Response Time section
+                  csvRows.push("Response Time Metrics");
+                  csvRows.push("Metric,Value");
+                  csvRows.push(
+                    `Average Response Time (hours),${analytics.responseTime.averageResponseTime.toFixed(2)}`
+                  );
+                  csvRows.push(
+                    `Response Rate (%),${analytics.responseTime.responseRate.toFixed(2)}`
+                  );
+                  csvRows.push(
+                    `Total Messages,${analytics.responseTime.totalMessages}`
+                  );
+                  csvRows.push(
+                    `Responded Messages,${analytics.responseTime.respondedMessages}`
+                  );
+                  csvRows.push("");
+
+                  // Fill Time section
+                  csvRows.push("Fill Time Metrics");
+                  csvRows.push("Metric,Value");
+                  csvRows.push(
+                    `Average Fill Time (hours),${analytics.fillTime.averageFillTime.toFixed(2)}`
+                  );
+                  csvRows.push(
+                    `Filled Openings,${analytics.fillTime.filledOpenings}`
+                  );
+                  csvRows.push("");
+
+                  // Funnel section
+                  csvRows.push("Conversion Funnel");
+                  csvRows.push("Stage,Count,Conversion Rate");
+                  csvRows.push(`Views,${analytics.funnel.views},100%`);
+                  csvRows.push(
+                    `Inquiries,${analytics.funnel.inquiries},${analytics.funnel.conversionRate.viewsToInquiries.toFixed(2)}%`
+                  );
+                  csvRows.push(
+                    `Placements,${analytics.funnel.placements},${analytics.funnel.conversionRate.inquiriesToPlacements.toFixed(2)}%`
+                  );
+                  csvRows.push("");
+
+                  // Payer Mix section
+                  csvRows.push("Payer Mix");
+                  csvRows.push("Payer,Count,Percentage");
+                  analytics.payerMix.forEach((item) => {
+                    csvRows.push(
+                      `${item.payer},${item.count},${item.percentage.toFixed(2)}%`
+                    );
+                  });
+
+                  // Create Excel-compatible file (CSV with .xlsx extension won't work, so use .csv but Excel will open it)
+                  // For proper Excel, we'd need xlsx library, but this creates an Excel-compatible CSV
+                  const csvContent = BOM + csvRows.join("\n");
+                  const blob = new Blob([csvContent], {
+                    type:
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8;",
+                  });
+                  const link = document.createElement("a");
+                  const url = URL.createObjectURL(blob);
+                  link.setAttribute("href", url);
+                  link.setAttribute(
+                    "download",
+                    `analytics-${dateRange}-${format(
+                      new Date(),
+                      "yyyy-MM-dd"
+                    )}.xlsx`
+                  );
+                  link.style.visibility = "hidden";
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  toast.success(
+                    "Analytics data exported to Excel successfully"
+                  );
+                } catch (err) {
+                  console.error("Error exporting Excel:", err);
+                  toast.error("Failed to export Excel file");
+                }
+              }}
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              Excel
+            </Button>
           </div>
         </div>
 
@@ -558,6 +866,79 @@ function ProviderAnalyticsPageContent() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Coverage Heatmap */}
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Coverage Heatmap
+            </CardTitle>
+            <CardDescription>
+              Geographic distribution of your care homes and service coverage
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {coverageData.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                <div className="text-center">
+                  <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No coverage data available</p>
+                  <p className="text-sm mt-1">
+                    Add care homes to see coverage visualization
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {coverageData.map((area, index) => {
+                    const intensity = (area.homes / maxHomes) * 100;
+                    const bgIntensity = Math.min(intensity / 10, 1); // Scale for background
+                    return (
+                      <div
+                        key={`${area.county}-${area.city}`}
+                        className="p-4 border border-border rounded-lg space-y-2 relative overflow-hidden"
+                        style={{
+                          backgroundColor: `hsl(var(--primary) / ${bgIntensity * 0.1})`,
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-sm">
+                              {area.city}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {area.county} County
+                            </p>
+                          </div>
+                          <Badge
+                            variant="healthcarePrimary"
+                            className="text-xs"
+                          >
+                            {area.homes} {area.homes === 1 ? "Home" : "Homes"}
+                          </Badge>
+                        </div>
+                        {/* Heatmap bar */}
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${intensity}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {coverageData.length >= 10 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Showing top 10 coverage areas
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </FeatureGate>
   );

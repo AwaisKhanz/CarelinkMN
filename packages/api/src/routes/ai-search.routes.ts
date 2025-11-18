@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import { AISearchController } from "../controllers/ai-search.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { CASE_MANAGER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const aiSearchController = new AISearchController();
@@ -14,6 +15,7 @@ router.use(authMiddleware.requireAuth);
 // Parse natural language query
 router.post(
   "/ai-search/parse",
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.SEARCH_AI_ASSISTED),
   [
     body("query")
       .notEmpty()
@@ -27,4 +29,3 @@ router.post(
 );
 
 export default router;
-

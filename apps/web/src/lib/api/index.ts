@@ -37,6 +37,8 @@ export { referralService, ReferralService } from "./services/referral.service";
 export { caseManagerService, CaseManagerService } from "./services/case-manager.service";
 export { aiSearchService, AISearchService } from "./services/ai-search.service";
 export { notificationService } from "./services/notification.service";
+export { messageTemplateService, MessageTemplateService } from "./services/message-template.service";
+export { dischargeCaseService, DischargeCaseService } from "./services/discharge-case.service";
 
 // Export types
 export type {
@@ -99,7 +101,8 @@ export type {
   UpdateLicenseData,
   LicenseStatus,
 } from "@carelink/types";
-export { OpeningStatus, Gender, Payer, PlacementStatus, ReferralStatus, ShortlistStatus, Urgency } from "@carelink/types";
+export { OpeningStatus, Gender, Payer, PlacementStatus, ReferralStatus, ShortlistStatus, Urgency, DischargeStatus, InviteResponse } from "@carelink/types";
+export type { MessageTemplate, CreateMessageTemplateData, UpdateMessageTemplateData } from "./services/message-template.service";
 export type {
   Provider,
   ProviderLicense,
@@ -125,6 +128,16 @@ export type {
   CaseManagerDashboard,
   CaseManagerStats,
   UpdateCaseManagerData,
+  DischargeCase,
+  CreateDischargeCaseData,
+  UpdateDischargeCaseData,
+  DischargeCaseFilters,
+  DischargeInvitation,
+  DischargeChecklist,
+  PaginatedDischargeCases,
+  HospitalSWDashboard,
+  HospitalSWAnalytics,
+  AIMatchingResult,
 } from "@carelink/types";
 export type {
   Notification,

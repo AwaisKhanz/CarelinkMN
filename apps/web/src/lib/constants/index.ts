@@ -15,6 +15,9 @@ import {
   Clock,
   AlertCircle as AlertCircleIcon,
   XCircle,
+  FileText,
+  Search,
+  Send,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -25,6 +28,8 @@ import {
   Gender,
   OpeningStatus,
   PlacementStatus,
+  DischargeStatus,
+  InviteResponse,
 } from "@carelink/types";
 import type { BadgeProps } from "@/components/ui/badge";
 
@@ -583,6 +588,230 @@ export const SHORTLIST_STATUS_CONFIG: Record<
   },
 };
 
+// ============================================
+// HOSPITAL SOCIAL WORKER / DISCHARGE CASE CONSTANTS
+// ============================================
+
+// Discharge Status configuration
+export interface DischargeStatusConfig {
+  label: string;
+  color: BadgeProps["variant"];
+  icon: LucideIcon;
+}
+
+export const DISCHARGE_STATUS_CONFIG: Record<
+  DischargeStatus,
+  DischargeStatusConfig
+> = {
+  [DischargeStatus.INTAKE]: {
+    label: "Intake",
+    color: "outline",
+    icon: FileText,
+  },
+  [DischargeStatus.MATCHING]: {
+    label: "Matching",
+    color: "healthcareInfo",
+    icon: Search,
+  },
+  [DischargeStatus.INVITES_SENT]: {
+    label: "Invites Sent",
+    color: "healthcareInfo",
+    icon: Send,
+  },
+  [DischargeStatus.RESPONSES_PENDING]: {
+    label: "Awaiting Responses",
+    color: "healthcareWarning",
+    icon: Clock,
+  },
+  [DischargeStatus.PLACEMENT_CONFIRMED]: {
+    label: "Placement Confirmed",
+    color: "healthcareSuccess",
+    icon: CheckCircle,
+  },
+  [DischargeStatus.DISCHARGED]: {
+    label: "Discharged",
+    color: "healthcareSuccess",
+    icon: CheckCircle,
+  },
+  [DischargeStatus.FOLLOW_UP]: {
+    label: "Follow Up",
+    color: "healthcareInfo",
+    icon: Calendar,
+  },
+  [DischargeStatus.COMPLETED]: {
+    label: "Completed",
+    color: "healthcareSuccess",
+    icon: CheckCircle,
+  },
+  [DischargeStatus.CANCELLED]: {
+    label: "Cancelled",
+    color: "destructive",
+    icon: XCircle,
+  },
+};
+
+// Invite Response configuration
+export interface InviteResponseConfig {
+  label: string;
+  color: BadgeProps["variant"];
+}
+
+export const INVITE_RESPONSE_CONFIG: Record<
+  InviteResponse,
+  InviteResponseConfig
+> = {
+  [InviteResponse.ACCEPTED]: {
+    label: "Accepted",
+    color: "healthcareSuccess",
+  },
+  [InviteResponse.DECLINED]: {
+    label: "Declined",
+    color: "destructive",
+  },
+  [InviteResponse.NO_AVAILABILITY]: {
+    label: "No Availability",
+    color: "healthcareWarning",
+  },
+};
+
+// Transport Types
+export interface TransportTypeOption {
+  value: string;
+  label: string;
+}
+
+export const TRANSPORT_TYPES: TransportTypeOption[] = [
+  { value: "AMBULANCE", label: "Ambulance" },
+  { value: "WHEELCHAIR_VAN", label: "Wheelchair Van" },
+  { value: "MEDICAL_TRANSPORT", label: "Medical Transport" },
+  { value: "FAMILY_TRANSPORT", label: "Family Transport" },
+  { value: "OTHER", label: "Other" },
+];
+
+// Transport types as a map for quick lookups
+export const TRANSPORT_TYPES_MAP: Record<string, string> = TRANSPORT_TYPES.reduce(
+  (acc, type) => {
+    acc[type.value] = type.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// Mobility Status Options
+export interface MobilityStatusOption {
+  value: string;
+  label: string;
+}
+
+export const MOBILITY_STATUS_OPTIONS: MobilityStatusOption[] = [
+  { value: "AMBULATORY", label: "Ambulatory" },
+  { value: "WHEELCHAIR", label: "Wheelchair" },
+  { value: "BEDBOUND", label: "Bedbound" },
+  { value: "ASSISTED_WALKING", label: "Assisted Walking" },
+];
+
+// Mobility status as a map for quick lookups
+export const MOBILITY_STATUS_MAP: Record<string, string> = MOBILITY_STATUS_OPTIONS.reduce(
+  (acc, status) => {
+    acc[status.value] = status.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// Cognitive Status Options
+export interface CognitiveStatusOption {
+  value: string;
+  label: string;
+}
+
+export const COGNITIVE_STATUS_OPTIONS: CognitiveStatusOption[] = [
+  { value: "ALERT", label: "Alert & Oriented" },
+  { value: "CONFUSED", label: "Confused" },
+  { value: "DEMENTIA", label: "Dementia" },
+  { value: "COMA", label: "Coma" },
+];
+
+// Cognitive status as a map for quick lookups
+export const COGNITIVE_STATUS_MAP: Record<string, string> = COGNITIVE_STATUS_OPTIONS.reduce(
+  (acc, status) => {
+    acc[status.value] = status.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// DME Needs Options
+export interface DMENeedOption {
+  value: string;
+  label: string;
+}
+
+export const DME_NEEDS_OPTIONS: DMENeedOption[] = [
+  { value: "WHEELCHAIR", label: "Wheelchair" },
+  { value: "WALKER", label: "Walker" },
+  { value: "HOSPITAL_BED", label: "Hospital Bed" },
+  { value: "OXYGEN", label: "Oxygen Equipment" },
+  { value: "CPAP", label: "CPAP Machine" },
+  { value: "LIFT", label: "Patient Lift" },
+];
+
+// DME needs as a map for quick lookups
+export const DME_NEEDS_MAP: Record<string, string> = DME_NEEDS_OPTIONS.reduce(
+  (acc, need) => {
+    acc[need.value] = need.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// Behavioral Concerns Options
+export interface BehavioralConcernOption {
+  value: string;
+  label: string;
+}
+
+export const BEHAVIORAL_CONCERNS_OPTIONS: BehavioralConcernOption[] = [
+  { value: "WANDERING", label: "Wandering" },
+  { value: "AGGRESSION", label: "Aggression" },
+  { value: "SELF_HARM", label: "Self-Harm Risk" },
+  { value: "ELOPEMENT", label: "Elopement Risk" },
+  { value: "SUNDOWNING", label: "Sundowning" },
+];
+
+// Behavioral concerns as a map for quick lookups
+export const BEHAVIORAL_CONCERNS_MAP: Record<string, string> = BEHAVIORAL_CONCERNS_OPTIONS.reduce(
+  (acc, concern) => {
+    acc[concern.value] = concern.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// Hospital Locations
+export interface HospitalLocationOption {
+  value: string;
+  label: string;
+}
+
+export const HOSPITAL_LOCATIONS: HospitalLocationOption[] = [
+  { value: "ICU", label: "ICU" },
+  { value: "MEDICAL_FLOOR", label: "Medical Floor" },
+  { value: "SURGICAL_FLOOR", label: "Surgical Floor" },
+  { value: "REHAB", label: "Rehabilitation" },
+  { value: "ER", label: "Emergency Room" },
+  { value: "OTHER", label: "Other" },
+];
+
+// Hospital locations as a map for quick lookups
+export const HOSPITAL_LOCATIONS_MAP: Record<string, string> = HOSPITAL_LOCATIONS.reduce(
+  (acc, location) => {
+    acc[location.value] = location.label;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
 // Payer labels
 export const PAYER_LABELS: Record<Payer, string> = {
   [Payer.MA]: "Medical Assistance",
@@ -760,6 +989,39 @@ export function getMedicalNeedLabel(need: string): string {
 
 export function getMobilityLevelLabel(level: string): string {
   return MOBILITY_LEVELS.find((opt) => opt.value === level)?.label || level;
+}
+
+// Helper functions for discharge case constants
+export function getDischargeStatusLabel(status: DischargeStatus): string {
+  return DISCHARGE_STATUS_CONFIG[status]?.label || status;
+}
+
+export function getInviteResponseLabel(response: InviteResponse): string {
+  return INVITE_RESPONSE_CONFIG[response]?.label || response;
+}
+
+export function getTransportTypeLabel(type: string): string {
+  return TRANSPORT_TYPES_MAP[type] || type;
+}
+
+export function getMobilityStatusLabel(status: string): string {
+  return MOBILITY_STATUS_MAP[status] || status;
+}
+
+export function getCognitiveStatusLabel(status: string): string {
+  return COGNITIVE_STATUS_MAP[status] || status;
+}
+
+export function getDMENeedLabel(need: string): string {
+  return DME_NEEDS_MAP[need] || need;
+}
+
+export function getBehavioralConcernLabel(concern: string): string {
+  return BEHAVIORAL_CONCERNS_MAP[concern] || concern;
+}
+
+export function getHospitalLocationLabel(location: string): string {
+  return HOSPITAL_LOCATIONS_MAP[location] || location;
 }
 
 // ============================================

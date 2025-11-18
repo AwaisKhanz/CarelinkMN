@@ -54,6 +54,7 @@ import { useProviderAnalytics } from "@/hooks/use-provider-analytics";
 import { MAX_OPENINGS_FETCH_LIMIT, RECENT_ITEMS_LIMIT } from "@carelink/utils";
 import {
   isOpeningExpiringSoon,
+  isOpeningExpired,
   calculateHoursUntilExpiry,
   getUrgencyBadgeConfig,
   getReferralStatusBadgeConfig,
@@ -127,6 +128,8 @@ function ProviderDashboardContent() {
   const [recentReferrals, setRecentReferrals] = useState<Referral[]>([]);
   const [recentPlacements, setRecentPlacements] = useState<Placement[]>([]);
   const [expiringOpenings, setExpiringOpenings] = useState<Opening[]>([]);
+  const [staleOpenings, setStaleOpenings] = useState<Opening[]>([]);
+  const [expiringLicenses, setExpiringLicenses] = useState<any[]>([]);
   const [isLoadingAdditional, setIsLoadingAdditional] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -239,7 +242,37 @@ function ProviderDashboardContent() {
           const expiring = openings.filter((opening) =>
             isOpeningExpiringSoon(opening.freshnessTimestamp)
           );
+          const stale = openings.filter((opening) =>
+            isOpeningExpired(opening.freshnessTimestamp)
+          );
           setExpiringOpenings(expiring);
+          setStaleOpenings(stale);
+        }
+
+        // Fetch expiring licenses if user can manage licenses
+        if (canManageLicenses && providerId) {
+          try {
+            const licensesResponse = await providerService.getProviderLicenses(
+              providerId
+            );
+            if (licensesResponse.success && licensesResponse.data) {
+              const now = new Date();
+              const thirtyDaysFromNow = new Date(
+                now.getTime() + 30 * 24 * 60 * 60 * 1000
+              );
+              const expiring = licensesResponse.data.filter((license: any) => {
+                if (license.status !== "ACTIVE") return false;
+                const expirationDate = new Date(license.expirationDate);
+                return (
+                  expirationDate >= now && expirationDate <= thirtyDaysFromNow
+                );
+              });
+              setExpiringLicenses(expiring);
+            }
+          } catch (err) {
+            console.error("Error fetching licenses:", err);
+            // Don't set error state for license fetch failures
+          }
         }
 
         // Process placements (if PRO+)
@@ -503,8 +536,72 @@ function ProviderDashboardContent() {
         </Card>
       )}
 
+      {/* Stale Openings Alert */}
+      {staleOpenings.length > 0 && (
+        <Card variant="healthcare" className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-foreground mb-1">
+                  {staleOpenings.length} Opening
+                  {staleOpenings.length !== 1 ? "s" : ""} Expired
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {staleOpenings.length === 1
+                    ? "This opening has expired and will not appear in search results. Refresh it to make it active again."
+                    : `${staleOpenings.length} openings have expired and will not appear in search results. Refresh them to make them active again.`}
+                </p>
+                <div className="space-y-2">
+                  {staleOpenings.slice(0, 3).map((opening) => (
+                    <div
+                      key={opening.id}
+                      className="flex items-center justify-between p-2 rounded bg-background/50 border border-border"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {opening.home?.name || "Unknown Home"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {opening.spotsAvailable} spot
+                          {opening.spotsAvailable !== 1 ? "s" : ""} available
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          router.push(`/provider/openings/${opening.id}`)
+                        }
+                        aria-label={`View opening for ${opening.home?.name || "home"}`}
+                      >
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                  {staleOpenings.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{staleOpenings.length - 3} more opening
+                      {staleOpenings.length - 3 !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {canManageOpenings && (
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/provider/openings")}
+                >
+                  Manage Openings
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Expiring Openings Alert */}
-      {expiringOpenings.length > 0 && (
+      {expiringOpenings.length > 0 && staleOpenings.length === 0 && (
         <Card variant="healthcare" className="border-warning/50 bg-warning/5">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -567,6 +664,76 @@ function ProviderDashboardContent() {
                   onClick={() => router.push("/provider/openings")}
                 >
                   Manage Openings
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* License Expiry Alert */}
+      {expiringLicenses.length > 0 && canManageLicenses && (
+        <Card variant="healthcare" className="border-warning/50 bg-warning/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-foreground mb-1">
+                  {expiringLicenses.length} License
+                  {expiringLicenses.length !== 1 ? "s" : ""} Expiring Soon
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {expiringLicenses.length === 1
+                    ? "One of your licenses will expire within 30 days. Renew it to maintain compliance."
+                    : `${expiringLicenses.length} of your licenses will expire within 30 days. Renew them to maintain compliance.`}
+                </p>
+                <div className="space-y-2">
+                  {expiringLicenses.slice(0, 3).map((license: any) => {
+                    const expirationDate = new Date(license.expirationDate);
+                    const daysUntilExpiry = Math.ceil(
+                      (expirationDate.getTime() - Date.now()) /
+                        (1000 * 60 * 60 * 24)
+                    );
+                    return (
+                      <div
+                        key={license.id}
+                        className="flex items-center justify-between p-2 rounded bg-background/50 border border-border"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            {license.licenseType} - {license.licenseNumber}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Expires in {daysUntilExpiry} day
+                            {daysUntilExpiry !== 1 ? "s" : ""} •{" "}
+                            {format(expirationDate, "MMM d, yyyy")}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push("/provider/licenses")}
+                          aria-label={`View license ${license.licenseNumber}`}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {expiringLicenses.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{expiringLicenses.length - 3} more license
+                      {expiringLicenses.length - 3 !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {canManageLicenses && (
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/provider/licenses")}
+                >
+                  Manage Licenses
                 </Button>
               )}
             </div>

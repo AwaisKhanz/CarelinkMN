@@ -23,7 +23,8 @@ function CaseManagerDashboardContent() {
   const { caseManager, caseManagerId } = useCaseManager();
   const router = useRouter();
   const { setTitle, setDescription } = usePageMetadata();
-  const { canCreateReferrals, canViewSearch } = useRolePermissions();
+  const { canCreateReferrals, hasCapability } = useRolePermissions();
+  const canViewSearch = hasCapability(CASE_MANAGER_CAPABILITIES.SEARCH_VIEW);
   
   const [dashboard, setDashboard] = useState<CaseManagerDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);

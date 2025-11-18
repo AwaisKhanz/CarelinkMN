@@ -9,6 +9,8 @@ import { MessageThread, ThreadStatus as ThreadStatusEnum } from "@carelink/types
 import { SearchFilterBar } from "@/components/ui/search-filter-bar";
 import { ThreadItem } from "./thread-item";
 import { SLABadge, calculateHoursSince, minutesToHours } from "@/components/ui/sla-badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
 
 interface ThreadListProps {
   threads: MessageThread[];
@@ -24,6 +26,11 @@ interface ThreadListProps {
   getThreadContext?: (thread: MessageThread) => string;
   getThreadTitle?: (thread: MessageThread) => string;
   isLoading?: boolean;
+  selectedThreads?: Set<string>;
+  onThreadToggle?: (threadId: string) => void;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
+  onBatchMessage?: () => void;
 }
 
 export function ThreadList({
@@ -40,8 +47,14 @@ export function ThreadList({
   getThreadContext,
   getThreadTitle,
   isLoading = false,
+  selectedThreads = new Set(),
+  onThreadToggle,
+  onSelectAll,
+  onDeselectAll,
+  onBatchMessage,
 }: ThreadListProps) {
   const totalUnread = threads.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+  const isBatchMode = !!onThreadToggle;
 
   return (
     <Card variant="healthcare" className="w-96 flex flex-col">
@@ -74,6 +87,25 @@ export function ThreadList({
           />
         </div>
 
+        {/* Bulk Actions Toolbar */}
+        {isBatchMode && selectedThreads.size > 0 && (
+          <BulkActionsToolbar
+            selectedCount={selectedThreads.size}
+            totalCount={threads.length}
+            onSelectAll={onSelectAll || (() => {})}
+            onDeselectAll={onDeselectAll || (() => {})}
+            actions={[
+              {
+                label: "Send Message",
+                icon: <MessageSquare className="h-4 w-4" />,
+                onClick: onBatchMessage || (() => {}),
+                variant: "default",
+              },
+            ]}
+            showSelectAll={false}
+          />
+        )}
+
         {/* Thread List */}
         <ScrollArea className="flex-1">
           <div className="space-y-2 relative">
@@ -92,14 +124,25 @@ export function ThreadList({
               </div>
             ) : (
               threads.map((thread) => (
-                <ThreadItem
-                  key={thread.id}
-                  thread={thread}
-                  isSelected={selectedThread?.id === thread.id}
-                  onSelect={() => onThreadSelect(thread)}
-                  getThreadContext={getThreadContext}
-                  getThreadTitle={getThreadTitle}
-                />
+                <div key={thread.id} className="flex items-start gap-2">
+                  {isBatchMode && onThreadToggle && (
+                    <Checkbox
+                      checked={selectedThreads.has(thread.id)}
+                      onCheckedChange={() => onThreadToggle(thread.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-3"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <ThreadItem
+                      thread={thread}
+                      isSelected={selectedThread?.id === thread.id}
+                      onSelect={() => onThreadSelect(thread)}
+                      getThreadContext={getThreadContext}
+                      getThreadTitle={getThreadTitle}
+                    />
+                  </div>
+                </div>
               ))
             )}
           </div>

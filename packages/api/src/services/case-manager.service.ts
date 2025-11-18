@@ -257,6 +257,56 @@ export class CaseManagerService {
   }
 
   /**
+   * Get all case managers in the same organization with their user IDs
+   */
+  async getCaseManagersInOrganization(userId: string): Promise<Array<CaseManager & { userId?: string }>> {
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { organizationId: true },
+      });
+
+      if (!user || !user.organizationId) {
+        throw new Error("User or organization not found");
+      }
+
+      const caseManagers = await db.caseManager.findMany({
+        where: {
+          organizationId: user.organizationId,
+          isActive: true,
+        },
+        include: {
+          organization: true,
+        },
+        orderBy: [
+          { lastName: "asc" },
+          { firstName: "asc" },
+        ],
+      });
+
+      // Get user IDs for each case manager by matching email
+      const caseManagersWithUserIds = await Promise.all(
+        caseManagers.map(async (cm) => {
+          const user = await db.user.findUnique({
+            where: { email: cm.email },
+            select: { id: true },
+          });
+          const mapped = this.mapCaseManagerToType(cm);
+          return {
+            ...mapped,
+            userId: user?.id,
+          };
+        })
+      );
+
+      return caseManagersWithUserIds;
+    } catch (error) {
+      console.error("Get case managers in organization error:", error);
+      throw new Error("Failed to retrieve case managers in organization");
+    }
+  }
+
+  /**
    * Map Prisma case manager to CaseManager type
    */
   private mapCaseManagerToType(

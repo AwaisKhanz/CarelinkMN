@@ -8,7 +8,12 @@ const authMiddleware = new AuthMiddleware();
 
 // All audit routes require admin privileges
 router.use(authMiddleware.requireAuth);
-router.use(authMiddleware.requireRole(['ADMIN', 'SUPER_ADMIN']));
+router.use(authMiddleware.requireAnyPermission([
+  'system:audit:view',
+  'audit:view',
+  'system:view',
+  'system:manage',
+]));
 
 // Search audit logs
 router.get('/search', auditController.searchLogs);

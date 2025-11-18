@@ -23,11 +23,23 @@ import {
   Loader2,
   Edit,
   AlertCircle,
+  Download,
+  History,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { placementService, Placement, PlacementStatus } from "@/lib/api";
 import { usePageMetadata } from "../../use-page-metadata";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { FeatureGate } from "@/components/subscription/feature-gate";
 import {
@@ -51,6 +63,10 @@ function PlacementDetailContent() {
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingPacket, setIsGeneratingPacket] = useState(false);
+  const [packetAccessLogs, setPacketAccessLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [showAccessLogs, setShowAccessLogs] = useState(false);
   const { canManagePlacements } = usePermissions();
 
   const placementId = params?.placementId as string | undefined;
@@ -82,6 +98,64 @@ function PlacementDetailContent() {
 
     fetchPlacement();
   }, [placementId, user?.organizationId]);
+
+  // Fetch packet access logs when placement is loaded
+  useEffect(() => {
+    if (placement?.id && canManagePlacements) {
+      fetchPacketAccessLogs();
+    }
+  }, [placement?.id, canManagePlacements]);
+
+  const fetchPacketAccessLogs = async () => {
+    if (!placementId) return;
+
+    try {
+      setIsLoadingLogs(true);
+      const response = await placementService.getPacketAccessLogs(placementId);
+      if (response.success && response.data) {
+        setPacketAccessLogs(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching packet access logs:", err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const handleGeneratePacket = async () => {
+    if (!placementId) return;
+
+    setIsGeneratingPacket(true);
+    try {
+      const response = await placementService.generatePacket(placementId);
+      if (response.success && response.data) {
+        toast.success("Placement packet generated successfully");
+        // Refresh placement data
+        const placementResponse = await placementService.getPlacementById(
+          placementId
+        );
+        if (placementResponse.success && placementResponse.data) {
+          setPlacement(placementResponse.data);
+        }
+        // Refresh access logs
+        await fetchPacketAccessLogs();
+      } else {
+        toast.error(response.message || "Failed to generate packet");
+      }
+    } catch (err) {
+      console.error("Error generating packet:", err);
+      toast.error("Failed to generate placement packet");
+    } finally {
+      setIsGeneratingPacket(false);
+    }
+  };
+
+  const handleDownloadPacket = () => {
+    if (placement?.packetUrl) {
+      window.open(placement.packetUrl, "_blank");
+      // Log access (this would typically be done on the backend when the URL is accessed)
+    }
+  };
 
   const getResidentDisplay = (placement: Placement | null) => {
     if (!placement) {
@@ -292,18 +366,73 @@ function PlacementDetailContent() {
             </CardHeader>
             <CardContent className="space-y-3">
               {canManagePlacements && (
-                <Button
-                  className="w-full justify-start"
-                  variant="healthcare"
-                  onClick={() =>
-                    router.push(
-                      `/provider/placements/${placement.id}/edit?step=details`
-                    )
-                  }
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Update Placement Details
-                </Button>
+                <>
+                  <Button
+                    className="w-full justify-start"
+                    variant="healthcare"
+                    onClick={() =>
+                      router.push(
+                        `/provider/placements/${placement.id}/edit?step=details`
+                      )
+                    }
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Update Placement Details
+                  </Button>
+
+                  {/* Packet Generation Section */}
+                  <Separator className="my-3" />
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">Placement Packet</h4>
+                    {!placement.packetGeneratedAt ? (
+                      <Button
+                        className="w-full justify-start"
+                        variant="outline"
+                        onClick={handleGeneratePacket}
+                        disabled={isGeneratingPacket}
+                      >
+                        {isGeneratingPacket ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Generate Packet
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Generated:{" "}
+                          {format(
+                            new Date(placement.packetGeneratedAt),
+                            "MMM d, yyyy 'at' h:mm a"
+                          )}
+                        </div>
+                        <Button
+                          className="w-full justify-start"
+                          variant="outline"
+                          onClick={handleDownloadPacket}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Packet
+                        </Button>
+                        <Button
+                          className="w-full justify-start"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAccessLogs(true)}
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          View Access Logs ({packetAccessLogs.length})
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -357,6 +486,64 @@ function PlacementDetailContent() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Packet Access Logs Dialog */}
+        <Dialog open={showAccessLogs} onOpenChange={setShowAccessLogs}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Packet Access Logs</DialogTitle>
+              <DialogDescription>
+                View who has accessed the placement packet and when
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px]">
+              {isLoadingLogs ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : packetAccessLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No access logs found yet.</p>
+                  <p className="text-sm mt-1">
+                    Access logs will appear here when the packet is downloaded.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {packetAccessLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-3 border border-border rounded-lg space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            User ID: {log.accessedBy}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(log.accessedAt), "MMM d, yyyy h:mm a")}
+                        </span>
+                      </div>
+                      {log.ipAddress && (
+                        <div className="text-xs text-muted-foreground">
+                          IP: {log.ipAddress}
+                        </div>
+                      )}
+                      {log.userAgent && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {log.userAgent}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

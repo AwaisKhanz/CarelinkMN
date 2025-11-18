@@ -88,6 +88,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.RESIDENTS_VIEW),
   placementController.getPlacements.bind(placementController)
 );
 
@@ -99,6 +100,7 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.RESIDENTS_VIEW),
   placementController.getPlacementById.bind(placementController)
 );
 
@@ -169,6 +171,18 @@ router.post(
   authMiddleware.requireAuth,
   authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.generatePacket.bind(placementController)
+);
+
+// Get packet access logs
+router.get(
+  "/placements/:placementId/packet/access-logs",
+  [
+    param("placementId").isUUID().withMessage("Invalid placement ID"),
+  ],
+  validate([]),
+  authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
+  placementController.getPacketAccessLogs.bind(placementController)
 );
 
 export default router;

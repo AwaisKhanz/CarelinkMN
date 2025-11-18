@@ -17,5 +17,6 @@ export { PlacementsTab } from "./placements-tab";
 export { StatusUpdateDialog } from "./status-update-dialog";
 export { BatchMessageDialog } from "./batch-message-dialog";
 export { DeleteReferralDialog } from "./delete-referral-dialog";
+export { AssignmentDialog } from "./assignment-dialog";
 
 

@@ -11,10 +11,20 @@ import {
 } from "@/lib/api";
 import { ThreadStatus as ThreadStatusEnum } from "@carelink/types";
 import { toast } from "sonner";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Send } from "lucide-react";
 import { ThreadList } from "./thread-list";
 import { MessageView } from "./message-view";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export interface MessageCenterProps {
   // Filter parameters
@@ -59,6 +69,10 @@ export function MessageCenter({
   const [totalPages, setTotalPages] = useState(1);
   const [attachments, setAttachments] = useState<MessageAttachmentData[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [selectedThreads, setSelectedThreads] = useState<Set<string>>(new Set());
+  const [batchMessageDialogOpen, setBatchMessageDialogOpen] = useState(false);
+  const [batchMessageContent, setBatchMessageContent] = useState("");
+  const [isSendingBatch, setIsSendingBatch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -256,6 +270,68 @@ export function MessageCenter({
     }
   };
 
+  // Handle batch messaging
+  const handleThreadToggle = (threadId: string) => {
+    setSelectedThreads((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(threadId)) {
+        newSet.delete(threadId);
+      } else {
+        newSet.add(threadId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedThreads(new Set(threads.map((t) => t.id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedThreads(new Set());
+  };
+
+  const handleBatchMessage = async () => {
+    if (selectedThreads.size === 0 || !batchMessageContent.trim()) return;
+
+    setIsSendingBatch(true);
+    try {
+      const threadIds = Array.from(selectedThreads);
+      const results = await Promise.allSettled(
+        threadIds.map((threadId) =>
+          messagingService.sendMessage({
+            threadId,
+            content: batchMessageContent.trim(),
+          })
+        )
+      );
+
+      const successful = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (successful > 0) {
+        toast.success(
+          `Message sent to ${successful} conversation${successful > 1 ? "s" : ""}`
+        );
+        setBatchMessageDialogOpen(false);
+        setBatchMessageContent("");
+        setSelectedThreads(new Set());
+        // Refresh threads
+        await fetchThreads();
+      }
+      if (failed > 0) {
+        toast.error(
+          `Failed to send message to ${failed} conversation${failed > 1 ? "s" : ""}`
+        );
+      }
+    } catch (err) {
+      console.error("Error sending batch messages:", err);
+      toast.error("Failed to send batch messages");
+    } finally {
+      setIsSendingBatch(false);
+    }
+  };
+
   const handleUpdateStatus = async (threadId: string, status: ThreadStatusEnum) => {
     try {
       const response = await messagingService.updateThreadStatus(threadId, status);
@@ -321,6 +397,11 @@ export function MessageCenter({
         getThreadContext={getThreadContext}
         getThreadTitle={getThreadTitle}
         isLoading={isSearching}
+        selectedThreads={selectedThreads}
+        onThreadToggle={handleThreadToggle}
+        onSelectAll={handleSelectAll}
+        onDeselectAll={handleDeselectAll}
+        onBatchMessage={() => setBatchMessageDialogOpen(true)}
       />
 
       {/* Message View */}
@@ -342,6 +423,65 @@ export function MessageCenter({
         getThreadContext={getThreadContext}
         getThreadTitle={getThreadTitle}
       />
+
+      {/* Batch Message Dialog */}
+      <Dialog
+        open={batchMessageDialogOpen}
+        onOpenChange={setBatchMessageDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Send Batch Message</DialogTitle>
+            <DialogDescription>
+              Send a message to {selectedThreads.size} selected conversation
+              {selectedThreads.size !== 1 ? "s" : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="batch-message">Message</Label>
+              <Textarea
+                id="batch-message"
+                placeholder="Enter your message here..."
+                value={batchMessageContent}
+                onChange={(e) => setBatchMessageContent(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBatchMessageDialogOpen(false);
+                  setBatchMessageContent("");
+                }}
+                disabled={isSendingBatch}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBatchMessage}
+                disabled={!batchMessageContent.trim() || isSendingBatch}
+                variant="healthcare"
+              >
+                {isSendingBatch ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send to {selectedThreads.size} Conversation
+                    {selectedThreads.size !== 1 ? "s" : ""}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,12 +3,13 @@ import { body, param, query } from "express-validator";
 import { AmenityController } from "../controllers/amenity.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const amenityController = new AmenityController();
 const authMiddleware = new AuthMiddleware();
 
-// Get all available amenities
+// Get all available amenities (public - no auth required for viewing)
 router.get(
   "/amenities",
   [
@@ -22,7 +23,7 @@ router.get(
   amenityController.getAmenities
 );
 
-// Get amenity categories
+// Get amenity categories (public - no auth required)
 router.get(
   "/amenities/categories",
   validate([]),
@@ -55,6 +56,7 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.HOMES_MANAGE),
   amenityController.createCustomAmenity
 );
 
@@ -64,6 +66,7 @@ router.get(
   [param("providerId").isUUID().withMessage("Invalid provider ID")],
   validate([]),
   authMiddleware.requireAuth,
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   amenityController.getProviderCustomAmenities
 );
 

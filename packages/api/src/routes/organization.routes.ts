@@ -48,7 +48,7 @@ router.get(
   organizationController.getOrganizations.bind(organizationController)
 );
 
-// Create organization
+// Create organization (public - for registration)
 router.post(
   "/organizations",
   authMiddleware.requireAuth,
@@ -90,10 +90,15 @@ router.get(
   organizationController.getOrganizationById.bind(organizationController)
 );
 
-// Update organization
+// Update organization (requires admin or organization member)
 router.put(
   "/organizations/:id",
   authMiddleware.requireAuth,
+  authMiddleware.requireAnyPermission([
+    'organizations:manage',
+    'organizations:update',
+    'system:manage',
+  ]),
   [
     param("id").isUUID().withMessage("Invalid organization ID"),
     body("name").optional().trim().isLength({ min: 1 }).withMessage("Organization name cannot be empty"),

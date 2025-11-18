@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import { OnboardingController } from '../controllers/onboarding.controller';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
+import { PROVIDER_PERMISSIONS } from '../lib/rbac';
 
 const router: Router = Router();
 const onboardingController = new OnboardingController();
@@ -17,6 +18,7 @@ router.use(authMiddleware.requireAuth);
  * @access Private (Provider only)
  */
 router.get('/state',
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
   validate([]),
   onboardingController.getOnboardingState
 );
@@ -27,6 +29,7 @@ router.get('/state',
  * @access Private (Provider only)
  */
 router.put('/step',
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PROFILE_MANAGE),
   [
     body('step')
       .isInt({ min: 0, max: 4 })
@@ -50,6 +53,7 @@ router.put('/step',
  * @access Private (Provider only)
  */
 router.post('/complete',
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PROFILE_MANAGE),
   validate([]),
   onboardingController.completeOnboarding
 );
@@ -61,6 +65,11 @@ router.post('/complete',
  * @access Private (Admin only)
  */
 router.get('/admin/pending',
+  authMiddleware.requireAnyPermission([
+    'system:providers:approve',
+    'providers:approve',
+    'system:manage',
+  ]),
   validate([]),
   onboardingController.getPendingReviews
 );
@@ -71,6 +80,11 @@ router.get('/admin/pending',
  * @access Private (Admin only)
  */
 router.put('/admin/review/:providerId',
+  authMiddleware.requireAnyPermission([
+    'system:providers:approve',
+    'providers:approve',
+    'system:manage',
+  ]),
   [
     param('providerId')
       .isUUID()
@@ -94,6 +108,11 @@ router.put('/admin/review/:providerId',
  * @access Private (Admin only)
  */
 router.put('/admin/reset/:providerId',
+  authMiddleware.requireAnyPermission([
+    'system:providers:approve',
+    'providers:approve',
+    'system:manage',
+  ]),
   [
     param('providerId')
       .isUUID()

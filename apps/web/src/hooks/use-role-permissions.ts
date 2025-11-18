@@ -94,6 +94,10 @@ export function useRolePermissions() {
       role,
       CASE_MANAGER_CAPABILITIES.REFERRALS_DELETE
     ),
+    canAssignReferrals: hasCapability(
+      role,
+      CASE_MANAGER_CAPABILITIES.REFERRALS_ASSIGN
+    ),
     canUseAISearch: hasCapability(
       role,
       CASE_MANAGER_CAPABILITIES.SEARCH_AI_ASSISTED

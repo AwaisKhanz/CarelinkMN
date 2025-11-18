@@ -7,7 +7,7 @@ import { useCaseManagerId } from "@/hooks/use-case-manager-data";
 import { usePageMetadata } from "../use-page-metadata";
 import { referralService, Referral } from "@/lib/api";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format as formatDate } from "date-fns";
 import { ReferralStatus, Urgency, Payer } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -31,6 +31,13 @@ import {
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
+import { ExportDialog, ExportFormat } from "@/components/case-manager/export-dialog";
+import {
+  exportToCSV,
+  exportToPDF,
+  REFERRAL_EXPORT_COLUMNS,
+  formatReferralForExport,
+} from "@/lib/utils/export-utils";
 
 function CaseManagerReferralsPageContent() {
   const router = useRouter();
@@ -41,10 +48,11 @@ function CaseManagerReferralsPageContent() {
     canCreateReferrals,
     canUpdateReferrals,
     canDeleteReferrals,
-    canManageShortlist,
+    hasCapability,
     canBatchOutreach,
     canExportData,
   } = useRolePermissions();
+  const canManageShortlist = hasCapability(CASE_MANAGER_CAPABILITIES.SHORTLIST_MANAGE);
 
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,6 +83,7 @@ function CaseManagerReferralsPageContent() {
   const [isAddingToShortlist, setIsAddingToShortlist] = useState(false);
   const [isSendingBatchMessage, setIsSendingBatchMessage] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   useEffect(() => {
     setTitle("My Cases");
@@ -296,7 +305,7 @@ function CaseManagerReferralsPageContent() {
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleExport = async (format: ExportFormat, selectedColumns: string[]) => {
     if (!caseManagerId && !user?.id) {
       toast.error("Unable to export: User not found");
       return;
@@ -331,54 +340,49 @@ function CaseManagerReferralsPageContent() {
         return;
       }
 
-      const csvRows: string[] = [];
+      // Format referrals for export
+      const formattedData = allReferrals.map(formatReferralForExport);
 
-      // Header
-      csvRows.push(
-        "Referral #,Client,Age,Gender,Status,Urgency,Payer,Target Move Date,Shortlisted Providers,Created Date,Updated Date"
+      // Filter columns based on selection
+      const columns = REFERRAL_EXPORT_COLUMNS.filter((col) =>
+        selectedColumns.includes(col.id)
       );
 
-      // Data rows
-      allReferrals.forEach((referral) => {
-        const shortlistCount = referral.shortlist?.length || 0;
-        const targetMoveDate = referral.targetMoveDate
-          ? format(new Date(referral.targetMoveDate), "MMM d, yyyy")
-          : "N/A";
-        const createdDate = format(new Date(referral.createdAt), "MMM d, yyyy");
-        const updatedDate = format(new Date(referral.updatedAt), "MMM d, yyyy");
+      // Generate filename
+      const timestamp = formatDate(new Date(), "yyyy-MM-dd");
+      const filename = `referrals-${timestamp}`;
 
-        csvRows.push(
-          `${referral.referralNumber},"${referral.clientInitials}",${referral.clientAge},${referral.clientGender},${referral.status},${referral.urgency},${referral.primaryPayer},"${targetMoveDate}",${shortlistCount},"${createdDate}","${updatedDate}"`
+      // Export based on format
+      if (format === "csv") {
+        exportToCSV(formattedData, columns, `${filename}.csv`);
+        toast.success(
+          `Successfully exported ${allReferrals.length} referral${allReferrals.length !== 1 ? "s" : ""} to CSV`
         );
-      });
+      } else if (format === "pdf") {
+        exportToPDF(
+          formattedData,
+          columns,
+          `${filename}.pdf`,
+          "Referrals Export Report"
+        );
+        toast.success(
+          `Successfully exported ${allReferrals.length} referral${allReferrals.length !== 1 ? "s" : ""} to PDF`
+        );
+      }
 
-      // Create and download CSV
-      const csvContent = csvRows.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `referrals-${format(new Date(), "yyyy-MM-dd")}.csv`
-      );
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast.success(
-        `Successfully exported ${allReferrals.length} referral${allReferrals.length !== 1 ? "s" : ""} to CSV`
-      );
+      setExportDialogOpen(false);
     } catch (err) {
-      console.error("Error exporting CSV:", err);
+      console.error("Error exporting:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to export referrals"
       );
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    setExportDialogOpen(true);
   };
 
   // Use hooks for columns, stats, and selection
@@ -491,16 +495,28 @@ function CaseManagerReferralsPageContent() {
             isLoading={isLoading}
             onReferralClick={handleViewReferral}
             onStatusChange={async (referralId, newStatus) => {
+              // Optimistic update
+              setReferrals((prev) =>
+                prev.map((r) =>
+                  r.id === referralId ? { ...r, status: newStatus } : r
+                )
+              );
+
               try {
                 const response = await referralService.updateReferral(referralId, {
                   status: newStatus,
                 });
                 if (response.success) {
+                  // Refresh to get latest data
                   await fetchReferrals();
                 } else {
+                  // Revert optimistic update on error
+                  await fetchReferrals();
                   throw new Error(response.message || "Failed to update status");
                 }
               } catch (err) {
+                // Revert optimistic update on error
+                await fetchReferrals();
                 throw err;
               }
             }}
@@ -534,6 +550,17 @@ function CaseManagerReferralsPageContent() {
         referralNumbers={selectedReferrals.map((id) => referrals.find((r) => r.id === id)?.referralNumber || id)}
         onConfirm={handleConfirmBatchMessage}
         isSending={isSendingBatchMessage}
+      />
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        onExport={handleExport}
+        columns={REFERRAL_EXPORT_COLUMNS}
+        title="Export Referrals"
+        description="Choose export format and select columns to include in your export"
+        isExporting={isExporting}
       />
     </div>
   );

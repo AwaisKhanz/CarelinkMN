@@ -72,6 +72,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uploadService } from "@/lib/api";
 import { CreateLicenseData } from "@carelink/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
 
 function ProviderLicensesPageContent() {
   const { user } = useAuth();
@@ -111,6 +113,14 @@ function ProviderLicensesPageContent() {
     }>
   >([]);
   const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [selectedLicenses, setSelectedLicenses] = useState<Set<string>>(
+    new Set()
+  );
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [bulkStatusValue, setBulkStatusValue] = useState<LicenseStatus | "">(
+    ""
+  );
+  const [isUpdatingBulkStatus, setIsUpdatingBulkStatus] = useState(false);
 
   useEffect(() => {
     setTitle("License Management");
@@ -342,6 +352,67 @@ function ProviderLicensesPageContent() {
   };
 
   const stats = getStats();
+
+  // Handle selection
+  const handleToggleSelection = (licenseId: string) => {
+    setSelectedLicenses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(licenseId)) {
+        newSet.delete(licenseId);
+      } else {
+        newSet.add(licenseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedLicenses(new Set(licenses.map((l) => l.id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedLicenses(new Set());
+  };
+
+  // Handle bulk status update
+  const handleBulkStatusUpdate = async () => {
+    if (selectedLicenses.size === 0 || !bulkStatusValue || !providerId) return;
+
+    setIsUpdatingBulkStatus(true);
+    try {
+      const licenseIds = Array.from(selectedLicenses);
+      const results = await Promise.allSettled(
+        licenseIds.map((licenseId) =>
+          providerService.updateProviderLicense(providerId, licenseId, {
+            status: bulkStatusValue,
+          } as UpdateLicenseData & { status: LicenseStatus })
+        )
+      );
+
+      const successful = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (successful > 0) {
+        toast.success(
+          `Updated status for ${successful} license${successful > 1 ? "s" : ""}`
+        );
+        setBulkStatusDialogOpen(false);
+        setBulkStatusValue("");
+        setSelectedLicenses(new Set());
+        await fetchLicenses();
+      }
+      if (failed > 0) {
+        toast.error(
+          `Failed to update ${failed} license${failed > 1 ? "s" : ""}`
+        );
+      }
+    } catch (err) {
+      console.error("Error updating bulk status:", err);
+      toast.error("Failed to update license statuses");
+    } finally {
+      setIsUpdatingBulkStatus(false);
+    }
+  };
 
   if (isLoading && licenses.length === 0) {
     return (
@@ -727,197 +798,235 @@ function ProviderLicensesPageContent() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {licenses.map((license) => {
-            const expirationStatus = getExpirationStatus(
-              license.expirationDate
-            );
-            const isExpiringSoon = expirationStatus.status === "expiring";
+        <div className="space-y-4">
+          {/* Bulk Actions Toolbar */}
+          {canManageLicenses && selectedLicenses.size > 0 && (
+            <BulkActionsToolbar
+              selectedCount={selectedLicenses.size}
+              totalCount={licenses.length}
+              onSelectAll={handleSelectAll}
+              onDeselectAll={handleDeselectAll}
+              actions={[
+                {
+                  label: "Update Status",
+                  icon: <RefreshCw className="h-4 w-4" />,
+                  onClick: () => setBulkStatusDialogOpen(true),
+                  variant: "outline",
+                },
+              ]}
+            />
+          )}
 
-            return (
-              <Card
-                key={license.id}
-                variant="healthcare"
-                className={cn(
-                  "transition-all",
-                  isExpiringSoon && "border-warning",
-                  license.status === LicenseStatus.EXPIRED &&
-                    "border-destructive"
-                )}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-semibold">
-                          {LICENSE_TYPES_MAP[license.licenseType] ||
-                            license.licenseType}
-                        </h3>
-                        <LicenseStatusBadge
-                          status={license.status}
-                          className="whitespace-nowrap"
-                        />
-                        {license.status === LicenseStatus.PENDING && (
-                          <Badge variant="outline" className="text-xs">
-                            Awaiting Admin Review
-                          </Badge>
-                        )}
-                        {license.status === LicenseStatus.ACTIVE &&
-                          license.verifiedAt && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-success"
-                            >
-                              Approved
+          <div className="grid gap-4">
+            {licenses.map((license) => {
+              const expirationStatus = getExpirationStatus(
+                license.expirationDate
+              );
+              const isExpiringSoon = expirationStatus.status === "expiring";
+
+              return (
+                <Card
+                  key={license.id}
+                  variant="healthcare"
+                  className={cn(
+                    "transition-all",
+                    isExpiringSoon && "border-warning",
+                    license.status === LicenseStatus.EXPIRED &&
+                      "border-destructive",
+                    selectedLicenses.has(license.id) && "ring-2 ring-primary"
+                  )}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      {canManageLicenses && (
+                        <div className="flex items-center">
+                          <Checkbox
+                            checked={selectedLicenses.has(license.id)}
+                            onCheckedChange={() =>
+                              handleToggleSelection(license.id)
+                            }
+                            aria-label={`Select ${license.licenseNumber}`}
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h3 className="text-lg font-semibold">
+                            {LICENSE_TYPES_MAP[license.licenseType] ||
+                              license.licenseType}
+                          </h3>
+                          <LicenseStatusBadge
+                            status={license.status}
+                            className="whitespace-nowrap"
+                          />
+                          {license.status === LicenseStatus.PENDING && (
+                            <Badge variant="outline" className="text-xs">
+                              Awaiting Admin Review
                             </Badge>
                           )}
-                        {(license.status === LicenseStatus.SUSPENDED ||
-                          license.status === LicenseStatus.REVOKED) && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs text-destructive"
-                          >
-                            Review Required
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium">License #:</span>
-                          <span>{license.licenseNumber}</span>
+                          {license.status === LicenseStatus.ACTIVE &&
+                            license.verifiedAt && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs text-success"
+                              >
+                                Approved
+                              </Badge>
+                            )}
+                          {(license.status === LicenseStatus.SUSPENDED ||
+                            license.status === LicenseStatus.REVOKED) && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-destructive"
+                            >
+                              Review Required
+                            </Badge>
+                          )}
                         </div>
-                        {license.issuingState && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">State:</span>
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium">License #:</span>
+                            <span>{license.licenseNumber}</span>
+                          </div>
+                          {license.issuingState && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">State:</span>
+                              <span>
+                                {STATES_MAP[license.issuingState] ||
+                                  license.issuingState}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span className="font-medium">Issue Date:</span>
                             <span>
-                              {STATES_MAP[license.issuingState] ||
-                                license.issuingState}
+                              {format(
+                                new Date(license.issueDate),
+                                "MMM d, yyyy"
+                              )}
                             </span>
                           </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">Issue Date:</span>
-                          <span>
-                            {format(new Date(license.issueDate), "MMM d, yyyy")}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span className="font-medium">Expires:</span>
+                            <span
+                              className={cn(
+                                "font-semibold",
+                                expirationStatus.color
+                              )}
+                            >
+                              {format(
+                                new Date(license.expirationDate),
+                                "MMM d, yyyy"
+                              )}
+                              {expirationStatus.status === "expiring" && (
+                                <span className="ml-1">
+                                  ({expirationStatus.days} days)
+                                </span>
+                              )}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">Expires:</span>
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              expirationStatus.color
-                            )}
-                          >
+                        {license.verifiedAt && (
+                          <div className="text-xs text-muted-foreground">
+                            Verified on{" "}
                             {format(
-                              new Date(license.expirationDate),
+                              new Date(license.verifiedAt),
                               "MMM d, yyyy"
                             )}
-                            {expirationStatus.status === "expiring" && (
-                              <span className="ml-1">
-                                ({expirationStatus.days} days)
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                      {license.verifiedAt && (
-                        <div className="text-xs text-muted-foreground">
-                          Verified on{" "}
-                          {format(new Date(license.verifiedAt), "MMM d, yyyy")}
-                          {license.verifiedBy && " by admin"}
-                        </div>
-                      )}
-                      {license.status === LicenseStatus.PENDING &&
-                        !license.verifiedAt && (
-                          <div className="text-xs text-warning">
-                            ⏳ Awaiting admin review and verification
+                            {license.verifiedBy && " by admin"}
                           </div>
                         )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {license.documentUrl && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            window.open(license.documentUrl, "_blank")
-                          }
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Document
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon">
-                            <Edit className="h-4 w-4" />
+                        {license.status === LicenseStatus.PENDING &&
+                          !license.verifiedAt && (
+                            <div className="text-xs text-warning">
+                              ⏳ Awaiting admin review and verification
+                            </div>
+                          )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {license.documentUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              window.open(license.documentUrl, "_blank")
+                            }
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Document
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {canManageLicenses && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  router.push(
-                                    `/provider/licenses/${license.id}/edit`
-                                  )
-                                }
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit License
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {canManageLicenses && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(
+                                      `/provider/licenses/${license.id}/edit`
+                                    )
+                                  }
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit License
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setLicenseToRenew(license);
+                                    // Set default new expiration date to 1 year from current expiration
+                                    const currentExpiration = new Date(
+                                      license.expirationDate
+                                    );
+                                    const newExpiration = new Date(
+                                      currentExpiration
+                                    );
+                                    newExpiration.setFullYear(
+                                      newExpiration.getFullYear() + 1
+                                    );
+                                    setNewExpirationDate(
+                                      newExpiration.toISOString().split("T")[0]
+                                    );
+                                    setRenewDialogOpen(true);
+                                  }}
+                                >
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Renew License
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setLicenseToDelete(license);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete License
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {!canManageLicenses && (
+                              <DropdownMenuItem disabled>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Only (Owner Only)
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setLicenseToRenew(license);
-                                  // Set default new expiration date to 1 year from current expiration
-                                  const currentExpiration = new Date(
-                                    license.expirationDate
-                                  );
-                                  const newExpiration = new Date(
-                                    currentExpiration
-                                  );
-                                  newExpiration.setFullYear(
-                                    newExpiration.getFullYear() + 1
-                                  );
-                                  setNewExpirationDate(
-                                    newExpiration.toISOString().split("T")[0]
-                                  );
-                                  setRenewDialogOpen(true);
-                                }}
-                              >
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Renew License
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setLicenseToDelete(license);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete License
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {!canManageLicenses && (
-                            <DropdownMenuItem disabled>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Only (Owner Only)
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -943,6 +1052,76 @@ function ProviderLicensesPageContent() {
         confirmLabel="Delete"
         variant="destructive"
       />
+
+      {/* Bulk Status Update Dialog */}
+      <Dialog
+        open={bulkStatusDialogOpen}
+        onOpenChange={setBulkStatusDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update License Status</DialogTitle>
+            <DialogDescription>
+              Update the status for {selectedLicenses.size} selected license
+              {selectedLicenses.size !== 1 ? "s" : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-status">New Status</Label>
+              <Select
+                value={bulkStatusValue}
+                onValueChange={(value) =>
+                  setBulkStatusValue(value as LicenseStatus)
+                }
+              >
+                <SelectTrigger id="bulk-status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={LicenseStatus.ACTIVE}>Active</SelectItem>
+                  <SelectItem value={LicenseStatus.PENDING}>Pending</SelectItem>
+                  <SelectItem value={LicenseStatus.EXPIRED}>Expired</SelectItem>
+                  <SelectItem value={LicenseStatus.SUSPENDED}>
+                    Suspended
+                  </SelectItem>
+                  <SelectItem value={LicenseStatus.REVOKED}>Revoked</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBulkStatusDialogOpen(false);
+                  setBulkStatusValue("");
+                }}
+                disabled={isUpdatingBulkStatus}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkStatusUpdate}
+                disabled={!bulkStatusValue || isUpdatingBulkStatus}
+                variant="healthcare"
+              >
+                {isUpdatingBulkStatus ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Update {selectedLicenses.size} License
+                    {selectedLicenses.size !== 1 ? "s" : ""}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Renew License Dialog */}
       <Dialog open={renewDialogOpen} onOpenChange={setRenewDialogOpen}>

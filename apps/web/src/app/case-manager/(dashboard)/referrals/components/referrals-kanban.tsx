@@ -16,6 +16,7 @@ import { ReferralStatus } from "@carelink/types";
 import { Referral } from "@/lib/api";
 import { ReferralKanbanColumn } from "./referral-kanban-column";
 import { ReferralKanbanCard } from "./referral-kanban-card";
+import { KanbanStatusChangeDialog } from "./kanban-status-change-dialog";
 import { toast } from "sonner";
 
 interface ReferralsKanbanProps {
@@ -42,6 +43,13 @@ export function ReferralsKanban({
   onStatusChange,
 }: ReferralsKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    referralId: string;
+    referralNumber: string;
+    currentStatus: ReferralStatus;
+    newStatus: ReferralStatus;
+  } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -93,14 +101,51 @@ export function ReferralsKanban({
       return;
     }
 
-    if (onStatusChange) {
-      try {
-        await onStatusChange(referralId, newStatus);
-        toast.success("Referral status updated");
-      } catch (error) {
-        console.error("Failed to update referral status:", error);
-        toast.error("Failed to update referral status");
+    // Check if confirmation is required for this status change
+    const requiresConfirmation =
+      newStatus === ReferralStatus.CLOSED ||
+      newStatus === ReferralStatus.CANCELLED ||
+      newStatus === ReferralStatus.PLACED;
+
+    if (requiresConfirmation) {
+      // Show confirmation dialog
+      setPendingStatusChange({
+        referralId,
+        referralNumber: referral.referralNumber,
+        currentStatus: referral.status,
+        newStatus,
+      });
+    } else {
+      // Update immediately for non-critical status changes
+      if (onStatusChange) {
+        try {
+          await onStatusChange(referralId, newStatus);
+          toast.success("Referral status updated");
+        } catch (error) {
+          console.error("Failed to update referral status:", error);
+          toast.error("Failed to update referral status");
+        }
       }
+    }
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!pendingStatusChange || !onStatusChange) return;
+
+    setIsUpdating(true);
+    try {
+      await onStatusChange(
+        pendingStatusChange.referralId,
+        pendingStatusChange.newStatus
+      );
+      toast.success("Referral status updated successfully");
+      setPendingStatusChange(null);
+    } catch (error) {
+      console.error("Failed to update referral status:", error);
+      toast.error("Failed to update referral status");
+      // Don't close dialog on error so user can retry
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -144,6 +189,23 @@ export function ReferralsKanban({
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Status Change Confirmation Dialog */}
+      {pendingStatusChange && (
+        <KanbanStatusChangeDialog
+          open={!!pendingStatusChange}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingStatusChange(null);
+            }
+          }}
+          referralNumber={pendingStatusChange.referralNumber}
+          currentStatus={pendingStatusChange.currentStatus}
+          newStatus={pendingStatusChange.newStatus}
+          onConfirm={handleConfirmStatusChange}
+          isUpdating={isUpdating}
+        />
+      )}
     </DndContext>
   );
 }

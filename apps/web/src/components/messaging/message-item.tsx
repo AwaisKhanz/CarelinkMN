@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, FileText, Image as ImageIcon, Download } from "lucide-react";
 import { Message } from "@carelink/types";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -130,10 +130,25 @@ export function MessageItem({ message, isOwnMessage }: MessageItemProps) {
             })}
           </div>
         )}
-        {isOwnMessage && message.isRead && (
+        {isOwnMessage && (
           <div className="flex items-center gap-1 mt-2">
-            <CheckCircle2 className="h-3 w-3 text-primary-foreground/70" />
-            <span className="text-xs text-primary-foreground/70">Read</span>
+            {message.isRead ? (
+              <>
+                <CheckCircle2 className="h-3 w-3 text-success" />
+                <span className="text-xs text-muted-foreground">
+                  Read
+                  {message.readAt &&
+                    ` ${formatDistanceToNow(new Date(message.readAt), {
+                      addSuffix: true,
+                    })}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3 w-3 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground/70">Sent</span>
+              </>
+            )}
           </div>
         )}
       </div>

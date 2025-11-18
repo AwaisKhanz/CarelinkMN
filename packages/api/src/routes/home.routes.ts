@@ -220,7 +220,11 @@ router.get(
   [param("homeId").isUUID().withMessage("Invalid home ID")],
   validate([]),
   authMiddleware.requireAuth,
-  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.DASHBOARD_VIEW),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.SERVICES_MANAGE,
+    PROVIDER_PERMISSIONS.HOMES_MANAGE,
+    PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
+  ]),
   homeController.getHomeServices.bind(homeController)
 );
 

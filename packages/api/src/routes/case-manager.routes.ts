@@ -3,6 +3,7 @@ import { param, body, query } from "express-validator";
 import { CaseManagerController } from "../controllers/case-manager.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { CASE_MANAGER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const caseManagerController = new CaseManagerController();
@@ -16,6 +17,7 @@ router.get(
   "/case-managers/:userId",
   [param("userId").isUUID().withMessage("Invalid user ID")],
   validate([]),
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.DASHBOARD_VIEW),
   caseManagerController.getCaseManagerByUserId.bind(caseManagerController)
 );
 
@@ -38,6 +40,7 @@ router.put(
     body("isActive").optional().isBoolean().withMessage("Is active must be a boolean"),
   ],
   validate([]),
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.PROFILE_MANAGE),
   caseManagerController.updateCaseManager.bind(caseManagerController)
 );
 
@@ -46,6 +49,7 @@ router.get(
   "/case-managers/:userId/dashboard",
   [param("userId").isUUID().withMessage("Invalid user ID")],
   validate([]),
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.DASHBOARD_VIEW),
   caseManagerController.getDashboard.bind(caseManagerController)
 );
 
@@ -64,7 +68,15 @@ router.get(
       .withMessage("End date must be a valid ISO 8601 date"),
   ],
   validate([]),
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.ANALYTICS_VIEW),
   caseManagerController.getStats.bind(caseManagerController)
+);
+
+// Get case managers in the same organization
+router.get(
+  "/case-managers/organization/members",
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.REFERRALS_ASSIGN),
+  caseManagerController.getCaseManagersInOrganization.bind(caseManagerController)
 );
 
 export default router;

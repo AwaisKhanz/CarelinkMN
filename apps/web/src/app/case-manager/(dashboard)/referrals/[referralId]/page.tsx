@@ -35,6 +35,7 @@ import {
   StatusUpdateDialog,
   BatchMessageDialog,
   DeleteReferralDialog,
+  AssignmentDialog,
 } from "./components";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
@@ -49,9 +50,11 @@ function ReferralDetailPageContent() {
   const {
     canUpdateReferrals,
     canDeleteReferrals,
-    canManageShortlist,
     canBatchOutreach,
+    canAssignReferrals,
+    hasCapability,
   } = useRolePermissions();
+  const canManageShortlist = hasCapability(CASE_MANAGER_CAPABILITIES.SHORTLIST_MANAGE);
 
   const [referral, setReferral] = useState<Referral | null>(null);
   const [shortlist, setShortlist] = useState<ReferralShortlist[]>([]);
@@ -70,6 +73,8 @@ function ReferralDetailPageContent() {
   const [batchMessageDialogOpen, setBatchMessageDialogOpen] = useState(false);
   const [batchMessageContent, setBatchMessageContent] = useState("");
   const [isSendingBatchMessage, setIsSendingBatchMessage] = useState(false);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   useEffect(() => {
     if (referral) {
@@ -262,6 +267,30 @@ function ReferralDetailPageContent() {
     }
   };
 
+  const handleAssign = async (assignedToUserId: string, notes?: string) => {
+    if (!referral) return;
+
+    setIsAssigning(true);
+    try {
+      const response = await referralService.assignReferral(
+        referral.id,
+        assignedToUserId,
+        notes
+      );
+      if (response.success) {
+        toast.success("Referral assigned successfully");
+        await fetchReferralData();
+      } else {
+        throw new Error(response.message || "Failed to assign referral");
+      }
+    } catch (err) {
+      console.error("Error assigning referral:", err);
+      throw err;
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   const handleBatchMessage = async () => {
     if (!referral || shortlist.length === 0) {
       toast.error("No providers in shortlist to message");
@@ -379,8 +408,10 @@ function ReferralDetailPageContent() {
             onUpdateStatus={() => setStatusUpdateDialogOpen(true)}
             onCloseReferral={handleCloseReferral}
             onDelete={handleDelete}
+            onAssign={() => setAssignmentDialogOpen(true)}
             canUpdate={canUpdateReferrals}
             canDelete={canDeleteReferrals}
+            canAssign={canAssignReferrals}
           />
         </div>
       </div>
@@ -481,6 +512,7 @@ function ReferralDetailPageContent() {
         onSend={handleBatchMessage}
         isSending={isSendingBatchMessage}
         recipientCount={shortlist.length}
+        referral={referral}
       />
 
       <DeleteReferralDialog
@@ -489,6 +521,15 @@ function ReferralDetailPageContent() {
         referral={referral}
         onConfirm={confirmDelete}
         isDeleting={isDeleting}
+      />
+
+      <AssignmentDialog
+        open={assignmentDialogOpen}
+        onOpenChange={setAssignmentDialogOpen}
+        referralId={referral.id}
+        currentCaseManagerId={referral.caseManagerId}
+        onAssign={handleAssign}
+        isAssigning={isAssigning}
       />
     </div>
   );

@@ -389,5 +389,58 @@ export class PlacementController {
       } as ApiResponse);
     }
   }
+
+  async getPacketAccessLogs(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: errors.array()[0].msg,
+        } as ApiResponse);
+        return;
+      }
+
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { placementId } = req.params;
+
+      const logs = await this.placementService.getPacketAccessLogs(
+        placementId,
+        user.id
+      );
+
+      res.status(200).json({
+        success: true,
+        data: logs,
+        message: "Packet access logs retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get packet access logs error:", error);
+      const statusCode =
+        error instanceof Error && error.message === "Access denied"
+          ? 403
+          : error instanceof Error && error.message === "Placement not found"
+          ? 404
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to retrieve packet access logs",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving packet access logs",
+      } as ApiResponse);
+    }
+  }
 }
 

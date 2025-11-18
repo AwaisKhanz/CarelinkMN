@@ -839,5 +839,36 @@ export class PlacementService {
       throw error;
     }
   }
+
+  // Get packet access logs for a placement
+  async getPacketAccessLogs(
+    placementId: string,
+    userId: string
+  ): Promise<any[]> {
+    try {
+      const hasAccess = await this.verifyPlacementAccess(userId, placementId);
+      if (!hasAccess) {
+        throw new Error("Access denied");
+      }
+
+      const logs = await db.packetAccessLog.findMany({
+        where: { placementId },
+        include: {
+          placement: {
+            select: {
+              id: true,
+              packetGeneratedAt: true,
+            },
+          },
+        },
+        orderBy: { accessedAt: "desc" },
+      });
+
+      return logs;
+    } catch (error) {
+      console.error("Get packet access logs error:", error);
+      throw error;
+    }
+  }
 }
 

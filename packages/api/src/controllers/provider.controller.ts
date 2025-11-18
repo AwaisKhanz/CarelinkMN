@@ -36,6 +36,7 @@ export class ProviderController {
     this.removeStaff = this.removeStaff.bind(this);
     this.resendStaffInvite = this.resendStaffInvite.bind(this);
     this.getProviderStats = this.getProviderStats.bind(this);
+    this.respondToReferral = this.respondToReferral.bind(this);
   }
 
   // Create new provider
@@ -1160,6 +1161,66 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving provider statistics",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Respond to a referral - Update provider's own shortlist status
+   * POST /api/providers/:providerId/referrals/:referralId/respond
+   */
+  async respondToReferral(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: "Please check your input data",
+          details: errors.array(),
+        } as ApiResponse);
+        return;
+      }
+
+      const { providerId, referralId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const result = await this.providerService.respondToReferral(
+        providerId,
+        referralId,
+        user.id,
+        req.body
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "Referral response updated successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Respond to referral error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : error instanceof Error && error.message.includes("Access denied")
+          ? 403
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to respond to referral",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while responding to referral",
       } as ApiResponse);
     }
   }

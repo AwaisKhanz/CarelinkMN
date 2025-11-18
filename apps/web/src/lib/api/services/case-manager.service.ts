@@ -59,6 +59,13 @@ export class CaseManagerService {
     
     return apiService.get<CaseManagerStats>(url);
   }
+
+  /**
+   * Get all case managers in the same organization
+   */
+  async getCaseManagersInOrganization(): Promise<ApiResponse<CaseManager[]>> {
+    return apiService.get<CaseManager[]>('/api/case-managers/organization/members');
+  }
 }
 
 export const caseManagerService = new CaseManagerService();

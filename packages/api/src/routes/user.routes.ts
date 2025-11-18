@@ -28,7 +28,11 @@ router.post('/deactivate',
 // Suspend user (admin only)
 router.post('/:userId/suspend',
   authMiddleware.requireAuth,
-  authMiddleware.requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authMiddleware.requireAnyPermission([
+    'users:manage',
+    'users:update',
+    'system:manage',
+  ]),
   [
     param('userId').isUUID(),
     body('reason').optional().trim().isLength({ min: 1 }),
@@ -39,7 +43,11 @@ router.post('/:userId/suspend',
 // Activate user (admin only)
 router.post('/:userId/activate',
   authMiddleware.requireAuth,
-  authMiddleware.requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authMiddleware.requireAnyPermission([
+    'users:manage',
+    'users:update',
+    'system:manage',
+  ]),
   [
     param('userId').isUUID(),
   ],

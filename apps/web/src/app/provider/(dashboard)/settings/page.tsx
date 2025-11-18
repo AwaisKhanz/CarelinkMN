@@ -37,7 +37,9 @@ type ProviderProfileUpdateInput = Parameters<
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../use-page-metadata";
 import { useProviderId, useProviderData } from "@/hooks/use-provider-data";
+import { useProviderHomes } from "@/hooks/use-provider-homes";
 import { FileUploader, UploadedFile } from "@/components/ui/file-uploader";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { SUBSCRIPTION_PLANS } from "@/lib/constants";
 import { billingService } from "@/lib/services/billing.service";
@@ -73,6 +75,8 @@ function ProviderSettingsPageContent() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const providerId = useProviderId();
   const [isLoading, setIsLoading] = useState(true);
+  const [licenses, setLicenses] = useState<any[]>([]);
+  const { homes } = useProviderHomes();
   const [isSaving, setIsSaving] = useState(false);
   const [logoFiles, setLogoFiles] = useState<UploadedFile[]>([]);
   const [coverImageFiles, setCoverImageFiles] = useState<UploadedFile[]>([]);
@@ -180,6 +184,22 @@ function ProviderSettingsPageContent() {
 
     handleStripeRedirect();
   }, [user?.id, refetch]);
+
+  // Fetch licenses for completeness check
+  useEffect(() => {
+    if (providerId) {
+      providerService
+        .getProviderLicenses(providerId)
+        .then((response) => {
+          if (response.success && response.data) {
+            setLicenses(response.data);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching licenses:", err);
+        });
+    }
+  }, [providerId]);
 
   // Get provider data from context
   useEffect(() => {
@@ -334,6 +354,26 @@ function ProviderSettingsPageContent() {
     );
   }
 
+  // Calculate profile completeness
+  const calculateCompleteness = () => {
+    const checks = {
+      description: !!provider.description && provider.description.trim().length > 0,
+      logo: !!provider.logo,
+      coverImage: !!provider.coverImage,
+      activeLicense: licenses.some((l) => l.status === "ACTIVE"),
+      hasHomes: homes.length > 0,
+      responseTime: !!provider.responseTimeHours,
+    };
+
+    const totalChecks = Object.keys(checks).length;
+    const completedChecks = Object.values(checks).filter(Boolean).length;
+    const percentage = Math.round((completedChecks / totalChecks) * 100);
+
+    return { checks, percentage, completedChecks, totalChecks };
+  };
+
+  const completeness = calculateCompleteness();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -345,6 +385,138 @@ function ProviderSettingsPageContent() {
           </p>
         </div>
       </div>
+
+      {/* Profile Completeness Indicator */}
+      <Card variant="healthcare">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Profile Completeness
+          </CardTitle>
+          <CardDescription>
+            Complete your profile to improve visibility and trust
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">
+                {completeness.percentage}% Complete
+              </span>
+              <span className="text-muted-foreground">
+                {completeness.completedChecks} of {completeness.totalChecks} items
+              </span>
+            </div>
+            <Progress value={completeness.percentage} className="h-2" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.description ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span
+                className={
+                  completeness.checks.description
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Description
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.logo ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span
+                className={
+                  completeness.checks.logo
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Logo
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.coverImage ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span
+                className={
+                  completeness.checks.coverImage
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Cover Image
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.activeLicense ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-warning" />
+              )}
+              <span
+                className={
+                  completeness.checks.activeLicense
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Active License
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.hasHomes ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-warning" />
+              )}
+              <span
+                className={
+                  completeness.checks.hasHomes
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Care Homes
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {completeness.checks.responseTime ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span
+                className={
+                  completeness.checks.responseTime
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                Response Time
+              </span>
+            </div>
+          </div>
+          {completeness.percentage < 100 && (
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                Complete all items to maximize your profile visibility and
+                improve trust with case managers.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         {/* Verification Status */}

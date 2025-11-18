@@ -1423,4 +1423,74 @@ export class ProviderService {
       );
     }
   }
+
+  /**
+   * Respond to a referral - Update provider's own shortlist status
+   */
+  async respondToReferral(
+    providerId: string,
+    referralId: string,
+    userId: string,
+    data: {
+      status: string;
+      notes?: string;
+    }
+  ): Promise<any> {
+    try {
+      // Verify user has access to this provider
+      const hasAccess = await this.verifyProviderAccess(userId, providerId);
+      if (!hasAccess) {
+        throw new Error("Access denied");
+      }
+
+      // Find the shortlist entry for this provider and referral
+      const shortlist = await db.referralShortlist.findUnique({
+        where: {
+          referralId_providerId: {
+            referralId,
+            providerId,
+          },
+        },
+      });
+
+      if (!shortlist) {
+        throw new Error("Referral not found in shortlist");
+      }
+
+      // Update shortlist status
+      const updateData: Prisma.ReferralShortlistUpdateInput = {
+        status: data.status as any,
+      };
+
+      // Update timestamps based on status
+      if (data.status === "CONTACTED") {
+        updateData.contactedAt = new Date();
+      } else if (data.status === "RESPONDED") {
+        updateData.respondedAt = new Date();
+      }
+
+      if (data.notes !== undefined) {
+        updateData.notes = data.notes;
+      }
+
+      const updated = await db.referralShortlist.update({
+        where: { id: shortlist.id },
+        data: updateData,
+        include: {
+          referral: {
+            select: {
+              id: true,
+              referralNumber: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      return updated;
+    } catch (error) {
+      console.error("Respond to referral error:", error);
+      throw error;
+    }
+  }
 }

@@ -470,6 +470,182 @@ export class ReferralService {
   }
 
   /**
+   * Assign referral to another case manager in the same organization
+   */
+  async assignReferral(
+    referralId: string,
+    currentUserId: string,
+    assignedToUserId: string,
+    notes?: string
+  ): Promise<Referral> {
+    try {
+      // Get current user and their organization
+      const currentUser = await db.user.findUnique({
+        where: { id: currentUserId },
+        include: { organization: true },
+      });
+
+      if (!currentUser || !currentUser.organizationId) {
+        throw new Error("Current user or organization not found");
+      }
+
+      // Get the referral
+      const referral = await db.referral.findUnique({
+        where: { id: referralId },
+        include: {
+          caseManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              organizationId: true,
+            },
+          },
+        },
+      });
+
+      if (!referral) {
+        throw new Error("Referral not found");
+      }
+
+      // Verify referral is in the same organization
+      if (referral.organizationId !== currentUser.organizationId) {
+        throw new Error("Access denied: Referral belongs to a different organization");
+      }
+
+      // Get the target user (assigned to)
+      const assignedToUser = await db.user.findUnique({
+        where: { id: assignedToUserId },
+        include: { organization: true },
+      });
+
+      if (!assignedToUser || !assignedToUser.organizationId) {
+        throw new Error("Assigned user not found");
+      }
+
+      // Verify target user is in the same organization and is a case manager
+      if (assignedToUser.organizationId !== currentUser.organizationId) {
+        throw new Error("Access denied: Cannot assign to user in different organization");
+      }
+
+      if (assignedToUser.role !== UserRole.CASE_MANAGER) {
+        throw new Error("Access denied: Can only assign to case managers");
+      }
+
+      // Get the target case manager profile
+      const assignedToCaseManagerProfile = await db.caseManager.findFirst({
+        where: {
+          organizationId: assignedToUser.organizationId,
+          email: assignedToUser.email,
+        },
+      });
+
+      // Update referral assignment
+      const previousCaseManagerId = referral.caseManagerId;
+      const updatedReferral = await db.referral.update({
+        where: { id: referralId },
+        data: {
+          caseManagerId: assignedToUserId,
+          caseManagerProfileId: assignedToCaseManagerProfile?.id || null,
+          internalNotes: notes
+            ? `${referral.internalNotes || ""}\n\n[Assignment Note - ${new Date().toISOString()}]: ${notes}`.trim()
+            : referral.internalNotes,
+        },
+        include: {
+          caseManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+            },
+          },
+          caseManagerProfile: true,
+        },
+      });
+
+      // Track analytics event
+      try {
+        await db.analyticsEvent.create({
+          data: {
+            eventType: EventType.REFERRAL_UPDATE,
+            userId: currentUserId,
+            referralId: referralId,
+            eventData: {
+              referralNumber: referral.referralNumber,
+              action: "assigned",
+              previousCaseManagerId,
+              assignedToUserId,
+              assignedToUserName: `${assignedToUser.firstName} ${assignedToUser.lastName}`,
+            },
+          },
+        });
+      } catch (analyticsError) {
+        console.error("Failed to track referral assignment analytics:", analyticsError);
+      }
+
+      // Create audit log
+      try {
+        const { AuditService } = await import("./audit.service");
+        const auditService = new AuditService();
+        await auditService.logReferral(
+          currentUserId,
+          "UPDATE",
+          referralId,
+          {
+            action: "assignment",
+            previousCaseManagerId,
+            assignedToUserId,
+            assignedToUserName: `${assignedToUser.firstName} ${assignedToUser.lastName}`,
+            notes,
+          }
+        );
+      } catch (auditError) {
+        console.error("Failed to create audit log for referral assignment:", auditError);
+      }
+
+      // Send notification to assigned case manager
+      try {
+        const channels: string[] = [];
+        const prefs = assignedToCaseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
+        if (prefs) {
+          if (prefs.inAppNotifications && prefs.inAppNewReferrals) {
+            channels.push("IN_APP");
+          }
+          if (prefs.emailNotifications && prefs.emailNewReferrals) {
+            channels.push("EMAIL");
+          }
+        } else {
+          // Default to both if preferences not set
+          channels.push("IN_APP", "EMAIL");
+        }
+
+        if (channels.length > 0) {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+          await notificationService.createNotification({
+            userId: assignedToUserId,
+            type: NotificationType.REFERRAL_NEW,
+            title: "Referral Assigned to You",
+            message: `Referral ${referral.referralNumber} has been assigned to you by ${currentUser.firstName} ${currentUser.lastName}.`,
+            channels: channels,
+            actionUrl: `/case-manager/referrals/${referralId}`,
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create assignment notification:", notifError);
+      }
+
+      return this.getReferralById(referralId, assignedToUserId);
+    } catch (error) {
+      console.error("Assign referral error:", error);
+      throw error instanceof Error ? error : new Error("Failed to assign referral");
+    }
+  }
+
+  /**
    * Delete referral
    */
   async deleteReferral(referralId: string, userId: string): Promise<void> {
@@ -1139,6 +1315,230 @@ export class ReferralService {
         updatedAt: p.updatedAt.toISOString(),
       })),
     };
+  }
+
+  /**
+   * Get referral timeline events from analytics
+   */
+  async getReferralTimeline(referralId: string, userId: string): Promise<Array<{
+    id: string;
+    eventType: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    userId?: string;
+    userName?: string;
+    eventData?: any;
+  }>> {
+    try {
+      // Verify user has access to this referral
+      // Get user's organizationId first
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { organizationId: true },
+      });
+
+      if (!user?.organizationId) {
+        throw new Error("User organization not found");
+      }
+
+      const referral = await db.referral.findFirst({
+        where: {
+          id: referralId,
+          caseManager: {
+            organizationId: user.organizationId,
+          },
+        },
+      });
+
+      if (!referral) {
+        throw new Error("Referral not found or access denied");
+      }
+
+      // Get all analytics events for this referral
+      const events = await db.analyticsEvent.findMany({
+        where: {
+          referralId: referralId,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      // Fetch user data for events that have userId
+      const userIds = [...new Set(events.map(e => e.userId).filter(Boolean) as string[])];
+      const users = userIds.length > 0 
+        ? await db.user.findMany({
+            where: { id: { in: userIds } },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          })
+        : [];
+      const userMap = new Map(users.map(u => [u.id, u]));
+
+      // Also get shortlist events
+      const shortlistEvents = await db.referralShortlist.findMany({
+        where: {
+          referralId: referralId,
+        },
+        include: {
+          referral: {
+            include: {
+              caseManager: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          addedAt: "desc",
+        },
+      });
+
+      // Format events for timeline
+      const timelineEvents: Array<{
+        id: string;
+        eventType: string;
+        title: string;
+        description: string;
+        timestamp: string;
+        userId?: string;
+        userName?: string;
+        eventData?: any;
+      }> = [];
+
+      // Add analytics events
+      for (const event of events) {
+        const eventData = event.eventData as any || {};
+        let title = "";
+        let description = "";
+
+        const user = event.userId ? userMap.get(event.userId) : null;
+
+        switch (event.eventType) {
+          case EventType.REFERRAL_CREATED:
+            title = "Referral Created";
+            description = `Referral ${eventData.referralNumber || referralId} was created`;
+            break;
+          case EventType.REFERRAL_UPDATE:
+            if (eventData.action === "assigned") {
+              title = "Referral Assigned";
+              description = `Assigned to ${eventData.assignedToUserName || "another case manager"}`;
+              if (eventData.notes) {
+                description += `: ${eventData.notes}`;
+              }
+            } else if (eventData.statusChange) {
+              title = "Status Updated";
+              description = `Status changed from ${eventData.statusChange.from} to ${eventData.statusChange.to}`;
+            } else if (eventData.status) {
+              title = "Status Updated";
+              description = `Status changed to ${eventData.status}`;
+            } else if (eventData.urgencyChange) {
+              title = "Urgency Updated";
+              description = `Urgency changed from ${eventData.urgencyChange.from} to ${eventData.urgencyChange.to}`;
+            } else {
+              title = "Referral Updated";
+              description = "Referral details were updated";
+            }
+            break;
+          case EventType.REFERRAL_SHORTLIST_ADDED:
+            title = "Provider Added to Shortlist";
+            description = eventData.providerName 
+              ? `Added ${eventData.providerName} to shortlist`
+              : eventData.providerCount
+              ? `Added ${eventData.providerCount} provider(s) to shortlist`
+              : "Provider added to shortlist";
+            break;
+          case EventType.REFERRAL_MESSAGE_SENT:
+            title = "Message Sent";
+            description = eventData.providerName
+              ? `Message sent to ${eventData.providerName}`
+              : "Message sent to provider";
+            break;
+          default:
+            title = event.eventType.replace(/_/g, " ");
+            description = "Event occurred";
+        }
+
+        timelineEvents.push({
+          id: event.id,
+          eventType: event.eventType,
+          title,
+          description,
+          timestamp: event.createdAt.toISOString(),
+          userId: event.userId || undefined,
+          userName: user
+            ? `${user.firstName} ${user.lastName}`
+            : undefined,
+          eventData: eventData,
+        });
+      }
+
+      // Add shortlist events
+      for (const shortlist of shortlistEvents) {
+        timelineEvents.push({
+          id: `shortlist-${shortlist.id}`,
+          eventType: "SHORTLIST_ADDED",
+          title: "Provider Added to Shortlist",
+          description: `Provider added to shortlist`,
+          timestamp: shortlist.addedAt.toISOString(),
+          userId: shortlist.referral.caseManagerId,
+          userName: shortlist.referral.caseManager
+            ? `${shortlist.referral.caseManager.firstName} ${shortlist.referral.caseManager.lastName}`
+            : undefined,
+          eventData: {
+            providerId: shortlist.providerId,
+            status: shortlist.status,
+          },
+        });
+
+        if (shortlist.contactedAt) {
+          timelineEvents.push({
+            id: `shortlist-contacted-${shortlist.id}`,
+            eventType: "SHORTLIST_CONTACTED",
+            title: "Provider Contacted",
+            description: "Provider was contacted",
+            timestamp: shortlist.contactedAt.toISOString(),
+            eventData: {
+              providerId: shortlist.providerId,
+            },
+          });
+        }
+
+        if (shortlist.respondedAt) {
+          timelineEvents.push({
+            id: `shortlist-responded-${shortlist.id}`,
+            eventType: "SHORTLIST_RESPONDED",
+            title: "Provider Responded",
+            description: `Provider responded (${shortlist.status})`,
+            timestamp: shortlist.respondedAt.toISOString(),
+            eventData: {
+              providerId: shortlist.providerId,
+              status: shortlist.status,
+            },
+          });
+        }
+      }
+
+      // Sort by timestamp (newest first)
+      timelineEvents.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      return timelineEvents;
+    } catch (error) {
+      console.error("Get referral timeline error:", error);
+      throw new Error("Failed to retrieve referral timeline");
+    }
   }
 
   /**

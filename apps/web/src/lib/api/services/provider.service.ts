@@ -145,6 +145,11 @@ export class ProviderService {
     return response.data!;
   }
 
+  // Get provider public profile (for case managers)
+  async getProviderProfile(id: string): Promise<ApiResponse<Provider>> {
+    return apiService.get<Provider>(`/api/providers/${id}/public-profile`);
+  }
+
   // Get provider by user ID
   async getProviderByUserId(userId: string): Promise<Provider> {
     const response = await apiService.get<Provider>(`/api/providers/by-user/${userId}`);
@@ -309,6 +314,21 @@ export class ProviderService {
     return await apiService.post<void>(
       `/api/providers/${providerId}/staff/${staffUserId}/resend-invite`,
       {}
+    );
+  }
+
+  // Respond to referral - Update provider's own shortlist status
+  async respondToReferral(
+    providerId: string,
+    referralId: string,
+    data: {
+      status: string;
+      notes?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    return await apiService.post<any>(
+      `/api/providers/${providerId}/referrals/${referralId}/respond`,
+      data
     );
   }
 }

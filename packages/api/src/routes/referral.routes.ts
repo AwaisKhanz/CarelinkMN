@@ -358,5 +358,41 @@ router.post(
   referralController.batchMessageProviders.bind(referralController)
 );
 
+// Assign referral to another case manager
+router.post(
+  "/referrals/:id/assign",
+  authMiddleware.requirePermission(CASE_MANAGER_PERMISSIONS.REFERRALS_ASSIGN),
+  [
+    param("id").isUUID().withMessage("Invalid referral ID"),
+    body("assignedToUserId")
+      .isUUID()
+      .withMessage("Assigned user ID must be a valid UUID"),
+    body("notes")
+      .optional()
+      .isString()
+      .isLength({ max: 1000 })
+      .withMessage("Notes must be less than 1000 characters"),
+  ],
+  validate([]),
+  referralController.assignReferral.bind(referralController)
+);
+
+// Get referral timeline
+router.get(
+  "/referrals/:id/timeline",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_TRACK,
+    PROVIDER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
+    "referrals:read", // Legacy permission
+  ]),
+  [
+    param("id").isUUID().withMessage("Invalid referral ID"),
+  ],
+  validate([]),
+  referralController.getReferralTimeline.bind(referralController)
+);
+
 export default router;
 

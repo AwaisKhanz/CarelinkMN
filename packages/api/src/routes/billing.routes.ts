@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import { BillingController } from "../controllers/billing.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { PROVIDER_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const controller = new BillingController();
@@ -18,6 +19,7 @@ router.use(auth.requireAuth);
  */
 router.post(
   "/create-checkout-session",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
   [
     body("tier")
       .isIn(["PRO", "PREMIUM"])
@@ -34,6 +36,7 @@ router.post(
  */
 router.post(
   "/create-portal-session",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
   validate([]),
   controller.createPortalSession
 );
@@ -45,6 +48,7 @@ router.post(
  */
 router.get(
   "/subscription",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
   validate([]),
   controller.getSubscription
 );
@@ -56,6 +60,7 @@ router.get(
  */
 router.post(
   "/cleanup-duplicates",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
   validate([]),
   controller.cleanupDuplicates
 );
@@ -65,7 +70,12 @@ router.post(
  * @desc Schedule downgrade to Free plan at period end
  * @access Private
  */
-router.post("/downgrade", validate([]), controller.scheduleDowngrade);
+router.post(
+  "/downgrade",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
+  validate([]),
+  controller.scheduleDowngrade
+);
 
 /**
  * @route POST /api/billing/downgrade/cancel
@@ -74,6 +84,7 @@ router.post("/downgrade", validate([]), controller.scheduleDowngrade);
  */
 router.post(
   "/downgrade/cancel",
+  auth.requirePermission(PROVIDER_PERMISSIONS.BILLING_MANAGE),
   validate([]),
   controller.cancelDowngrade
 );

@@ -63,6 +63,7 @@ export class AISearchController {
         data: {
           query,
           filters,
+          explanation: filters.explanation,
         },
         message: "Query parsed successfully",
       } as ApiResponse);

@@ -33,6 +33,8 @@ import messagingRoutes from "./routes/messaging.routes";
 import referralRoutes from "./routes/referral.routes";
 import aiSearchRoutes from "./routes/ai-search.routes";
 import notificationRoutes from "./routes/notification.routes";
+import messageTemplateRoutes from "./routes/message-template.routes";
+import dischargeCaseRoutes from "./routes/discharge-case.routes";
 
 // Import middleware
 import {
@@ -168,6 +170,8 @@ app.use("/api", messagingRoutes);
 app.use("/api", referralRoutes);
 app.use("/api", aiSearchRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", messageTemplateRoutes);
+app.use("/api", dischargeCaseRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
