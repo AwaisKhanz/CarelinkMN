@@ -13,11 +13,13 @@ import rateLimit from "express-rate-limit";
 // Import routes
 import authRoutes from "./routes/auth.routes";
 import auditRoutes from "./routes/audit.routes";
+import adminRoutes from "./routes/admin.routes";
 import providerRoutes from "./routes/provider.routes";
 import userRoutes from "./routes/user.routes";
 import organizationRoutes from "./routes/organization.routes";
 import caseManagerRoutes from "./routes/case-manager.routes";
 import hospitalStaffRoutes from "./routes/hospital-staff.routes";
+import vrsRoutes from "./routes/vrs.routes";
 import vendorRoutes from "./routes/vendor.routes";
 import homeRoutes from "./routes/home.routes";
 import amenityRoutes from "./routes/amenity.routes";
@@ -148,6 +150,7 @@ app.get("/health", (req, res) => {
 
 // API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/users", authMiddleware.requireAuth, userRoutes);
 // Public routes (no authentication required)
@@ -156,6 +159,7 @@ app.use("/api", organizationRoutes);
 app.use("/api", providerRoutes);
 app.use("/api", caseManagerRoutes);
 app.use("/api", hospitalStaffRoutes);
+app.use("/api/vrs", vrsRoutes);
 app.use("/api", vendorRoutes);
 app.use("/api", homeRoutes);
 app.use("/api", amenityRoutes);

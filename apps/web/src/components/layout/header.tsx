@@ -17,7 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/contexts/auth-context";
-import { useProvider } from "@/contexts/provider-context";
+import { useProviderSafe } from "@/contexts/provider-context";
 import { notificationService, Notification } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -46,15 +46,9 @@ export function Header({
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   
-  // Get provider from context (if available)
-  let providerLogo: string | undefined = undefined;
-  try {
-    const { provider } = useProvider();
-    providerLogo = provider?.logo;
-  } catch {
-    // Provider context not available (user is not a provider)
-    // This is fine, providerLogo will remain undefined
-  }
+  // Get provider from context (safe for non-provider users)
+  const providerContext = useProviderSafe();
+  const providerLogo = providerContext?.provider?.logo;
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {

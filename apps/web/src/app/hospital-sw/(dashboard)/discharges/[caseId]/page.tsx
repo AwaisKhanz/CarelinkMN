@@ -1,21 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2, Loader2, Calendar, MapPin, FileText, Users, CheckCircle2, XCircle, Clock, Send } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Loader2,
+  Calendar,
+  MapPin,
+  FileText,
+  Users,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Send,
+  Search,
+} from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../../use-page-metadata";
-import { dischargeCaseService, DischargeCase, DischargeInvitation, DischargeChecklist } from "@/lib/api";
+import { dischargeCaseService, DischargeCase } from "@/lib/api";
 import { toast } from "sonner";
-import { DischargeStatus, Payer, Gender } from "@carelink/types";
+import {
+  DischargeStatus,
+  DischargeChecklist,
+  InviteResponse,
+} from "@carelink/types";
 import { format as formatDate } from "date-fns";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
+import {
+  HospitalSWLoadingState,
+  HospitalSWErrorState,
+  HospitalSWDetailHeader,
+  TransportBookingCard,
+  ConsentCard,
+} from "@/components/hospital-sw";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +56,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PAYER_LABELS } from "@/lib/constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { providerService } from "@/lib/api/services/provider.service";
+import {
+  PAYER_LABELS,
+  getDischargeStatusLabel,
+  getMobilityStatusLabel,
+  getCognitiveStatusLabel,
+  getBehavioralConcernLabel,
+  getHospitalLocationLabel,
+  getTransportTypeLabel,
+  getGenderLabel,
+  getDMENeedLabel,
+} from "@/lib/constants";
+import {
+  getDischargeStatusBadgeConfig,
+  formatCaseNumber,
+  getPatientDisplayName,
+  calculateHoursUntilInvitationExpiry,
+  getInvitationExpiryStatus,
+  getInviteResponseBadgeConfig,
+} from "@/lib/utils/hospital-sw";
+import {
+  useDischargeCase,
+  useDischargeCaseInvitations,
+  useDischargeChecklist,
+} from "@/hooks/use-hospital-sw-data";
 
 function DischargeCaseDetailPageContent() {
   const params = useParams();
@@ -35,89 +99,110 @@ function DischargeCaseDetailPageContent() {
   const { setTitle, setDescription } = usePageMetadata();
   const caseId = params.caseId as string;
   const { hasCapability } = useRolePermissions();
-  const canViewDischarges = hasCapability(HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_VIEW);
-  const canUpdateDischarges = hasCapability(HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_UPDATE);
-  const canDeleteDischarges = hasCapability(HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_DELETE);
-  const canSendInvitations = hasCapability(HOSPITAL_SW_CAPABILITIES.PROVIDER_INVITATIONS_SEND);
-  const canUseAIMatching = hasCapability(HOSPITAL_SW_CAPABILITIES.AI_MATCHING_USE);
-  const canManageChecklist = hasCapability(HOSPITAL_SW_CAPABILITIES.CHECKLISTS_MANAGE);
+  const canViewDischarges = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_VIEW
+  );
+  const canUpdateDischarges = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_UPDATE
+  );
+  const canDeleteDischarges = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.DISCHARGE_CASES_DELETE
+  );
+  const canSendInvitations = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.PROVIDER_INVITATIONS_SEND
+  );
+  const canUseAIMatching = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.AI_MATCHING_USE
+  );
+  const canManageChecklist = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.CHECKLISTS_MANAGE
+  );
+  const canManageNEMT = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.NEMT_BOOKING_MANAGE
+  );
+  const canManageConsent = hasCapability(
+    HOSPITAL_SW_CAPABILITIES.CONSENT_MANAGE
+  );
 
-  const [dischargeCase, setDischargeCase] = useState<DischargeCase | null>(null);
-  const [invitations, setInvitations] = useState<DischargeInvitation[]>([]);
-  const [checklist, setChecklist] = useState<DischargeChecklist | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingInvitations, setIsLoadingInvitations] = useState(false);
-  const [isLoadingChecklist, setIsLoadingChecklist] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Use shared hooks for data fetching
+  const {
+    case: dischargeCase,
+    isLoading,
+    error: caseError,
+    refetch: refetchCase,
+  } = useDischargeCase(caseId);
+  const {
+    invitations,
+    isLoading: isLoadingInvitations,
+    refetch: refetchInvitations,
+  } = useDischargeCaseInvitations(caseId);
+  const {
+    checklist,
+    isLoading: isLoadingChecklist,
+    refetch: refetchChecklist,
+  } = useDischargeChecklist(caseId);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTriggeringAI, setIsTriggeringAI] = useState(false);
+  const [aiMatchingResult, setAiMatchingResult] = useState<{
+    explanation: string;
+    providers: Array<{
+      id: string;
+      matchScore: number;
+      matchReasons: string[];
+    }>;
+  } | null>(null);
+  const [isUpdatingChecklist, setIsUpdatingChecklist] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [searchingProviders, setSearchingProviders] = useState(false);
+  const [providerSearch, setProviderSearch] = useState("");
+  const [availableProviders, setAvailableProviders] = useState<
+    Array<{
+      id: string;
+      organization?: { name: string };
+      primaryLicenseType?: string;
+    }>
+  >([]);
+  const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
+  const [isSendingInvitations, setIsSendingInvitations] = useState(false);
+
+  // Get status badge config using shared utility - MUST be before conditional returns
+  const statusBadgeConfig = useMemo(() => {
+    if (!dischargeCase) return null;
+    return getDischargeStatusBadgeConfig(dischargeCase.status);
+  }, [dischargeCase]);
+
+  // Prepare header actions - MUST be before conditional returns
+  const headerActions = useMemo(() => {
+    const actions = [];
+    if (canUpdateDischarges) {
+      actions.push({
+        label: "Edit",
+        onClick: () => router.push(`/hospital-sw/discharges/${caseId}/edit`),
+        variant: "outline" as const,
+        icon: <Edit className="h-4 w-4 mr-2" />,
+      });
+    }
+    if (canDeleteDischarges) {
+      actions.push({
+        label: "Delete",
+        onClick: () => setDeleteDialogOpen(true),
+        variant: "destructive" as const,
+        icon: <Trash2 className="h-4 w-4 mr-2" />,
+      });
+    }
+    return actions;
+  }, [canUpdateDischarges, canDeleteDischarges, caseId, router]);
 
   useEffect(() => {
     if (dischargeCase) {
-      setTitle(`Discharge Case ${dischargeCase.caseNumber}`);
+      setTitle(`Discharge Case ${formatCaseNumber(dischargeCase.caseNumber)}`);
       setDescription(
-        `Patient: ${dischargeCase.patientInitials} • Age ${dischargeCase.patientAge}`
+        `Patient: ${getPatientDisplayName(dischargeCase.patientInitials)} • Age ${dischargeCase.patientAge}`
       );
     }
   }, [dischargeCase, setTitle, setDescription]);
-
-  useEffect(() => {
-    if (caseId) {
-      fetchDischargeCase();
-      fetchInvitations();
-      fetchChecklist();
-    }
-  }, [caseId]);
-
-  const fetchDischargeCase = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await dischargeCaseService.getDischargeCaseById(caseId);
-      if (response.success && response.data) {
-        setDischargeCase(response.data);
-      } else {
-        setError(response.message || "Failed to load discharge case");
-      }
-    } catch (err) {
-      console.error("Error fetching discharge case:", err);
-      setError(err instanceof Error ? err.message : "Failed to load discharge case");
-      toast.error("Failed to load discharge case details");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchInvitations = async () => {
-    try {
-      setIsLoadingInvitations(true);
-      const response = await dischargeCaseService.getDischargeCaseInvitations(caseId);
-      if (response.success && response.data) {
-        setInvitations(response.data);
-      }
-    } catch (err) {
-      console.error("Error fetching invitations:", err);
-      toast.error("Failed to load invitations");
-    } finally {
-      setIsLoadingInvitations(false);
-    }
-  };
-
-  const fetchChecklist = async () => {
-    try {
-      setIsLoadingChecklist(true);
-      const response = await dischargeCaseService.getDischargeChecklist(caseId);
-      if (response.success && response.data) {
-        setChecklist(response.data);
-      }
-    } catch (err) {
-      console.error("Error fetching checklist:", err);
-      // Checklist might not exist yet, that's okay
-    } finally {
-      setIsLoadingChecklist(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!dischargeCase) return;
@@ -142,14 +227,129 @@ function DischargeCaseDetailPageContent() {
     }
   };
 
+  const handleChecklistToggle = async (
+    key: keyof DischargeChecklist,
+    value: boolean
+  ) => {
+    if (!checklist || isUpdatingChecklist) return;
+
+    setIsUpdatingChecklist(true);
+    try {
+      const updateData: Partial<DischargeChecklist> = {
+        [key]: value,
+      };
+      const response = await dischargeCaseService.updateDischargeChecklist(
+        caseId,
+        updateData
+      );
+      if (response.success) {
+        toast.success("Checklist updated successfully");
+        await refetchChecklist();
+      } else {
+        toast.error(response.message || "Failed to update checklist");
+      }
+    } catch (err) {
+      console.error("Error updating checklist:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update checklist"
+      );
+    } finally {
+      setIsUpdatingChecklist(false);
+    }
+  };
+
+  const handleSearchProviders = async (search: string) => {
+    if (!search || search.length < 2) {
+      setAvailableProviders([]);
+      return;
+    }
+
+    setSearchingProviders(true);
+    try {
+      const response = await providerService.getProviders({
+        search,
+        limit: 20,
+        page: 1,
+      });
+      if (response.success && response.data) {
+        // Filter out providers already invited
+        const invitedProviderIds = new Set(
+          invitations.map((inv) => inv.providerId)
+        );
+        const filtered = response.data.providers.filter(
+          (p) => !invitedProviderIds.has(p.id)
+        );
+        setAvailableProviders(filtered);
+      }
+    } catch (err) {
+      console.error("Error searching providers:", err);
+      toast.error("Failed to search providers");
+    } finally {
+      setSearchingProviders(false);
+    }
+  };
+
+  const handleToggleProviderSelection = (providerId: string) => {
+    setSelectedProviderIds((prev) =>
+      prev.includes(providerId)
+        ? prev.filter((id) => id !== providerId)
+        : [...prev, providerId]
+    );
+  };
+
+  const handleSendInvitations = async () => {
+    if (selectedProviderIds.length === 0) {
+      toast.error("Please select at least one provider");
+      return;
+    }
+
+    setIsSendingInvitations(true);
+    try {
+      const response = await dischargeCaseService.sendProviderInvitations(
+        caseId,
+        selectedProviderIds
+      );
+      if (response.success) {
+        toast.success(
+          `Successfully sent ${selectedProviderIds.length} invitation(s)`
+        );
+        setInviteDialogOpen(false);
+        setSelectedProviderIds([]);
+        setProviderSearch("");
+        setAvailableProviders([]);
+        await refetchInvitations();
+      } else {
+        toast.error(response.message || "Failed to send invitations");
+      }
+    } catch (err) {
+      console.error("Error sending invitations:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to send invitations"
+      );
+    } finally {
+      setIsSendingInvitations(false);
+    }
+  };
+
   const handleTriggerAIMatching = async () => {
     setIsTriggeringAI(true);
     try {
       const response = await dischargeCaseService.triggerAIMatching(caseId);
       if (response.success && response.data) {
-        toast.success(`Found ${response.data.providers.length} matching providers`);
+        // Store AI matching result to display explanations
+        setAiMatchingResult({
+          explanation: response.data.explanation || "",
+          providers: response.data.providers.map((p) => ({
+            id: p.id,
+            matchScore: p.matchScore || 0,
+            matchReasons: p.matchReasons || [],
+          })),
+        });
+        toast.success(
+          `Found ${response.data.providers.length} matching providers`
+        );
         // Refresh invitations to show new matches
-        await fetchInvitations();
+        await refetchInvitations();
       } else {
         toast.error(response.message || "Failed to trigger AI matching");
       }
@@ -163,117 +363,47 @@ function DischargeCaseDetailPageContent() {
     }
   };
 
-  const getStatusBadgeVariant = (status: DischargeStatus) => {
-    switch (status) {
-      case DischargeStatus.INTAKE:
-        return "default";
-      case DischargeStatus.MATCHING:
-        return "healthcareInfo";
-      case DischargeStatus.INVITES_SENT:
-        return "healthcareWarning";
-      case DischargeStatus.RESPONSES_PENDING:
-        return "healthcareWarning";
-      case DischargeStatus.PLACEMENT_CONFIRMED:
-        return "healthcareSuccess";
-      case DischargeStatus.DISCHARGED:
-        return "healthcareSuccess";
-      case DischargeStatus.FOLLOW_UP:
-        return "default";
-      case DischargeStatus.COMPLETED:
-        return "healthcareSuccess";
-      case DischargeStatus.CANCELLED:
-        return "destructive";
-      default:
-        return "default";
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground mt-4">Loading discharge case...</p>
-      </div>
+      <HospitalSWLoadingState message="Loading discharge case..." fullHeight />
     );
   }
 
-  if (error || !dischargeCase) {
+  if (caseError || !dischargeCase) {
     return (
-      <div className="space-y-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/hospital-sw/discharges")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Discharge Cases
-        </Button>
-        <Card variant="healthcare">
-          <CardContent className="pt-6">
-            <div className="text-center text-destructive">
-              <p className="font-medium">Error Loading Discharge Case</p>
-              <p className="text-sm mt-1">{error || "Discharge case not found"}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchDischargeCase}
-                className="mt-4"
-              >
-                Retry
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <HospitalSWErrorState
+        title="Error Loading Discharge Case"
+        message={caseError?.message || "Discharge case not found"}
+        action={{
+          label: "Retry",
+          onClick: refetchCase,
+          variant: "healthcare",
+        }}
+        secondaryAction={{
+          label: "Back to Discharge Cases",
+          onClick: () => router.push("/hospital-sw/discharges"),
+          variant: "outline",
+        }}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/hospital-sw/discharges")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Case {dischargeCase.caseNumber}</h1>
-            <p className="text-muted-foreground mt-1">
-              Patient: {dischargeCase.patientInitials} • Age {dischargeCase.patientAge}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={getStatusBadgeVariant(dischargeCase.status)}
-            className="text-sm"
-          >
-            {dischargeCase.status.replace(/_/g, " ")}
-          </Badge>
-          {canUpdateDischarges && (
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/hospital-sw/discharges/${caseId}/edit`)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          )}
-          {canDeleteDischarges && (
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* Header - Use shared component */}
+      <HospitalSWDetailHeader
+        title={`Case ${formatCaseNumber(dischargeCase.caseNumber)}`}
+        subtitle={`Patient: ${getPatientDisplayName(dischargeCase.patientInitials)} • Age ${dischargeCase.patientAge}`}
+        backPath="/hospital-sw/discharges"
+        badges={
+          statusBadgeConfig ? (
+            <Badge variant={statusBadgeConfig.variant} className="text-sm">
+              {statusBadgeConfig.label}
+            </Badge>
+          ) : undefined
+        }
+        actionButtons={headerActions}
+      />
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-4">
@@ -288,6 +418,8 @@ function DischargeCaseDetailPageContent() {
             )}
           </TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
+          <TabsTrigger value="transport">Transport</TabsTrigger>
+          <TabsTrigger value="consent">Consent</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -301,7 +433,9 @@ function DischargeCaseDetailPageContent() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Initials</p>
-                  <p className="font-medium">{dischargeCase.patientInitials}</p>
+                  <p className="font-medium">
+                    {getPatientDisplayName(dischargeCase.patientInitials)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Age</p>
@@ -309,7 +443,9 @@ function DischargeCaseDetailPageContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Gender</p>
-                  <p className="font-medium">{dischargeCase.patientGender}</p>
+                  <p className="font-medium">
+                    {getGenderLabel(dischargeCase.patientGender)}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -332,12 +468,16 @@ function DischargeCaseDetailPageContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Mobility Status</p>
-                  <p className="font-medium">{dischargeCase.mobilityStatus}</p>
+                  <p className="font-medium">
+                    {getMobilityStatusLabel(dischargeCase.mobilityStatus)}
+                  </p>
                 </div>
                 {dischargeCase.cognitiveStatus && (
                   <div>
                     <p className="text-sm text-muted-foreground">Cognitive Status</p>
-                    <p className="font-medium">{dischargeCase.cognitiveStatus}</p>
+                    <p className="font-medium">
+                      {getCognitiveStatusLabel(dischargeCase.cognitiveStatus)}
+                    </p>
                   </div>
                 )}
                 {dischargeCase.behavioralConcerns.length > 0 && (
@@ -346,7 +486,7 @@ function DischargeCaseDetailPageContent() {
                     <div className="flex flex-wrap gap-2 mt-1">
                       {dischargeCase.behavioralConcerns.map((concern, idx) => (
                         <Badge key={idx} variant="outline">
-                          {concern}
+                          {getBehavioralConcernLabel(concern)}
                         </Badge>
                       ))}
                     </div>
@@ -363,7 +503,9 @@ function DischargeCaseDetailPageContent() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Current Location</p>
-                  <p className="font-medium">{dischargeCase.currentLocation}</p>
+                  <p className="font-medium">
+                    {getHospitalLocationLabel(dischargeCase.currentLocation)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Target Discharge Date</p>
@@ -469,7 +611,7 @@ function DischargeCaseDetailPageContent() {
                     <div className="flex flex-wrap gap-2 mt-1">
                       {dischargeCase.dmeNeeds.map((dme, idx) => (
                         <Badge key={idx} variant="outline">
-                          {dme}
+                          {getDMENeedLabel(dme)}
                         </Badge>
                       ))}
                     </div>
@@ -485,7 +627,9 @@ function DischargeCaseDetailPageContent() {
                   <div>
                     <p className="text-sm text-muted-foreground">Transport</p>
                     <p className="font-medium">
-                      {dischargeCase.transportType || "Transport needed"}
+                      {dischargeCase.transportType
+                        ? getTransportTypeLabel(dischargeCase.transportType)
+                        : "Transport needed"}
                     </p>
                   </div>
                 )}
@@ -499,7 +643,7 @@ function DischargeCaseDetailPageContent() {
                   <CardTitle>AI Matching</CardTitle>
                   <CardDescription>Find matching providers using AI</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <Button
                     variant="healthcare"
                     onClick={handleTriggerAIMatching}
@@ -518,6 +662,14 @@ function DischargeCaseDetailPageContent() {
                       </>
                     )}
                   </Button>
+                  {aiMatchingResult && aiMatchingResult.explanation && (
+                    <div className="mt-4 p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <h4 className="font-medium mb-2">Why These Matches</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {aiMatchingResult.explanation}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -528,10 +680,24 @@ function DischargeCaseDetailPageContent() {
         <TabsContent value="invitations" className="space-y-4">
           <Card variant="healthcare">
             <CardHeader>
-              <CardTitle>Provider Invitations</CardTitle>
-              <CardDescription>
-                Providers invited to respond to this discharge case
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Provider Invitations</CardTitle>
+                  <CardDescription>
+                    Providers invited to respond to this discharge case
+                  </CardDescription>
+                </div>
+                {canSendInvitations && (
+                  <Button
+                    variant="healthcare"
+                    size="sm"
+                    onClick={() => setInviteDialogOpen(true)}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Invite Providers
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingInvitations ? (
@@ -550,59 +716,131 @@ function DischargeCaseDetailPageContent() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {invitations.map((invitation) => (
-                    <Card key={invitation.id} variant="healthcare">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium">
-                              {invitation.provider?.organization?.name || "Provider"}
-                            </h4>
-                            {invitation.provider?.homes && invitation.provider.homes.length > 0 && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {invitation.provider.homes.map((h) => h.name).join(", ")}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                              <span>
-                                Invited:{" "}
-                                {formatDate(
-                                  typeof invitation.invitedAt === "string"
-                                    ? new Date(invitation.invitedAt)
-                                    : invitation.invitedAt,
-                                  "MMM d, yyyy"
+                  {invitations.map((invitation) => {
+                    const expiresAt =
+                      typeof invitation.expiresAt === "string"
+                        ? invitation.expiresAt
+                        : invitation.expiresAt.toISOString();
+                    const expiryStatus = getInvitationExpiryStatus(expiresAt);
+                    const hoursUntilExpiry = calculateHoursUntilInvitationExpiry(expiresAt);
+                    const aiMatchInfo = aiMatchingResult?.providers.find(
+                      (p) => p.id === invitation.providerId
+                    );
+                    const responseBadgeConfig = invitation.response
+                      ? getInviteResponseBadgeConfig(invitation.response)
+                      : null;
+
+                    return (
+                      <Card key={invitation.id} variant="healthcare">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium">
+                                  {invitation.provider?.organization?.name || "Provider"}
+                                </h4>
+                                {aiMatchInfo && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Match Score: {aiMatchInfo.matchScore}%
+                                  </Badge>
                                 )}
-                              </span>
-                              {invitation.respondedAt && (
+                              </div>
+                              {invitation.provider?.homes &&
+                                invitation.provider.homes.length > 0 && (
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {invitation.provider.homes.map((h) => h.name).join(", ")}
+                                  </p>
+                                )}
+                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                                 <span>
-                                  Responded:{" "}
+                                  Invited:{" "}
                                   {formatDate(
-                                    typeof invitation.respondedAt === "string"
-                                      ? new Date(invitation.respondedAt)
-                                      : invitation.respondedAt,
-                                    "MMM d, yyyy"
+                                    typeof invitation.invitedAt === "string"
+                                      ? new Date(invitation.invitedAt)
+                                      : invitation.invitedAt,
+                                    "MMM d, yyyy 'at' h:mm a"
                                   )}
                                 </span>
+                                {!invitation.respondedAt && (
+                                  <span>
+                                    Expires:{" "}
+                                    {hoursUntilExpiry > 0
+                                      ? `${hoursUntilExpiry}h remaining`
+                                      : "Expired"}
+                                  </span>
+                                )}
+                                {invitation.respondedAt && (
+                                  <span>
+                                    Responded:{" "}
+                                    {formatDate(
+                                      typeof invitation.respondedAt === "string"
+                                        ? new Date(invitation.respondedAt)
+                                        : invitation.respondedAt,
+                                      "MMM d, yyyy 'at' h:mm a"
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                              {aiMatchInfo && aiMatchInfo.matchReasons.length > 0 && (
+                                <div className="mt-3 p-3 bg-primary/5 rounded-md border border-primary/10">
+                                  <p className="text-xs font-medium mb-2">Why This Match:</p>
+                                  <ul className="text-xs text-muted-foreground space-y-1">
+                                    {aiMatchInfo.matchReasons.map((reason, idx) => (
+                                      <li key={idx} className="flex items-start gap-2">
+                                        <span className="text-primary mt-0.5">•</span>
+                                        <span>{reason}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {invitation.responseNotes && (
+                                <div className="mt-3 p-3 bg-muted rounded-md">
+                                  <p className="text-xs font-medium mb-1">Response Notes:</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {invitation.responseNotes}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              {responseBadgeConfig ? (
+                                <Badge variant={responseBadgeConfig.variant}>
+                                  {responseBadgeConfig.label}
+                                </Badge>
+                              ) : invitation.respondedAt ? (
+                                <Badge variant="healthcareSuccess">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Responded
+                                </Badge>
+                              ) : (
+                                <>
+                                  {expiryStatus === "expired" && (
+                                    <Badge variant="destructive">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Expired
+                                    </Badge>
+                                  )}
+                                  {expiryStatus === "expiring_soon" && (
+                                    <Badge variant="healthcareWarning">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      Expiring Soon
+                                    </Badge>
+                                  )}
+                                  {expiryStatus === "active" && (
+                                    <Badge variant="healthcareWarning">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      Pending
+                                    </Badge>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
-                          <div>
-                            {invitation.respondedAt ? (
-                              <Badge variant="healthcareSuccess">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Responded
-                              </Badge>
-                            ) : (
-                              <Badge variant="healthcareWarning">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -640,16 +878,34 @@ function DischargeCaseDetailPageContent() {
                         { key: "medsReconciled", label: "Medications Reconciled" },
                         { key: "equipmentOrdered", label: "Equipment Ordered" },
                         { key: "transportArranged", label: "Transport Arranged" },
-                      ].map((item) => (
-                        <div key={item.key} className="flex items-center gap-2">
-                          {checklist[item.key as keyof DischargeChecklist] ? (
-                            <CheckCircle2 className="h-5 w-5 text-success" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <span>{item.label}</span>
-                        </div>
-                      ))}
+                      ].map((item) => {
+                        const key = item.key as keyof Pick<DischargeChecklist, "consentObtained" | "insuranceVerified" | "medsReconciled" | "equipmentOrdered" | "transportArranged">;
+                        return (
+                          <div
+                            key={item.key}
+                            className={`flex items-center gap-2 ${
+                              canManageChecklist
+                                ? "cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                                : ""
+                            }`}
+                            onClick={
+                              canManageChecklist
+                                ? () => handleChecklistToggle(key, !checklist[key])
+                                : undefined
+                            }
+                          >
+                            {checklist[key] ? (
+                              <CheckCircle2 className="h-5 w-5 text-success" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span>{item.label}</span>
+                            {isUpdatingChecklist && (
+                              <Loader2 className="h-4 w-4 ml-auto animate-spin text-primary" />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -661,16 +917,34 @@ function DischargeCaseDetailPageContent() {
                         { key: "patientEducated", label: "Patient Educated" },
                         { key: "documentsSent", label: "Documents Sent" },
                         { key: "followUpScheduled", label: "Follow-up Scheduled" },
-                      ].map((item) => (
-                        <div key={item.key} className="flex items-center gap-2">
-                          {checklist[item.key as keyof DischargeChecklist] ? (
-                            <CheckCircle2 className="h-5 w-5 text-success" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <span>{item.label}</span>
-                        </div>
-                      ))}
+                      ].map((item) => {
+                        const key = item.key as keyof Pick<DischargeChecklist, "patientEducated" | "documentsSent" | "followUpScheduled">;
+                        return (
+                          <div
+                            key={item.key}
+                            className={`flex items-center gap-2 ${
+                              canManageChecklist
+                                ? "cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                                : ""
+                            }`}
+                            onClick={
+                              canManageChecklist
+                                ? () => handleChecklistToggle(key, !checklist[key])
+                                : undefined
+                            }
+                          >
+                            {checklist[key] ? (
+                              <CheckCircle2 className="h-5 w-5 text-success" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span>{item.label}</span>
+                            {isUpdatingChecklist && (
+                              <Loader2 className="h-4 w-4 ml-auto animate-spin text-primary" />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -683,16 +957,34 @@ function DischargeCaseDetailPageContent() {
                         { key: "day2Contact", label: "Day 2 Contact" },
                         { key: "day7Contact", label: "Day 7 Contact" },
                         { key: "day30Contact", label: "Day 30 Contact" },
-                      ].map((item) => (
-                        <div key={item.key} className="flex items-center gap-2">
-                          {checklist[item.key as keyof DischargeChecklist] ? (
-                            <CheckCircle2 className="h-5 w-5 text-success" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <span>{item.label}</span>
-                        </div>
-                      ))}
+                      ].map((item) => {
+                        const key = item.key as keyof Pick<DischargeChecklist, "day1Contact" | "day2Contact" | "day7Contact" | "day30Contact">;
+                        return (
+                          <div
+                            key={item.key}
+                            className={`flex items-center gap-2 ${
+                              canManageChecklist
+                                ? "cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                                : ""
+                            }`}
+                            onClick={
+                              canManageChecklist
+                                ? () => handleChecklistToggle(key, !checklist[key])
+                                : undefined
+                            }
+                          >
+                            {checklist[key] ? (
+                              <CheckCircle2 className="h-5 w-5 text-success" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span>{item.label}</span>
+                            {isUpdatingChecklist && (
+                              <Loader2 className="h-4 w-4 ml-auto animate-spin text-primary" />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -700,7 +992,123 @@ function DischargeCaseDetailPageContent() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Transport Tab */}
+        <TabsContent value="transport" className="space-y-4">
+          <TransportBookingCard caseId={caseId} canManage={canManageNEMT} />
+        </TabsContent>
+
+        {/* Consent Tab */}
+        <TabsContent value="consent" className="space-y-4">
+          <ConsentCard caseId={caseId} canManage={canManageConsent} />
+        </TabsContent>
       </Tabs>
+
+      {/* Provider Invitation Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invite Providers</DialogTitle>
+            <DialogDescription>
+              Search and select providers to invite for this discharge case
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search providers by name..."
+                  value={providerSearch}
+                  onChange={(e) => {
+                    setProviderSearch(e.target.value);
+                    handleSearchProviders(e.target.value);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            {searchingProviders && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            {!searchingProviders && availableProviders.length > 0 && (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-md p-4">
+                {availableProviders.map((provider) => (
+                  <div
+                    key={provider.id}
+                    className="flex items-center space-x-3 p-2 hover:bg-muted/50 rounded-md cursor-pointer"
+                    onClick={() => handleToggleProviderSelection(provider.id)}
+                  >
+                    <Checkbox
+                      checked={selectedProviderIds.includes(provider.id)}
+                      onCheckedChange={() =>
+                        handleToggleProviderSelection(provider.id)
+                      }
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {provider.organization?.name || "Unknown Provider"}
+                      </p>
+                      {provider.primaryLicenseType && (
+                        <p className="text-sm text-muted-foreground">
+                          {provider.primaryLicenseType}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!searchingProviders &&
+              providerSearch.length >= 2 &&
+              availableProviders.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No providers found</p>
+                </div>
+              )}
+            {selectedProviderIds.length > 0 && (
+              <div className="p-3 bg-primary/10 rounded-md">
+                <p className="text-sm font-medium">
+                  {selectedProviderIds.length} provider(s) selected
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInviteDialogOpen(false);
+                setSelectedProviderIds([]);
+                setProviderSearch("");
+                setAvailableProviders([]);
+              }}
+              disabled={isSendingInvitations}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="healthcare"
+              onClick={handleSendInvitations}
+              disabled={isSendingInvitations || selectedProviderIds.length === 0}
+            >
+              {isSendingInvitations ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Invitations ({selectedProviderIds.length})
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

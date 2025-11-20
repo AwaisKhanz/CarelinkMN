@@ -6,9 +6,15 @@ import { useAuth } from "@/contexts/auth-context";
 import { UserRole } from "@carelink/types";
 import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { caseManagerService } from "@/lib/api";
+import { caseManagerService, hospitalStaffService } from "@/lib/api";
 
 interface RoleOnboardingGuardProps {
   children: React.ReactNode;
@@ -18,12 +24,12 @@ interface RoleOnboardingGuardProps {
   showError?: boolean;
 }
 
-export function RoleOnboardingGuard({ 
-  children, 
+export function RoleOnboardingGuard({
+  children,
   requiredRole,
   onboardingPath,
-  showLoading = true, 
-  showError = true 
+  showLoading = true,
+  showError = true,
 }: RoleOnboardingGuardProps) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -47,26 +53,33 @@ export function RoleOnboardingGuard({
 
         // Check if user has completed onboarding based on role
         let needsOnboarding = false;
-        
+
         switch (requiredRole) {
           case UserRole.CASE_MANAGER:
             try {
-              const caseManagerResponse = await caseManagerService.getCaseManagerByUserId(user.id);
+              const caseManagerResponse =
+                await caseManagerService.getCaseManagerByUserId(user.id);
               if (caseManagerResponse.success && caseManagerResponse.data) {
                 const caseManager = caseManagerResponse.data;
                 // Check if organization is verified (approved)
                 // Organization status must be VERIFIED for onboarding to be considered complete
-                const isOrganizationVerified = caseManager.organization?.status === "VERIFIED";
+                const isOrganizationVerified =
+                  caseManager.organization?.status === "VERIFIED";
                 const hasLicense = !!caseManager.licenseNumber;
-                const hasCompleteOrganization = caseManager.organization?.name && 
-                  caseManager.organization.name !== "Case Manager - Case Management (Pending Setup)" &&
+                const hasCompleteOrganization =
+                  caseManager.organization?.name &&
+                  caseManager.organization.name !==
+                    "Case Manager - Case Management (Pending Setup)" &&
                   caseManager.organization.city !== "City to be provided";
-                
+
                 // Needs onboarding if:
                 // 1. Organization is not verified (not approved yet), OR
                 // 2. Organization setup is incomplete, OR
                 // 3. License is missing
-                needsOnboarding = !isOrganizationVerified || !hasCompleteOrganization || !hasLicense;
+                needsOnboarding =
+                  !isOrganizationVerified ||
+                  !hasCompleteOrganization ||
+                  !hasLicense;
               } else {
                 needsOnboarding = true;
               }
@@ -75,32 +88,52 @@ export function RoleOnboardingGuard({
               needsOnboarding = true;
             }
             break;
-            
+
           case UserRole.HOSPITAL_SW:
-            const hospitalResponse = await fetch(`/api/hospital-staff/by-user/${user.id}`, {
-              headers: {
-                "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
-              },
-            });
-            if (hospitalResponse.ok) {
-              const hospitalData = await hospitalResponse.json();
-              needsOnboarding = !hospitalData.data?.department;
-            } else {
+            try {
+              const hospitalStaffResponse =
+                await hospitalStaffService.getHospitalStaffByUserId(user.id);
+              if (hospitalStaffResponse) {
+                const hospitalStaff = hospitalStaffResponse;
+                // Check if organization is verified (approved)
+                // Organization status must be VERIFIED for onboarding to be considered complete
+                const isOrganizationVerified =
+                  (hospitalStaff.organization as any)?.status === "VERIFIED";
+                const hasCompleteOrganization =
+                  hospitalStaff.organization?.name &&
+                  hospitalStaff.organization.name !==
+                    "Hospital - Hospital (Pending Setup)" &&
+                  (hospitalStaff.organization as any)?.city !==
+                    "City to be provided";
+
+                // Needs onboarding if:
+                // 1. Organization is not verified (not approved yet), OR
+                // 2. Organization setup is incomplete
+                needsOnboarding =
+                  !isOrganizationVerified || !hasCompleteOrganization;
+              } else {
+                needsOnboarding = true;
+              }
+            } catch (error) {
+              // If 404 or error, hospital staff doesn't exist yet - needs onboarding
               needsOnboarding = true;
             }
             break;
-            
+
           case UserRole.VRS_SPECIALIST:
             // VRS specialists don't need additional onboarding
             needsOnboarding = false;
             break;
-            
+
           case UserRole.VENDOR:
-            const vendorResponse = await fetch(`/api/vendors/by-user/${user.id}`, {
-              headers: {
-                "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
-              },
-            });
+            const vendorResponse = await fetch(
+              `/api/vendors/by-user/${user.id}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+                },
+              }
+            );
             if (vendorResponse.ok) {
               const vendorData = await vendorResponse.json();
               needsOnboarding = !vendorData.data?.businessName;
@@ -108,13 +141,13 @@ export function RoleOnboardingGuard({
               needsOnboarding = true;
             }
             break;
-            
+
           default:
             needsOnboarding = false;
         }
 
         setNeedsOnboarding(needsOnboarding);
-        
+
         if (needsOnboarding) {
           router.push(onboardingPath);
           return;
@@ -136,7 +169,7 @@ export function RoleOnboardingGuard({
   // Show loading state
   if (isLoading || isChecking) {
     if (!showLoading) return null;
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
@@ -150,7 +183,7 @@ export function RoleOnboardingGuard({
   // Show error state
   if (error) {
     if (!showError) return null;
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
@@ -163,10 +196,7 @@ export function RoleOnboardingGuard({
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{error}</p>
-            <Button 
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
+            <Button onClick={() => window.location.reload()} className="w-full">
               Try Again
             </Button>
           </CardContent>
@@ -185,9 +215,13 @@ export function RoleOnboardingGuard({
 }
 
 // Convenience components for specific roles
-export function CaseManagerOnboardingGuard({ children }: { children: React.ReactNode }) {
+export function CaseManagerOnboardingGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <RoleOnboardingGuard 
+    <RoleOnboardingGuard
       requiredRole={UserRole.CASE_MANAGER}
       onboardingPath="/case-manager/onboarding"
     >
@@ -196,9 +230,13 @@ export function CaseManagerOnboardingGuard({ children }: { children: React.React
   );
 }
 
-export function HospitalSWOnboardingGuard({ children }: { children: React.ReactNode }) {
+export function HospitalSWOnboardingGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <RoleOnboardingGuard 
+    <RoleOnboardingGuard
       requiredRole={UserRole.HOSPITAL_SW}
       onboardingPath="/hospital-sw/onboarding"
     >
@@ -207,9 +245,13 @@ export function HospitalSWOnboardingGuard({ children }: { children: React.ReactN
   );
 }
 
-export function VendorOnboardingGuard({ children }: { children: React.ReactNode }) {
+export function VendorOnboardingGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <RoleOnboardingGuard 
+    <RoleOnboardingGuard
       requiredRole={UserRole.VENDOR}
       onboardingPath="/vendor/onboarding"
     >

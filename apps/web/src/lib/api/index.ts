@@ -34,11 +34,68 @@ export {
   type FileUploadResponse as UploadFileResponse,
 } from "./services/upload.service";
 export { referralService, ReferralService } from "./services/referral.service";
-export { caseManagerService, CaseManagerService } from "./services/case-manager.service";
+export {
+  caseManagerService,
+  CaseManagerService,
+} from "./services/case-manager.service";
 export { aiSearchService, AISearchService } from "./services/ai-search.service";
 export { notificationService } from "./services/notification.service";
-export { messageTemplateService, MessageTemplateService } from "./services/message-template.service";
-export { dischargeCaseService, DischargeCaseService } from "./services/discharge-case.service";
+export {
+  messageTemplateService,
+  MessageTemplateService,
+} from "./services/message-template.service";
+export {
+  dischargeCaseService,
+  DischargeCaseService,
+} from "./services/discharge-case.service";
+export {
+  transportBookingService,
+  TransportBookingService,
+} from "./services/transport-booking.service";
+export { consentService, ConsentService } from "./services/consent.service";
+export { hospitalStaffService } from "./services/hospital-staff.service";
+export type { HospitalStaffService } from "./services/hospital-staff.service";
+export { adminService, AdminService } from "./services/admin.service";
+export type {
+  GetUsersParams as AdminGetUsersParams,
+  UsersResponse as AdminUsersResponse,
+  UpdateUserData as AdminUpdateUserData,
+  GetOrganizationsParams as AdminGetOrganizationsParams,
+  OrganizationsResponse as AdminOrganizationsResponse,
+  UpdateOrganizationData as AdminUpdateOrganizationData,
+  GetLicensesParams as AdminGetLicensesParams,
+  LicensesResponse as AdminLicensesResponse,
+  VerifyLicenseData as AdminVerifyLicenseData,
+  ComplianceIssue as AdminComplianceIssue,
+  ComplianceSummary as AdminComplianceSummary,
+  ComplianceIssuesResponse as AdminComplianceIssuesResponse,
+  GetComplianceIssuesParams as AdminGetComplianceIssuesParams,
+  AuditLogEntry as AdminAuditLogEntry,
+  AuditLogsResponse as AdminAuditLogsResponse,
+} from "./services/admin.service";
+export { vrsService, VRSService } from "./services/vrs.service";
+export type {
+  GetClientsParams as VRSGetClientsParams,
+  VRSClient,
+  ClientsResponse as VRSClientsResponse,
+  CreateClientData as VRSCreateClientData,
+  UpdateClientData as VRSUpdateClientData,
+  GetEmployersParams as VRSGetEmployersParams,
+  VRSEmployer,
+  EmployersResponse as VRSEmployersResponse,
+  CreateEmployerData as VRSCreateEmployerData,
+  UpdateEmployerData as VRSUpdateEmployerData,
+  GetJobsParams as VRSGetJobsParams,
+  VRSJob,
+  JobsResponse as VRSJobsResponse,
+  CreateJobData as VRSCreateJobData,
+  UpdateJobData as VRSUpdateJobData,
+  GetPlacementsParams as VRSGetPlacementsParams,
+  VRSPlacement,
+  PlacementsResponse as VRSPlacementsResponse,
+  UpdateRetentionData as VRSUpdateRetentionData,
+  VRSAnalytics,
+} from "./services/vrs.service";
 
 // Export types
 export type {
@@ -101,8 +158,22 @@ export type {
   UpdateLicenseData,
   LicenseStatus,
 } from "@carelink/types";
-export { OpeningStatus, Gender, Payer, PlacementStatus, ReferralStatus, ShortlistStatus, Urgency, DischargeStatus, InviteResponse } from "@carelink/types";
-export type { MessageTemplate, CreateMessageTemplateData, UpdateMessageTemplateData } from "./services/message-template.service";
+export {
+  OpeningStatus,
+  Gender,
+  Payer,
+  PlacementStatus,
+  ReferralStatus,
+  ShortlistStatus,
+  Urgency,
+  DischargeStatus,
+  InviteResponse,
+} from "@carelink/types";
+export type {
+  MessageTemplate,
+  CreateMessageTemplateData,
+  UpdateMessageTemplateData,
+} from "./services/message-template.service";
 export type {
   Provider,
   ProviderLicense,
@@ -144,9 +215,38 @@ export type {
   GetNotificationsParams,
   GetNotificationsResponse,
 } from "./services/notification.service";
+export type {
+  HospitalStaff,
+  UpdateHospitalStaffData,
+} from "./services/hospital-staff.service";
 // Export shared types from @carelink/types
 export type {
   Service,
   HomeService as HomeServiceType,
   ProviderService as ProviderServiceType,
+} from "@carelink/types";
+
+// Export vendor service
+export { vendorService } from "./services/vendor.service";
+export type {
+  GetVendorByUserIdResponse,
+  GetVendorByIdResponse,
+  UpdateVendorResponse,
+  GetVendorLeadsResponse,
+  UpdateLeadStatusResponse,
+  GetVendorBookingsResponse,
+  UpdateBookingStatusResponse,
+  GetVendorAnalyticsResponse,
+  UpdateBookingStatusData,
+} from "./services/vendor.service";
+export type {
+  Vendor,
+  VendorLead,
+  VendorAnalytics,
+  VendorLeadsResponse,
+  VendorBookingsResponse,
+  GetVendorLeadsParams,
+  GetVendorBookingsParams,
+  UpdateVendorData,
+  UpdateLeadStatusData,
 } from "@carelink/types";

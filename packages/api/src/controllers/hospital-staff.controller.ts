@@ -10,7 +10,7 @@ export class HospitalStaffController {
   }
 
   // Get hospital staff by user ID
-  async getHospitalStaffByUserId(req: Request, res: Response): Promise<void> {
+  getHospitalStaffByUserId = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
@@ -61,7 +61,7 @@ export class HospitalStaffController {
   }
 
   // Update hospital staff profile
-  async updateHospitalStaff(req: Request, res: Response): Promise<void> {
+  updateHospitalStaff = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userId } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;

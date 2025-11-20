@@ -1,19 +1,28 @@
 import { db } from "@carelink/database";
-import { OpeningStatus, LicenseStatus, NotificationType } from "@prisma/client";
+import {
+  OpeningStatus,
+  LicenseStatus,
+  NotificationType,
+  InviteResponse,
+  DischargeStatus,
+} from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { EmailService } from "./email.service";
 import { LicenseService } from "./license.service";
 import { OpeningService } from "./opening.service";
+import { DischargeCaseService } from "./discharge-case.service";
 
 export class ScheduledJobService {
   private emailService: EmailService;
   private licenseService: LicenseService;
   private openingService: OpeningService;
+  private dischargeCaseService: DischargeCaseService;
 
   constructor() {
     this.emailService = new EmailService();
     this.licenseService = new LicenseService();
     this.openingService = new OpeningService();
+    this.dischargeCaseService = new DischargeCaseService();
   }
 
   /**
@@ -687,18 +696,350 @@ export class ScheduledJobService {
   }
 
   /**
+   * Send reminders for discharge invitations expiring within 24 hours
+   */
+  async sendDischargeInvitationReminders(): Promise<void> {
+    try {
+      const now = new Date();
+      const reminderThreshold = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      const invitations = await db.dischargeInvitation.findMany({
+        where: {
+          respondedAt: null,
+          reminderSentAt: null,
+          expiresAt: {
+            gt: now,
+            lte: reminderThreshold,
+          },
+        },
+        include: {
+          dischargeCase: {
+            select: {
+              id: true,
+              caseNumber: true,
+              socialWorker: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (invitations.length === 0) {
+        return;
+      }
+
+      const providerIds = Array.from(
+        new Set(invitations.map((invitation) => invitation.providerId))
+      );
+      const providers = await db.provider.findMany({
+        where: {
+          id: {
+            in: providerIds,
+          },
+        },
+        include: {
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+      const providerMap = new Map(
+        providers.map((provider) => [provider.id, provider])
+      );
+
+      let reminderCount = 0;
+      const reminderTimestamp = new Date();
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+
+      for (const invitation of invitations) {
+        const socialWorker = invitation.dischargeCase?.socialWorker;
+        if (!socialWorker?.email) {
+          continue;
+        }
+
+        const provider = providerMap.get(invitation.providerId);
+        const providerName =
+          provider?.organization?.name || provider?.primaryLicenseType || "Provider";
+
+        try {
+          await this.emailService.sendNotificationEmail({
+            to: socialWorker.email,
+            subject: `Provider invitation expiring soon for Case ${invitation.dischargeCase?.caseNumber}`,
+            message: `The invitation sent to ${providerName} will expire on ${formatter.format(
+              invitation.expiresAt
+            )}. Please follow up with the provider or invite an alternate option.`,
+            actionUrl: `/hospital-sw/discharges/${invitation.dischargeCase?.id}`,
+            userName: socialWorker.firstName || "there",
+          });
+
+          await db.dischargeInvitation.update({
+            where: { id: invitation.id },
+            data: { reminderSentAt: reminderTimestamp },
+          });
+
+          reminderCount++;
+        } catch (emailError) {
+          console.error(
+            `Failed to send discharge invitation reminder for invitation ${invitation.id}:`,
+            emailError
+          );
+        }
+      }
+
+      if (reminderCount > 0) {
+        console.log(
+          `[Scheduled Job] Discharge invitation reminders sent: ${reminderCount}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[Scheduled Job] Error sending discharge invitation reminders:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Handle expired discharge invitations (48-hour expiry)
+   */
+  async handleExpiredDischargeInvitations(): Promise<void> {
+    try {
+      const now = new Date();
+
+      const expiredInvitations = await db.dischargeInvitation.findMany({
+        where: {
+          respondedAt: null,
+          expiresAt: {
+            lt: now,
+          },
+        },
+        include: {
+          dischargeCase: {
+            select: {
+              id: true,
+              caseNumber: true,
+              socialWorker: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (expiredInvitations.length === 0) {
+        return;
+      }
+
+      const providerIds = Array.from(
+        new Set(expiredInvitations.map((invitation) => invitation.providerId))
+      );
+      const providers = await db.provider.findMany({
+        where: {
+          id: {
+            in: providerIds,
+          },
+        },
+        include: {
+          organization: {
+            select: { name: true },
+          },
+        },
+      });
+      const providerMap = new Map(
+        providers.map((provider) => [provider.id, provider])
+      );
+
+      let expiredCount = 0;
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+
+      for (const invitation of expiredInvitations) {
+        const socialWorker = invitation.dischargeCase?.socialWorker;
+        const provider = providerMap.get(invitation.providerId);
+        const providerName =
+          provider?.organization?.name || provider?.primaryLicenseType || "Provider";
+
+        await db.dischargeInvitation.update({
+          where: { id: invitation.id },
+          data: {
+            respondedAt: now,
+            response: InviteResponse.NO_AVAILABILITY,
+            responseNotes: "Automatically marked as expired after 48 hours",
+          },
+        });
+
+        if (socialWorker?.email) {
+          try {
+            await this.emailService.sendNotificationEmail({
+              to: socialWorker.email,
+              subject: `Invitation expired for Case ${invitation.dischargeCase?.caseNumber}`,
+              message: `The invitation sent to ${providerName} expired on ${formatter.format(
+                invitation.expiresAt
+              )}. Consider inviting an alternate provider.`,
+              actionUrl: `/hospital-sw/discharges/${invitation.dischargeCase?.id}`,
+              userName: socialWorker.firstName || "there",
+            });
+          } catch (emailError) {
+            console.error(
+              `Failed to send discharge invitation expiration notice for invitation ${invitation.id}:`,
+              emailError
+            );
+          }
+        }
+
+        expiredCount++;
+      }
+
+      if (expiredCount > 0) {
+        console.log(
+          `[Scheduled Job] Expired discharge invitations processed: ${expiredCount}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[Scheduled Job] Error handling expired discharge invitations:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Auto-escalate discharge cases after invitations expire or are declined
+   */
+  async autoEscalateDischargeCases(): Promise<void> {
+    try {
+      // Find cases that need escalation:
+      // - Status is MATCHING, INVITES_SENT, or RESPONSES_PENDING
+      // - All invitations have been responded to (no pending)
+      // - No accepted invitations
+      const casesNeedingEscalation = await db.dischargeCase.findMany({
+        where: {
+          status: {
+            in: [
+              DischargeStatus.MATCHING,
+              DischargeStatus.INVITES_SENT,
+              DischargeStatus.RESPONSES_PENDING,
+            ],
+          },
+        },
+        include: {
+          invitations: {
+            select: {
+              id: true,
+              providerId: true,
+              response: true,
+              respondedAt: true,
+            },
+          },
+        },
+      });
+
+      let escalatedCount = 0;
+
+      for (const caseRecord of casesNeedingEscalation) {
+        const invitations = caseRecord.invitations || [];
+
+        // Skip if there are pending invitations
+        const hasPendingInvite = invitations.some(
+          (inv) => inv.respondedAt === null
+        );
+        if (hasPendingInvite) {
+          continue;
+        }
+
+        // Skip if there's an accepted invitation
+        const hasAcceptedInvite = invitations.some(
+          (inv) => inv.response === InviteResponse.ACCEPTED
+        );
+        if (hasAcceptedInvite) {
+          continue;
+        }
+
+        // Skip if no invitations exist (nothing to escalate from)
+        if (invitations.length === 0) {
+          continue;
+        }
+
+        // All invitations have been declined or expired - escalate
+        try {
+          const result =
+            await this.dischargeCaseService.autoEscalateDischargeCase(
+              caseRecord.id,
+              3 // max 3 new invitations per escalation
+            );
+
+          if (result.invitedProviderIds.length > 0) {
+            escalatedCount++;
+            console.log(
+              `[Scheduled Job] Auto-escalated case ${caseRecord.caseNumber} with ${result.invitedProviderIds.length} new invitations`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `[Scheduled Job] Error escalating case ${caseRecord.id}:`,
+            error
+          );
+          // Continue with other cases
+        }
+      }
+
+      if (escalatedCount > 0) {
+        console.log(
+          `[Scheduled Job] Auto-escalated ${escalatedCount} discharge cases`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[Scheduled Job] Error auto-escalating discharge cases:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Run all scheduled jobs
    * This should be called by a cron job or scheduler
    */
   async runAllJobs(): Promise<void> {
     try {
       console.log("[Scheduled Job] Starting scheduled jobs...");
+      
+      // Run jobs that can run in parallel
       await Promise.all([
         this.enforceOpeningFreshness(),
         this.sendOpeningExpiryReminders(),
         this.checkLicenseExpiry(),
         this.checkCaseManagerLicenseExpiry(),
+        this.sendDischargeInvitationReminders(),
       ]);
+
+      // Handle expired invitations first
+      await this.handleExpiredDischargeInvitations();
+
+      // Then auto-escalate cases (runs after expired invitations are processed)
+      await this.autoEscalateDischargeCases();
+
       console.log("[Scheduled Job] All scheduled jobs completed");
     } catch (error) {
       console.error("[Scheduled Job] Error running scheduled jobs:", error);

@@ -54,4 +54,28 @@ router.post('/:userId/activate',
   userController.activateUser
 );
 
+// Get notification preferences
+router.get('/notification-preferences',
+  authMiddleware.requireAuth,
+  userController.getNotificationPreferences
+);
+
+// Update notification preferences
+router.put('/notification-preferences',
+  authMiddleware.requireAuth,
+  [
+    body('emailNotifications').optional().isBoolean(),
+    body('emailNewReferrals').optional().isBoolean(),
+    body('emailProviderResponses').optional().isBoolean(),
+    body('emailPlacementUpdates').optional().isBoolean(),
+    body('emailUrgentCases').optional().isBoolean(),
+    body('inAppNotifications').optional().isBoolean(),
+    body('inAppNewReferrals').optional().isBoolean(),
+    body('inAppProviderResponses').optional().isBoolean(),
+    body('inAppPlacementUpdates').optional().isBoolean(),
+    body('inAppUrgentCases').optional().isBoolean(),
+  ],
+  userController.updateNotificationPreferences
+);
+
 export default router;

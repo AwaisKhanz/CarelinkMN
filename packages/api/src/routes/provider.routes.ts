@@ -3,7 +3,11 @@ import { body, param, query } from "express-validator";
 import { ProviderController } from "../controllers/provider.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS } from "../lib/rbac";
+import {
+  PROVIDER_PERMISSIONS,
+  CASE_MANAGER_PERMISSIONS,
+  HOSPITAL_SW_PERMISSIONS,
+} from "../lib/rbac";
 
 const router: Router = Router();
 const providerController = new ProviderController();
@@ -19,6 +23,55 @@ router.get(
 
 // Protected routes (authentication required)
 router.use(authMiddleware.requireAuth);
+
+// Provider list & search
+router.get(
+  "/providers",
+  [
+    query("search")
+      .optional()
+      .isString()
+      .isLength({ max: 200 })
+      .withMessage("Search must be a string up to 200 characters")
+      .trim(),
+    query("verified")
+      .optional()
+      .isBoolean()
+      .withMessage("Verified must be a boolean")
+      .toBoolean(),
+    query("subscriptionTier")
+      .optional()
+      .isString()
+      .isLength({ max: 50 })
+      .withMessage("Subscription tier must be a string"),
+    query("organizationType")
+      .optional()
+      .isString()
+      .isLength({ max: 50 })
+      .withMessage("Organization type must be a string"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer")
+      .toInt(),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100")
+      .toInt(),
+  ],
+  validate([]),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
+    CASE_MANAGER_PERMISSIONS.PROVIDERS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.PROVIDERS_VIEW,
+    "providers:read",
+    "providers:manage",
+    "system:manage",
+    "system:view",
+  ]),
+  providerController.searchProviders
+);
 
 // Provider CRUD operations
 router.post(

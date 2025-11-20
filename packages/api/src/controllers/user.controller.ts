@@ -3,23 +3,17 @@ import { AuthService } from "../services/auth.service";
 import { ApiResponse } from "../types/common";
 import { validationResult } from "express-validator";
 import { AuthenticatedRequest } from "../types/auth";
-import { UserStatus } from "@carelink/types";
+import { UserStatus, NotificationPreferences } from "@carelink/types";
 
 export class UserController {
   private authService: AuthService;
 
   constructor() {
     this.authService = new AuthService();
-    
-    // Bind methods to preserve 'this' context
-    this.updateProfile = this.updateProfile.bind(this);
-    this.deactivateAccount = this.deactivateAccount.bind(this);
-    this.suspendUser = this.suspendUser.bind(this);
-    this.activateUser = this.activateUser.bind(this);
   }
 
   // Update user profile
-  async updateProfile(req: Request, res: Response): Promise<void> {
+  updateProfile = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as unknown as AuthenticatedRequest).user?.id;
       if (!userId) {
@@ -50,7 +44,7 @@ export class UserController {
   }
 
   // Deactivate user account
-  async deactivateAccount(req: Request, res: Response): Promise<void> {
+  deactivateAccount = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as unknown as AuthenticatedRequest).user?.id;
       if (!userId) {
@@ -79,7 +73,7 @@ export class UserController {
   }
 
   // Suspend user (admin only)
-  async suspendUser(req: Request, res: Response): Promise<void> {
+  suspendUser = async (req: Request, res: Response): Promise<void> => {
     try {
       const currentUser = (req as unknown as AuthenticatedRequest).user;
       if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
@@ -111,7 +105,7 @@ export class UserController {
   }
 
   // Activate user (admin only)
-  async activateUser(req: Request, res: Response): Promise<void> {
+  activateUser = async (req: Request, res: Response): Promise<void> => {
     try {
       const currentUser = (req as unknown as AuthenticatedRequest).user;
       if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
@@ -136,6 +130,67 @@ export class UserController {
         success: false,
         error: "User activation failed",
         message: "An error occurred while activating user",
+      } as ApiResponse);
+    }
+  }
+
+  // Get notification preferences
+  getNotificationPreferences = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as unknown as AuthenticatedRequest).user?.id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const preferences = await this.authService.getNotificationPreferences(userId);
+
+      res.status(200).json({
+        success: true,
+        data: { notificationPreferences: preferences },
+        message: "Notification preferences retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get notification preferences error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Notification preferences retrieval failed",
+        message: "An error occurred while retrieving notification preferences",
+      } as ApiResponse);
+    }
+  }
+
+  // Update notification preferences
+  updateNotificationPreferences = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as unknown as AuthenticatedRequest).user?.id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const preferences: NotificationPreferences = req.body;
+      const updatedPreferences = await this.authService.updateNotificationPreferences(userId, preferences);
+
+      res.status(200).json({
+        success: true,
+        data: { notificationPreferences: updatedPreferences },
+        message: "Notification preferences updated successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Update notification preferences error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Notification preferences update failed",
+        message: "An error occurred while updating notification preferences",
       } as ApiResponse);
     }
   }

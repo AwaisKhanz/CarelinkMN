@@ -37,6 +37,7 @@ export class ProviderController {
     this.resendStaffInvite = this.resendStaffInvite.bind(this);
     this.getProviderStats = this.getProviderStats.bind(this);
     this.respondToReferral = this.respondToReferral.bind(this);
+    this.searchProviders = this.searchProviders.bind(this);
   }
 
   // Create new provider
@@ -1221,6 +1222,76 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while responding to referral",
+      } as ApiResponse);
+    }
+  }
+
+  // Search providers (supports pagination & filters)
+  async searchProviders(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: "Please check your input data",
+          details: errors.array(),
+        } as ApiResponse);
+        return;
+      }
+
+      const {
+        search,
+        verified,
+        subscriptionTier,
+        organizationType,
+        page = 1,
+        limit = 20,
+      } = req.query;
+
+      const parsedPage =
+        typeof page === "string" ? parseInt(page, 10) : (page as number);
+      const parsedLimit =
+        typeof limit === "string" ? parseInt(limit, 10) : (limit as number);
+
+      const result = await this.providerService.searchProviders({
+        search: search as string | undefined,
+        verified:
+          typeof verified === "boolean"
+            ? (verified as boolean)
+            : verified === "true"
+              ? true
+              : verified === "false"
+                ? false
+                : undefined,
+        subscriptionTier: subscriptionTier as string | undefined,
+        organizationType: organizationType as string | undefined,
+        page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+        limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          providers: result.providers,
+          pagination: {
+            page: result.page,
+            limit: result.limit,
+            total: result.total,
+            pages: Math.max(1, Math.ceil(result.total / result.limit)),
+          },
+        },
+        message: "Providers retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Search providers error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve providers",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving providers",
       } as ApiResponse);
     }
   }

@@ -12,7 +12,7 @@ import {
   SessionUser,
 } from "../types/auth";
 import { Prisma } from "@prisma/client";
-import { UserStatus } from "@carelink/types";
+import { UserStatus, NotificationPreferences } from "@carelink/types";
 import { UserRole as SharedUserRole } from "@carelink/types";
 import { generateToken, verifyToken, JWTPayload } from "../lib/jwt";
 import jwt from "jsonwebtoken";
@@ -502,6 +502,69 @@ export class AuthService {
     } catch (error) {
       console.error("Update user status error:", error);
       throw new Error("Failed to update user status");
+    }
+  }
+
+  // Get notification preferences
+  async getNotificationPreferences(userId: string): Promise<NotificationPreferences> {
+    try {
+      const user = await this.authRepository.findUserById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Return default preferences if none exist
+      const defaultPreferences: NotificationPreferences = {
+        emailNotifications: true,
+        emailNewReferrals: true,
+        emailProviderResponses: true,
+        emailPlacementUpdates: true,
+        emailUrgentCases: true,
+        inAppNotifications: true,
+        inAppNewReferrals: true,
+        inAppProviderResponses: true,
+        inAppPlacementUpdates: true,
+        inAppUrgentCases: true,
+      };
+
+      // Access notificationPreferences from user (Prisma JSON field)
+      const prefs = (user as any).notificationPreferences;
+      if (prefs) {
+        // Parse JSON if it's stored as JSON string
+        if (typeof prefs === 'string') {
+          return JSON.parse(prefs) as NotificationPreferences;
+        }
+        return prefs as NotificationPreferences;
+      }
+
+      return defaultPreferences;
+    } catch (error) {
+      console.error("Get notification preferences error:", error);
+      throw new Error("Failed to get notification preferences");
+    }
+  }
+
+  // Update notification preferences
+  async updateNotificationPreferences(
+    userId: string,
+    preferences: NotificationPreferences
+  ): Promise<NotificationPreferences> {
+    try {
+      await this.authRepository.updateUser(userId, {
+        notificationPreferences: preferences as any, // Prisma JSON type
+      });
+
+      // Log preferences update
+      await auditService.logAuth(
+        userId,
+        "NOTIFICATION_PREFERENCES_UPDATE",
+        { fields: Object.keys(preferences) }
+      );
+
+      return preferences;
+    } catch (error) {
+      console.error("Update notification preferences error:", error);
+      throw new Error("Failed to update notification preferences");
     }
   }
 }

@@ -321,7 +321,7 @@ function CaseManagerDashboardContent() {
                   <div
                     key={placement.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => router.push(`/case-manager/placements/${placement.id}`)}
+                    onClick={() => router.push(`/case-manager/referrals/${placement.referralId}`)}
                   >
                     <div className="flex items-center space-x-4 flex-1">
                       <CheckCircle className="h-5 w-5 text-success shrink-0" />
@@ -342,7 +342,7 @@ function CaseManagerDashboardContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => router.push("/case-manager/placements")}
+                  onClick={() => router.push("/case-manager/referrals?status=PLACED")}
                 >
                   View All Placements
                 </Button>

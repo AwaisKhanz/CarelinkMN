@@ -937,18 +937,9 @@ export interface DischargeCase {
   invitations?: DischargeInvitation[];
   messages?: MessageThread[];
   placement?: Placement;
-  transportBooking?: {
-    id: string;
-    transportType: string;
-    scheduledDate?: string | Date;
-    status: string;
-  };
+  transportBooking?: TransportBooking;
   checklist?: DischargeChecklist;
-  consent?: {
-    id: string;
-    obtainedAt: string | Date;
-    version: string;
-  };
+  consent?: Consent;
 }
 
 export interface DischargeInvitation {
@@ -1050,8 +1041,8 @@ export interface PaginatedDischargeCases {
   pagination: {
     total: number;
     pages: number;
-    page: number;
-    limit: number;
+  page: number;
+  limit: number;
   };
 }
 
@@ -1106,6 +1097,166 @@ export interface AIMatchingResult {
   explanation: string;
 }
 
+// ============================================
+// TRANSPORT BOOKING TYPES
+// ============================================
+
+export enum BookingStatus {
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  IN_TRANSIT = "IN_TRANSIT",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+export interface TransportBooking {
+  id: string;
+  dischargeCaseId: string;
+  vendorId: string;
+  vendor?: {
+    id: string;
+    organization?: {
+      id: string;
+      name: string;
+    };
+  };
+  pickupAddress: string;
+  pickupTime: string | Date;
+  dropoffAddress: string;
+  vehicleType: string; // "AMBULANCE", "WHEELCHAIR_VAN", "SEDAN"
+  equipmentNeeded: string[];
+  attendantRequired: boolean;
+  status: BookingStatus;
+  estimatedCost?: number;
+  actualCost?: number;
+  payerType: Payer;
+  confirmationNumber?: string;
+  driverName?: string;
+  driverPhone?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  completedAt?: string | Date;
+}
+
+export interface CreateTransportBookingData {
+  dischargeCaseId: string;
+  vendorId: string;
+  pickupAddress: string;
+  pickupTime: string | Date;
+  dropoffAddress: string;
+  vehicleType: string;
+  equipmentNeeded?: string[];
+  attendantRequired?: boolean;
+  estimatedCost?: number;
+  payerType: Payer;
+}
+
+export interface UpdateTransportBookingData {
+  vendorId?: string;
+  pickupAddress?: string;
+  pickupTime?: string | Date;
+  dropoffAddress?: string;
+  vehicleType?: string;
+  equipmentNeeded?: string[];
+  attendantRequired?: boolean;
+  status?: BookingStatus;
+  estimatedCost?: number;
+  actualCost?: number;
+  payerType?: Payer;
+  confirmationNumber?: string;
+  driverName?: string;
+  driverPhone?: string;
+  completedAt?: string | Date;
+}
+
+// ============================================
+// CONSENT TYPES
+// ============================================
+
+export enum ConsentType {
+  REFERRAL = "REFERRAL",
+  DISCHARGE = "DISCHARGE",
+  PHI_RELEASE = "PHI_RELEASE",
+  MARKETING = "MARKETING",
+}
+
+export enum CaptureMethod {
+  ELECTRONIC_SIGNATURE = "ELECTRONIC_SIGNATURE",
+  VERBAL_WITH_WITNESS = "VERBAL_WITH_WITNESS",
+  WRITTEN_SCAN = "WRITTEN_SCAN",
+}
+
+// ============================================
+// VRS SPECIALIST TYPES
+// ============================================
+
+export enum VRSClientStatus {
+  INTAKE = "INTAKE",
+  ASSESSMENT = "ASSESSMENT",
+  JOB_READY = "JOB_READY",
+  JOB_SEARCHING = "JOB_SEARCHING",
+  PLACED = "PLACED",
+  FOLLOW_UP = "FOLLOW_UP",
+  CLOSED = "CLOSED",
+}
+
+export enum JobStatus {
+  DRAFT = "DRAFT",
+  OPEN = "OPEN",
+  FILLED = "FILLED",
+  CLOSED = "CLOSED",
+}
+
+export enum RetentionStatus {
+  RETAINED = "RETAINED",
+  NOT_RETAINED = "NOT_RETAINED",
+  PENDING = "PENDING",
+}
+
+export interface Consent {
+  id: string;
+  userId: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  referralId?: string;
+  dischargeCaseId?: string;
+  consentType: ConsentType;
+  consentVersion: string;
+  captureMethod: CaptureMethod;
+  witnessName?: string;
+  witnessTitle?: string;
+  signatureData?: string; // Base64 encoded signature
+  isActive: boolean;
+  revokedAt?: string | Date;
+  revokedReason?: string;
+  consentedAt: string | Date;
+  expiresAt?: string | Date;
+}
+
+export interface CreateConsentData {
+  userId: string;
+  referralId?: string;
+  dischargeCaseId?: string;
+  consentType: ConsentType;
+  consentVersion: string;
+  captureMethod: CaptureMethod;
+  witnessName?: string;
+  witnessTitle?: string;
+  signatureData?: string;
+  expiresAt?: string | Date;
+}
+
+export interface UpdateConsentData {
+  isActive?: boolean;
+  revokedAt?: string | Date;
+  revokedReason?: string;
+  expiresAt?: string | Date;
+}
+
 // Case Manager Onboarding Types
 export interface CaseManagerOnboardingOrganizationData {
   organizationName?: string;
@@ -1131,6 +1282,23 @@ export interface CaseManagerOnboardingLicenseData {
     documentUrl?: string;
     fileName?: string;
   };
+}
+
+// Hospital Social Worker Onboarding Types
+export interface HospitalSWOnboardingOrganizationData {
+  organizationName?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  county?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  ein?: string;
+  fax?: string;
+  description?: string;
 }
 
 // Case Manager Client Summary (for clients page)
@@ -1190,4 +1358,167 @@ export interface ProviderWithAvailability {
   matchingServices?: string[];
   acceptsPayer?: boolean;
   avgResponseTime?: number;
+}
+
+// ============================================
+// MARKETPLACE VENDOR TYPES
+// ============================================
+
+export enum VendorCategory {
+  TRAINING = "TRAINING",
+  DME = "DME", // Durable Medical Equipment
+  HOME_MODS = "HOME_MODS",
+  LEGAL = "LEGAL",
+  STAFFING = "STAFFING",
+  TRANSPORT = "TRANSPORT", // NEMT providers
+}
+
+export enum LeadStatus {
+  NEW = "NEW",
+  CONTACTED = "CONTACTED",
+  QUALIFIED = "QUALIFIED",
+  CONVERTED = "CONVERTED",
+  LOST = "LOST",
+}
+
+export interface Vendor {
+  id: string;
+  organizationId: string;
+  organization?: {
+    id: string;
+    name: string;
+    type: string;
+    email: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    county: string;
+  };
+  category: VendorCategory;
+  subcategories: string[];
+  businessName: string;
+  description: string;
+  logo?: string | null;
+  services: string[];
+  serviceAreas: string[]; // Counties/Cities served
+  isSponsoredVendor: boolean;
+  sponsorshipTier?: string | null; // "BASIC", "PREMIUM"
+  sponsorshipExpiry?: string | Date | null;
+  averageRating?: number | null;
+  reviewCount: number;
+  isVerified: boolean;
+  verifiedAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  transportBookings?: TransportBooking[];
+  leads?: VendorLead[];
+}
+
+export interface VendorLead {
+  id: string;
+  vendorId: string;
+  vendor?: Vendor;
+  name: string;
+  email: string;
+  phone?: string | null;
+  servicesInterested: string[];
+  message?: string | null;
+  source: string; // "MARKETPLACE", "REFERRAL", "AD"
+  status: LeadStatus;
+  createdAt: string | Date;
+  contactedAt?: string | Date | null;
+  convertedAt?: string | Date | null;
+}
+
+export interface CreateVendorData {
+  organizationId: string;
+  category: VendorCategory;
+  subcategories?: string[];
+  businessName: string;
+  description: string;
+  logo?: string;
+  services?: string[];
+  serviceAreas?: string[];
+  isSponsoredVendor?: boolean;
+  sponsorshipTier?: string;
+  sponsorshipExpiry?: string | Date;
+}
+
+export interface UpdateVendorData {
+  category?: VendorCategory;
+  subcategories?: string[];
+  businessName?: string;
+  description?: string;
+  logo?: string;
+  services?: string[];
+  serviceAreas?: string[];
+  isSponsoredVendor?: boolean;
+  sponsorshipTier?: string;
+  sponsorshipExpiry?: string | Date;
+}
+
+export interface GetVendorLeadsParams {
+  page?: number;
+  limit?: number;
+  status?: LeadStatus;
+  source?: string;
+  search?: string;
+}
+
+export interface VendorLeadsResponse {
+  leads: VendorLead[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export interface UpdateLeadStatusData {
+  status: LeadStatus;
+  notes?: string;
+}
+
+export interface GetVendorBookingsParams {
+  page?: number;
+  limit?: number;
+  status?: BookingStatus;
+  search?: string;
+}
+
+export interface VendorBookingsResponse {
+  bookings: TransportBooking[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export interface VendorAnalytics {
+  totalLeads: number;
+  newLeads: number;
+  convertedLeads: number;
+  conversionRate: number;
+  totalBookings: number;
+  pendingBookings: number;
+  completedBookings: number;
+  totalRevenue?: number;
+  averageRating?: number;
+  reviewCount: number;
+  leadsBySource: {
+    source: string;
+    count: number;
+  }[];
+  bookingsByStatus: {
+    status: BookingStatus;
+    count: number;
+  }[];
+  leadsThisMonth: number;
+  bookingsThisMonth: number;
 }

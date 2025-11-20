@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { PlacementController } from "../controllers/placement.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 import { PlacementStatus } from "@prisma/client";
 
 const router: Router = Router();
@@ -88,7 +88,10 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
-  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.RESIDENTS_VIEW),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
+  ]),
   placementController.getPlacements.bind(placementController)
 );
 

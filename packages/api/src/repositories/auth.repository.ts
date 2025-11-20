@@ -253,6 +253,7 @@ export class AuthRepository {
       firstName: string;
       lastName: string;
       phone: string;
+      notificationPreferences?: any; // Prisma JSON type
     }>
   ): Promise<User> {
     return await db.user.update({

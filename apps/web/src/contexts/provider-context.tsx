@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { UserRole, SubscriptionTier } from "@carelink/types";
 import { useAuth } from "@/contexts/auth-context";
 import { providerService, Provider } from "@/lib/api";
@@ -14,7 +21,7 @@ interface ProviderContextType {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  
+
   // Computed properties
   isVerified: boolean;
   hasProPlan: boolean;
@@ -25,7 +32,7 @@ interface ProviderContextType {
   organizationName: string | null;
   hasProviderProfile: boolean;
   isPendingVerification: boolean;
-  
+
   // Helper methods
   hasMinimumTier: (requiredTier: SubscriptionTier) => boolean;
   canAccessFeature: (feature: string) => boolean;
@@ -43,11 +50,16 @@ export function useProvider() {
   return context;
 }
 
-export function ProviderProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/**
+ * Safe version of useProvider that returns null if context is not available
+ * Use this when the provider context may not be available (e.g., for non-provider users)
+ */
+export function useProviderSafe() {
+  const context = useContext(ProviderContext);
+  return context ?? null;
+}
+
+export function ProviderProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const [provider, setProvider] = useState<Provider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,15 +111,21 @@ export function ProviderProvider({
   }, [hasProviderProfile, isVerified]);
 
   // Helper methods
-  const hasMinimumTier = useCallback((requiredTier: SubscriptionTier): boolean => {
-    return PLAN_HIERARCHY[subscriptionTier] >= PLAN_HIERARCHY[requiredTier];
-  }, [subscriptionTier]);
+  const hasMinimumTier = useCallback(
+    (requiredTier: SubscriptionTier): boolean => {
+      return PLAN_HIERARCHY[subscriptionTier] >= PLAN_HIERARCHY[requiredTier];
+    },
+    [subscriptionTier]
+  );
 
-  const canAccessFeature = useCallback((feature: string): boolean => {
-    // Feature-based access control can be extended here
-    // For now, return true if verified
-    return isVerified;
-  }, [isVerified]);
+  const canAccessFeature = useCallback(
+    (feature: string): boolean => {
+      // Feature-based access control can be extended here
+      // For now, return true if verified
+      return isVerified;
+    },
+    [isVerified]
+  );
 
   const fetchProvider = useCallback(async () => {
     // Only fetch for provider users
@@ -131,7 +149,8 @@ export function ProviderProvider({
       setProvider(providerData);
     } catch (err) {
       console.error("Error fetching provider:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch provider";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch provider";
       setError(errorMessage);
       setProvider(null);
     } finally {
@@ -151,7 +170,7 @@ export function ProviderProvider({
       isLoading,
       error,
       refetch: fetchProvider,
-      
+
       // Computed properties
       isVerified,
       hasProPlan,
@@ -162,7 +181,7 @@ export function ProviderProvider({
       organizationName,
       hasProviderProfile,
       isPendingVerification,
-      
+
       // Helper methods
       hasMinimumTier,
       canAccessFeature,
@@ -193,4 +212,3 @@ export function ProviderProvider({
     </ProviderContext.Provider>
   );
 }
-

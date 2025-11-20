@@ -19,7 +19,6 @@ import {
   Bed,
   Clock,
   CheckCircle,
-  AlertTriangle,
   Search,
   Package,
   Menu,
@@ -29,11 +28,12 @@ import {
   Building,
   MessageSquare,
   ShieldCheck,
+  Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { UserRole } from "@carelink/types";
 import { getDashboardPath } from "@/lib/routing";
-import { useProvider } from "@/contexts/provider-context";
+import { useProviderSafe } from "@/contexts/provider-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useProviderId } from "@/hooks/use-provider-data";
@@ -100,8 +100,18 @@ const getNavItems = (
           icon: Building2,
         },
         {
-          title: "Referrals",
-          href: "/admin/referrals",
+          title: "License Verification",
+          href: "/admin/licenses",
+          icon: ShieldCheck,
+        },
+        {
+          title: "Compliance",
+          href: "/admin/compliance",
+          icon: CheckCircle,
+        },
+        {
+          title: "Audit Logs",
+          href: "/admin/audit-logs",
           icon: FileText,
         },
         {
@@ -192,29 +202,11 @@ const getNavItems = (
         });
       }
 
-      if (perms.canViewResidents) {
-        providerItems.push({
-          title: "Residents",
-          href: "/provider/residents",
-          icon: Users,
-          requiresPlan: PROVIDER_FEATURE_GATES.residents.requiredPlan,
-        });
-      }
-
       if (perms.canViewReferrals) {
         providerItems.push({
           title: "Referrals",
           href: "/provider/referrals",
           icon: FileText,
-        });
-      }
-
-      if (perms.canManageOpenings) {
-        providerItems.push({
-          title: "Availability",
-          href: "/provider/availability",
-          icon: Clock,
-          requiresPlan: PROVIDER_FEATURE_GATES.availability.requiredPlan,
         });
       }
 
@@ -246,24 +238,9 @@ const getNavItems = (
           icon: FileText,
         },
         {
-          title: "Clients",
-          href: "/case-manager/clients",
-          icon: Users,
-        },
-        {
           title: "Search Providers",
           href: "/case-manager/search",
           icon: Search,
-        },
-        {
-          title: "Urgent Cases",
-          href: "/case-manager/urgent",
-          icon: AlertTriangle,
-        },
-        {
-          title: "Analytics",
-          href: "/case-manager/analytics",
-          icon: BarChart3,
         },
         {
           title: "Messages",
@@ -286,14 +263,14 @@ const getNavItems = (
           icon: FileText,
         },
         {
-          title: "Patients",
-          href: "/hospital-sw/patients",
-          icon: Users,
+          title: "Providers",
+          href: "/hospital-sw/providers",
+          icon: Building,
         },
         {
-          title: "Placements",
-          href: "/hospital-sw/placements",
-          icon: CheckCircle,
+          title: "Messages",
+          href: "/hospital-sw/messages",
+          icon: MessageSquare,
         },
         {
           title: "Settings",
@@ -306,19 +283,24 @@ const getNavItems = (
       return [
         ...baseItems,
         {
-          title: "Case Reviews",
-          href: "/vrs/reviews",
-          icon: FileText,
-        },
-        {
           title: "Clients",
           href: "/vrs/clients",
           icon: Users,
         },
         {
-          title: "Pending Reviews",
-          href: "/vrs/pending",
-          icon: Clock,
+          title: "Employers",
+          href: "/vrs/employers",
+          icon: Building2,
+        },
+        {
+          title: "Jobs & Placements",
+          href: "/vrs/jobs",
+          icon: Briefcase,
+        },
+        {
+          title: "Analytics",
+          href: "/vrs/analytics",
+          icon: BarChart3,
         },
         {
           title: "Settings",
@@ -331,19 +313,24 @@ const getNavItems = (
       return [
         ...baseItems,
         {
-          title: "Services",
-          href: "/vendor/services",
+          title: "Profile",
+          href: "/vendor/profile",
           icon: Package,
         },
         {
-          title: "Orders",
-          href: "/vendor/orders",
+          title: "Leads",
+          href: "/vendor/leads",
+          icon: Users,
+        },
+        {
+          title: "Bookings",
+          href: "/vendor/bookings",
           icon: FileText,
         },
         {
-          title: "Clients",
-          href: "/vendor/clients",
-          icon: Users,
+          title: "Analytics",
+          href: "/vendor/analytics",
+          icon: BarChart3,
         },
         {
           title: "Settings",
@@ -397,15 +384,9 @@ export function Sidebar({ className }: SidebarProps) {
   const providerId = useProviderId();
   const [referralCount, setReferralCount] = useState<number | null>(null);
 
-  // Get provider from context (if available)
-  let providerLogo: string | undefined = undefined;
-  try {
-    const { provider } = useProvider();
-    providerLogo = provider?.logo;
-  } catch {
-    // Provider context not available (user is not a provider)
-    // This is fine, providerLogo will remain undefined
-  }
+  // Get provider from context (safe for non-provider users)
+  const providerContext = useProviderSafe();
+  const providerLogo = providerContext?.provider?.logo;
 
   // Fetch referral count for provider users
   useEffect(() => {

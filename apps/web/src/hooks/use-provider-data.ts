@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from "react";
-import { useProvider } from "@/contexts/provider-context";
+import { useProvider, useProviderSafe } from "@/contexts/provider-context";
 import { Provider } from "@/lib/api";
 import { isValidProvider } from "@/lib/utils/provider";
 
@@ -20,11 +20,18 @@ export function useProviderData() {
 /**
  * Hook to get provider ID from context
  * Returns null if provider is not loaded or invalid
+ * Safe to use for non-provider users (returns null)
  */
 export function useProviderId(): string | null {
-  const { provider, isLoading } = useProvider();
+  const providerContext = useProviderSafe();
   
   return useMemo(() => {
+    if (!providerContext) {
+      return null;
+    }
+    
+    const { provider, isLoading } = providerContext;
+    
     if (isLoading || !provider) {
       return null;
     }
@@ -34,7 +41,7 @@ export function useProviderId(): string | null {
     }
     
     return provider.id;
-  }, [provider, isLoading]);
+  }, [providerContext]);
 }
 
 /**

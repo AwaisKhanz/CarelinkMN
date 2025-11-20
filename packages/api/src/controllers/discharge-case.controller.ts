@@ -511,5 +511,47 @@ export class DischargeCaseController {
       } as ApiResponse);
     }
   }
+
+  /**
+   * Get Hospital SW analytics
+   * GET /api/hospital-sw/analytics
+   */
+  async getHospitalSWAnalytics(req: Request, res: Response): Promise<void> {
+    try {
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { startDate, endDate } = req.query;
+
+      const analytics = await this.dischargeCaseService.getHospitalSWAnalytics(
+        user.id,
+        startDate ? (startDate as string) : undefined,
+        endDate ? (endDate as string) : undefined
+      );
+
+      res.status(200).json({
+        success: true,
+        data: analytics,
+        message: "Analytics retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get Hospital SW analytics error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve analytics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving analytics",
+      } as ApiResponse);
+    }
+  }
 }
 

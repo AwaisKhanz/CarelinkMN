@@ -201,7 +201,7 @@ export class ProviderService {
   async getProviderPublicProfile(id: string): Promise<any> {
     try {
       const provider = await db.provider.findUnique({
-        where: {
+        where: { 
           id,
           verified: true, // Only show verified providers publicly
         },
@@ -436,7 +436,7 @@ export class ProviderService {
           where: { providerId: id },
         }),
         db.home.count({
-          where: {
+          where: { 
             providerId: id,
             isActive: true,
           },
@@ -445,7 +445,7 @@ export class ProviderService {
           where: { providerId: id },
         }),
         db.opening.count({
-          where: {
+          where: { 
             providerId: id,
             status: "OPEN",
           },
@@ -454,7 +454,7 @@ export class ProviderService {
           where: { providerId: id },
         }),
         db.placement.count({
-          where: {
+          where: { 
             providerId: id,
             createdAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
@@ -544,6 +544,21 @@ export class ProviderService {
           include: {
             organization: true,
             licenses: true,
+            homes: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                state: true,
+                acceptingNew: true,
+                isActive: true,
+              },
+            },
+            services: {
+              include: {
+                service: true,
+              },
+            },
             _count: {
               select: {
                 homes: true,

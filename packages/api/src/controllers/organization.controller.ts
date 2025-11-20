@@ -142,7 +142,7 @@ export class OrganizationController {
   }
 
   // Update organization
-  async updateOrganization(req: Request, res: Response): Promise<void> {
+  updateOrganization = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
       const user = (req as unknown as AuthenticatedRequest).user;
@@ -169,6 +169,21 @@ export class OrganizationController {
         } catch (err) {
           // If we can't fetch case manager, deny access
           console.error("Error checking case manager organization:", err);
+        }
+      }
+
+      // For hospital SW users, check if the organization belongs to their hospital staff record
+      if (!hasAccess && user.role === "HOSPITAL_SW") {
+        try {
+          const { HospitalStaffService } = await import("../services/hospital-staff.service");
+          const hospitalStaffService = new HospitalStaffService();
+          const hospitalStaff = await hospitalStaffService.getHospitalStaffByUserId(user.id);
+          if (hospitalStaff && hospitalStaff.organizationId === id) {
+            hasAccess = true;
+          }
+        } catch (err) {
+          // If we can't fetch hospital staff, deny access
+          console.error("Error checking hospital staff organization:", err);
         }
       }
 

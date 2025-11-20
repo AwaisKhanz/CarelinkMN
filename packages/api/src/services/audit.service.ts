@@ -65,7 +65,8 @@ export class AuditService {
       | "PASSWORD_RESET"
       | "PHONE_VERIFY"
       | "PROFILE_UPDATE"
-      | "STATUS_CHANGE",
+      | "STATUS_CHANGE"
+      | "NOTIFICATION_PREFERENCES_UPDATE",
     metadata?: Record<string, any>,
     ipAddress?: string,
     userAgent?: string,

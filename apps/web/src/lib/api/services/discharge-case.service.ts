@@ -8,6 +8,7 @@ import {
   DischargeChecklist,
   PaginatedDischargeCases,
   AIMatchingResult,
+  HospitalSWAnalytics,
   ApiResponse,
 } from "@carelink/types";
 
@@ -145,6 +146,33 @@ export class DischargeCaseService {
     return apiService.post<AIMatchingResult>(
       `/api/discharge-cases/${caseId}/ai-matching`
     );
+  }
+
+  /**
+   * Get Hospital SW analytics
+   */
+  async getHospitalSWAnalytics(
+    startDate?: Date | string,
+    endDate?: Date | string
+  ): Promise<ApiResponse<HospitalSWAnalytics>> {
+    const queryParams = new URLSearchParams();
+    if (startDate) {
+      const start =
+        startDate instanceof Date
+          ? startDate.toISOString()
+          : startDate.toString();
+      queryParams.append("startDate", start);
+    }
+    if (endDate) {
+      const end =
+        endDate instanceof Date ? endDate.toISOString() : endDate.toString();
+      queryParams.append("endDate", end);
+    }
+
+    const queryString = queryParams.toString();
+    const url = `/api/hospital-sw/analytics${queryString ? `?${queryString}` : ""}`;
+
+    return apiService.get<HospitalSWAnalytics>(url);
   }
 }
 

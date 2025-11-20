@@ -12,6 +12,7 @@ export interface User {
   lastName: string;
   phone?: string;
   role: UserRole;
+  status?: string;
   organizationId?: string;
   organization?: {
     id: string;
@@ -99,7 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.data.user);
       setToken(data.data.token);
       localStorage.setItem("auth_token", data.data.token);
-      
+
       // Return the user data for immediate use
       return data.data.user;
     } catch (error) {
@@ -180,25 +180,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProfile = async (data: Partial<User>) => {
-    if (!token) return;
-
     try {
-      const response = await fetch("/api/auth/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await apiService.put<{ user: User }>(
+        "/api/users/profile",
+        data
+      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Profile update failed");
+      if (!response.success || !response.data?.user) {
+        throw new Error(response.message || "Profile update failed");
       }
 
-      setUser(result.data.user);
+      setUser(response.data.user);
     } catch (error) {
       console.error("Profile update error:", error);
       throw error;

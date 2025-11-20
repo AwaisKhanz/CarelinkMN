@@ -17,6 +17,7 @@ router.use(authMiddleware.requireAnyPermission([
 
 // Search audit logs
 router.get('/search', auditController.searchLogs);
+router.get('/logs', auditController.searchLogs);
 
 // Get audit statistics
 router.get('/statistics', auditController.getStatistics);

@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { body, param, query } from "express-validator";
 import { DischargeCaseController } from "../controllers/discharge-case.controller";
+import { TransportBookingController } from "../controllers/transport-booking.controller";
+import { ConsentController } from "../controllers/consent.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { DischargeStatus, Payer, Gender } from "@carelink/types";
+import { DischargeStatus, Payer, Gender, BookingStatus, ConsentType, CaptureMethod } from "@carelink/types";
 import { HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
@@ -91,19 +93,36 @@ router.post(
       .isBoolean()
       .withMessage("Requires proximity must be a boolean"),
     body("proximityZipCode")
-      .optional()
-      .isString()
-      .matches(/^\d{5}(-\d{4})?$/)
-      .withMessage("Proximity zip code must be a valid ZIP code"),
+      .optional({ values: "falsy" })
+      .custom((value, { req }) => {
+        // Only validate if requiresProximity is true
+        if (req.body.requiresProximity === true) {
+          if (!value || value.trim() === "") {
+            throw new Error("Proximity zip code is required when proximity is required");
+          }
+          if (!/^\d{5}(-\d{4})?$/.test(value)) {
+            throw new Error("Proximity zip code must be a valid ZIP code");
+          }
+        }
+        // If requiresProximity is false or not set, allow empty/null/undefined
+        return true;
+      }),
     body("maxDistanceMiles")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Max distance must be a positive integer"),
+      .optional({ values: "falsy" })
+      .custom((value, { req }) => {
+        // Only validate if requiresProximity is true
+        if (req.body.requiresProximity === true && value !== undefined && value !== null) {
+          if (!Number.isInteger(value) || value < 1) {
+            throw new Error("Max distance must be a positive integer");
+          }
+        }
+        return true;
+      }),
     body("primaryInsurance")
       .isIn(Object.values(Payer))
       .withMessage("Invalid primary insurance"),
     body("secondaryInsurance")
-      .optional()
+      .optional({ values: "falsy" })
       .isIn(Object.values(Payer))
       .withMessage("Invalid secondary insurance"),
     body("needsTransport")
@@ -111,9 +130,17 @@ router.post(
       .isBoolean()
       .withMessage("Needs transport must be a boolean"),
     body("transportType")
-      .optional()
-      .isString()
-      .withMessage("Transport type must be a string"),
+      .optional({ values: "falsy" })
+      .custom((value, { req }) => {
+        // Only validate if needsTransport is true
+        if (req.body.needsTransport === true) {
+          if (!value || value.trim() === "") {
+            throw new Error("Transport type is required when transport is needed");
+          }
+        }
+        // If needsTransport is false or not set, allow empty/null/undefined
+        return true;
+      }),
   ],
   validate([]),
   dischargeCaseController.createDischargeCase
@@ -335,6 +362,199 @@ router.post(
   ],
   validate([]),
   dischargeCaseController.triggerAIMatching
+);
+
+const transportBookingController = new TransportBookingController();
+const consentController = new ConsentController();
+
+// Transport Booking routes
+// Get transport booking by discharge case ID
+router.get(
+  "/discharge-cases/:dischargeCaseId/transport-booking",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.NEMT_BOOKING_MANAGE),
+  [
+    param("dischargeCaseId")
+      .isUUID()
+      .withMessage("Discharge case ID must be a valid UUID"),
+  ],
+  validate([]),
+  transportBookingController.getTransportBookingByDischargeCaseId
+);
+
+// Create transport booking
+router.post(
+  "/discharge-cases/:dischargeCaseId/transport-booking",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.NEMT_BOOKING_MANAGE),
+  [
+    param("dischargeCaseId")
+      .isUUID()
+      .withMessage("Discharge case ID must be a valid UUID"),
+    body("vendorId").isUUID().withMessage("Vendor ID must be a valid UUID"),
+    body("pickupAddress")
+      .isString()
+      .notEmpty()
+      .withMessage("Pickup address is required"),
+    body("pickupTime")
+      .isISO8601()
+      .withMessage("Pickup time must be a valid ISO 8601 date"),
+    body("dropoffAddress")
+      .isString()
+      .notEmpty()
+      .withMessage("Dropoff address is required"),
+    body("vehicleType")
+      .isString()
+      .isIn(["AMBULANCE", "WHEELCHAIR_VAN", "SEDAN"])
+      .withMessage("Vehicle type must be AMBULANCE, WHEELCHAIR_VAN, or SEDAN"),
+    body("equipmentNeeded")
+      .optional()
+      .isArray()
+      .withMessage("Equipment needed must be an array"),
+    body("attendantRequired")
+      .optional()
+      .isBoolean()
+      .withMessage("Attendant required must be a boolean"),
+    body("estimatedCost")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Estimated cost must be a positive number"),
+    body("payerType")
+      .isIn(Object.values(Payer))
+      .withMessage("Invalid payer type"),
+  ],
+  validate([]),
+  transportBookingController.createTransportBooking
+);
+
+// Update transport booking
+router.put(
+  "/transport-bookings/:id",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.NEMT_BOOKING_MANAGE),
+  [
+    param("id").isUUID().withMessage("Transport booking ID must be a valid UUID"),
+    body("status")
+      .optional()
+      .isIn(Object.values(BookingStatus))
+      .withMessage("Invalid booking status"),
+    body("pickupTime")
+      .optional()
+      .isISO8601()
+      .withMessage("Pickup time must be a valid ISO 8601 date"),
+    body("estimatedCost")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Estimated cost must be a positive number"),
+    body("actualCost")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Actual cost must be a positive number"),
+  ],
+  validate([]),
+  transportBookingController.updateTransportBooking
+);
+
+// Delete transport booking
+router.delete(
+  "/transport-bookings/:id",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.NEMT_BOOKING_MANAGE),
+  [
+    param("id").isUUID().withMessage("Transport booking ID must be a valid UUID"),
+  ],
+  validate([]),
+  transportBookingController.deleteTransportBooking
+);
+
+// Consent routes
+// Get consent by discharge case ID
+router.get(
+  "/discharge-cases/:dischargeCaseId/consent",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.CONSENT_MANAGE),
+  [
+    param("dischargeCaseId")
+      .isUUID()
+      .withMessage("Discharge case ID must be a valid UUID"),
+  ],
+  validate([]),
+  consentController.getConsentByDischargeCaseId
+);
+
+// Create consent
+router.post(
+  "/discharge-cases/:dischargeCaseId/consent",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.CONSENT_MANAGE),
+  [
+    param("dischargeCaseId")
+      .isUUID()
+      .withMessage("Discharge case ID must be a valid UUID"),
+    body("consentType")
+      .isIn(Object.values(ConsentType))
+      .withMessage("Invalid consent type"),
+    body("consentVersion")
+      .isString()
+      .notEmpty()
+      .withMessage("Consent version is required"),
+    body("captureMethod")
+      .isIn(Object.values(CaptureMethod))
+      .withMessage("Invalid capture method"),
+    body("witnessName")
+      .optional()
+      .isString()
+      .withMessage("Witness name must be a string"),
+    body("witnessTitle")
+      .optional()
+      .isString()
+      .withMessage("Witness title must be a string"),
+    body("signatureData")
+      .optional()
+      .isString()
+      .withMessage("Signature data must be a string"),
+    body("expiresAt")
+      .optional()
+      .isISO8601()
+      .withMessage("Expires at must be a valid ISO 8601 date"),
+  ],
+  validate([]),
+  consentController.createConsent
+);
+
+// Update consent
+router.put(
+  "/consents/:id",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.CONSENT_MANAGE),
+  [
+    param("id").isUUID().withMessage("Consent ID must be a valid UUID"),
+    body("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("Is active must be a boolean"),
+    body("revokedAt")
+      .optional()
+      .isISO8601()
+      .withMessage("Revoked at must be a valid ISO 8601 date"),
+    body("revokedReason")
+      .optional()
+      .isString()
+      .withMessage("Revoked reason must be a string"),
+  ],
+  validate([]),
+  consentController.updateConsent
+);
+
+// Get Hospital SW analytics
+router.get(
+  "/hospital-sw/analytics",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.ANALYTICS_VIEW),
+  [
+    query("startDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Start date must be a valid ISO 8601 date"),
+    query("endDate")
+      .optional()
+      .isISO8601()
+      .withMessage("End date must be a valid ISO 8601 date"),
+  ],
+  validate([]),
+  dischargeCaseController.getHospitalSWAnalytics.bind(dischargeCaseController)
 );
 
 export default router;

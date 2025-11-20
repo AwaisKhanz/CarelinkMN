@@ -23,10 +23,21 @@ export class AuditController {
         result,
         fromDate,
         toDate,
+        startDate,
+        endDate,
         ipAddress,
         limit = 50,
-        offset = 0,
+        offset,
+        page,
       } = req.query;
+
+      const limitNumber = parseInt(limit as string, 10) || 50;
+      const offsetNumber =
+        offset !== undefined
+          ? parseInt(offset as string, 10) || 0
+          : page
+          ? (parseInt(page as string, 10) - 1) * limitNumber
+          : 0;
 
       const criteria: AuditSearchCriteria = {
         userId: userId as string,
@@ -35,19 +46,35 @@ export class AuditController {
         resourceId: resourceId as string,
         result: result as AuditResult,
         ipAddress: ipAddress as string,
-        limit: parseInt(limit as string) || 50,
-        offset: parseInt(offset as string) || 0,
+        limit: limitNumber,
+        offset: offsetNumber,
       };
 
-      if (fromDate) {
-        criteria.fromDate = new Date(fromDate as string);
+      const from = fromDate || startDate;
+      const to = toDate || endDate;
+
+      if (from) {
+        criteria.fromDate = new Date(from as string);
       }
 
-      if (toDate) {
-        criteria.toDate = new Date(toDate as string);
+      if (to) {
+        criteria.toDate = new Date(to as string);
       }
 
       const results = await auditService.search(criteria);
+
+      const pagination = {
+        page: Math.floor(offsetNumber / limitNumber) + 1,
+        limit: limitNumber,
+        total: results.total,
+        pages: Math.max(Math.ceil(results.total / limitNumber), 1),
+        hasMore: results.hasMore,
+      };
+
+      const logs = results.logs.map((log) => ({
+        ...log,
+        createdAt: log.timestamp,
+      }));
 
       // Log this audit access
       await auditService.logSystem("audit.search", {
@@ -58,7 +85,10 @@ export class AuditController {
 
       res.status(200).json({
         success: true,
-        data: results,
+        data: {
+          logs,
+          pagination,
+        },
         message: "Audit logs retrieved successfully",
       } as ApiResponse);
     } catch (error) {

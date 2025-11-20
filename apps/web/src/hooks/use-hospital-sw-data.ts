@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { dischargeCaseService } from '@/lib/api';
 import {
@@ -7,6 +7,7 @@ import {
   PaginatedDischargeCases,
   DischargeInvitation,
   DischargeChecklist,
+  HospitalSWAnalytics,
 } from '@carelink/types';
 
 /**
@@ -228,5 +229,113 @@ export function useDischargeChecklist(caseId: string | null) {
   }, [caseId]);
 
   return { checklist, isLoading, error, refetch };
+}
+
+/**
+ * Hook to fetch Hospital SW analytics with caching
+ */
+interface UseHospitalSWAnalyticsResult {
+  analytics: HospitalSWAnalytics | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  lastFetched: Date | null;
+}
+
+// Simple in-memory cache
+const analyticsCache = new Map<
+  string,
+  {
+    data: HospitalSWAnalytics;
+    timestamp: Date;
+  }
+>();
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function useHospitalSWAnalytics(
+  options?: {
+    startDate?: Date | string;
+    endDate?: Date | string;
+    refresh?: boolean;
+  }
+): UseHospitalSWAnalyticsResult {
+  const { user } = useAuth();
+  const [analytics, setAnalytics] = useState<HospitalSWAnalytics | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const cacheKey = useMemo(() => {
+    return `${user?.id || 'unknown'}-${options?.startDate || 'default'}-${options?.endDate || 'default'}`;
+  }, [user?.id, options?.startDate, options?.endDate]);
+
+  const fetchAnalytics = useCallback(async () => {
+    if (!user?.id) {
+      setAnalytics(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Check cache unless forced refresh
+    if (!options?.refresh) {
+      const cached = analyticsCache.get(cacheKey);
+      if (cached) {
+        const age = Date.now() - cached.timestamp.getTime();
+        if (age < CACHE_TTL_MS) {
+          setAnalytics(cached.data);
+          setLastFetched(cached.timestamp);
+          setError(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await dischargeCaseService.getHospitalSWAnalytics(
+        options?.startDate,
+        options?.endDate
+      );
+
+      if (response.success && response.data) {
+        const data = response.data;
+        setAnalytics(data);
+        const now = new Date();
+        setLastFetched(now);
+
+        // Update cache
+        analyticsCache.set(cacheKey, {
+          data,
+          timestamp: now,
+        });
+      } else {
+        throw new Error(response.message || 'Failed to fetch analytics');
+      }
+    } catch (err) {
+      console.error('Error fetching Hospital SW analytics:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analytics';
+      setError(errorMessage);
+      setAnalytics(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, cacheKey, options?.refresh, options?.startDate, options?.endDate]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  return {
+    analytics,
+    isLoading,
+    error,
+    refetch: fetchAnalytics,
+    lastFetched,
+  };
 }
 

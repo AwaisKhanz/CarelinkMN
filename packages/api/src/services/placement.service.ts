@@ -311,6 +311,19 @@ export class PlacementService {
 
       const where: any = {};
 
+      // Get user role and organization for access control
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true, organizationId: true },
+      });
+
+      // If user is Hospital SW, filter placements by their hospital's discharge cases
+      if (user?.role === "HOSPITAL_SW" && user.organizationId) {
+        where.dischargeCase = {
+          hospitalId: user.organizationId,
+        };
+      }
+
       // If providerId is provided, verify access
       if (providerId) {
         const hasAccess = await this.verifyProviderAccess(userId, providerId);
@@ -318,6 +331,8 @@ export class PlacementService {
           throw new Error("Access denied");
         }
         where.providerId = providerId;
+        // Remove dischargeCase filter if providerId is specified (provider takes precedence)
+        delete where.dischargeCase;
       }
 
       if (openingId) {
@@ -336,7 +351,23 @@ export class PlacementService {
       }
 
       if (dischargeCaseId) {
+        // Verify user has access to the discharge case (for Hospital SW users)
+        if (user?.role === "HOSPITAL_SW" && user.organizationId) {
+          // Verify the discharge case belongs to the user's hospital
+          const dischargeCase = await db.dischargeCase.findFirst({
+            where: {
+              id: dischargeCaseId,
+              hospitalId: user.organizationId,
+            },
+          });
+
+          if (!dischargeCase) {
+            throw new Error("Access denied: Discharge case not found or access denied");
+          }
+        }
         where.dischargeCaseId = dischargeCaseId;
+        // Remove the general dischargeCase filter if specific dischargeCaseId is provided
+        delete where.dischargeCase;
       }
 
       if (status) {
