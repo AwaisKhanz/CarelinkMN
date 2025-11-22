@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { EmailVerificationGuard } from "@/components/auth/email-verification-guard";
 import { VendorGuard } from "@/components/auth/route-guard";
 import { PageMetadataProvider, usePageMetadata } from "./use-page-metadata";
 
@@ -20,12 +21,15 @@ function LayoutContent({ children }: LayoutProps) {
 }
 
 export default function VendorDashboardLayout({ children }: LayoutProps) {
+  // Guard order: EmailVerificationGuard -> VendorGuard -> PageMetadataProvider
   return (
-    <VendorGuard>
-      <PageMetadataProvider>
-        <LayoutContent>{children}</LayoutContent>
-      </PageMetadataProvider>
-    </VendorGuard>
+    <EmailVerificationGuard>
+      <VendorGuard>
+        <PageMetadataProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </PageMetadataProvider>
+      </VendorGuard>
+    </EmailVerificationGuard>
   );
 }
 

@@ -25,6 +25,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { BadgeProps } from "@/components/ui/badge";
 import { VendorCategory, BookingStatus, LeadStatus } from "@carelink/types";
+import { VEHICLE_TYPES, LEAD_SOURCES } from "@carelink/utils";
 
 // ============================================
 // VENDOR CATEGORY CONFIGURATION
@@ -170,32 +171,11 @@ export function getLeadStatusBadgeConfig(status: LeadStatus): StatusConfig {
 }
 
 // ============================================
-// VEHICLE TYPES
+// VEHICLE TYPES (re-exported from shared package)
 // ============================================
 
-export interface VehicleTypeOption {
-  value: string;
-  label: string;
-  description: string;
-}
-
-export const VEHICLE_TYPES: VehicleTypeOption[] = [
-  {
-    value: "AMBULANCE",
-    label: "Ambulance",
-    description: "Full medical transport ambulance",
-  },
-  {
-    value: "WHEELCHAIR_VAN",
-    label: "Wheelchair Van",
-    description: "Wheelchair accessible van",
-  },
-  {
-    value: "SEDAN",
-    label: "Sedan",
-    description: "Standard passenger vehicle",
-  },
-];
+export type { VehicleTypeOption } from "@carelink/utils";
+export { VEHICLE_TYPES } from "@carelink/utils";
 
 export const VEHICLE_TYPES_MAP: Record<string, string> = VEHICLE_TYPES.reduce(
   (acc, type) => {
@@ -210,19 +190,11 @@ export function getVehicleTypeLabel(vehicleType: string): string {
 }
 
 // ============================================
-// LEAD SOURCES
+// LEAD SOURCES (re-exported from shared package)
 // ============================================
 
-export interface LeadSourceOption {
-  value: string;
-  label: string;
-}
-
-export const LEAD_SOURCES: LeadSourceOption[] = [
-  { value: "MARKETPLACE", label: "Marketplace" },
-  { value: "REFERRAL", label: "Referral" },
-  { value: "AD", label: "Advertisement" },
-];
+export type { LeadSourceOption } from "@carelink/utils";
+export { LEAD_SOURCES } from "@carelink/utils";
 
 export const LEAD_SOURCES_MAP: Record<string, string> = LEAD_SOURCES.reduce(
   (acc, source) => {
@@ -271,4 +243,3 @@ export const SPONSORSHIP_TIERS_MAP: Record<string, string> =
 export function getSponsorshipTierLabel(tier: string): string {
   return SPONSORSHIP_TIERS_MAP[tier] || tier;
 }
-

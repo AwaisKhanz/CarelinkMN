@@ -33,10 +33,7 @@ import {
   getOccupancyColor,
   getOccupancyPercentage,
 } from "@/lib/utils/provider";
-import {
-  ProviderLoadingState,
-  ProviderErrorState,
-} from "@/components/provider";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -88,18 +85,19 @@ function HomeDetailPageContent() {
 
   if (isLoading) {
     return (
-      <ProviderLoadingState message="Loading home details..." fullHeight />
+      <LoadingState message="Loading home details..." fullHeight />
     );
   }
 
   if (error || !home) {
     return (
-      <ProviderErrorState
+      <ErrorState
         title="Home Not Found"
         message={error || "Home not found"}
         action={{
           label: "Retry",
           onClick: fetchHomeData,
+          variant: "healthcare",
         }}
         secondaryAction={{
           label: "Go Back",

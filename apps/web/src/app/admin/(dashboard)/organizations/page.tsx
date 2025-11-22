@@ -12,12 +12,7 @@ import { OrganizationStatus, OrganizationType } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminEmptyState,
-  AdminStatsGrid,
-} from "@/components/admin";
+import { LoadingState, ErrorState, EmptyState, StatsGrid } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -274,12 +269,12 @@ function AdminOrganizationsPageContent() {
   );
 
   if (isLoading && organizations.length === 0) {
-    return <AdminLoadingState message="Loading organizations..." fullHeight />;
+    return <LoadingState message="Loading organizations..." fullHeight />;
   }
 
   if (error && organizations.length === 0) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Organizations"
         message={error}
         action={{
@@ -294,7 +289,7 @@ function AdminOrganizationsPageContent() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} variant="card" />
 
       {/* Filters and Search */}
       <Card variant="healthcare">
@@ -360,7 +355,7 @@ function AdminOrganizationsPageContent() {
           </div>
 
           {organizations.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={Building2}
               title="No organizations found"
               description="No organizations match your current filters"

@@ -8,10 +8,7 @@ import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
   EmployersHeader,
   EmployersStats,
@@ -102,16 +99,18 @@ function VRSEmployersPageContent() {
   });
 
   if (isLoading && employers.length === 0) {
-    return <VRSLoadingState message="Loading employers..." />;
+    return <LoadingState message="Loading employers..." />;
   }
 
   if (error && employers.length === 0) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Employers"
         message={error}
         action={{
           label: "Retry",
           onClick: handleRefresh,
+          variant: "healthcare",
         }}
       />
     );

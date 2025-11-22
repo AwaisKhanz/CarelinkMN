@@ -45,7 +45,13 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { PROVIDER_FEATURE_GATES } from "@/lib/constants";
 import { formatDistanceToNow, format } from "date-fns";
 import type { BadgeProps } from "@/components/ui/badge";
-import { Referral, Urgency, ReferralStatus } from "@carelink/types";
+import {
+  Referral,
+  Urgency,
+  ReferralStatus,
+  SubscriptionTier,
+  LicenseStatus,
+} from "@carelink/types";
 import { SLABadge } from "@/components/ui/sla-badge";
 import { useSubscriptionContext } from "@/contexts/subscription-context";
 import { useProviderId, useProviderData } from "@/hooks/use-provider-data";
@@ -59,10 +65,7 @@ import {
   getUrgencyBadgeConfig,
   getReferralStatusBadgeConfig,
 } from "@/lib/utils/provider";
-import {
-  ProviderLoadingState,
-  ProviderErrorState,
-} from "@/components/provider";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -212,7 +215,7 @@ function ProviderDashboardContent() {
               }),
 
             // Fetch placements (only for PRO+)
-            tier !== "FREE"
+            tier !== SubscriptionTier.FREE
               ? placementService
                   .getPlacements({
                     providerId,
@@ -252,16 +255,15 @@ function ProviderDashboardContent() {
         // Fetch expiring licenses if user can manage licenses
         if (canManageLicenses && providerId) {
           try {
-            const licensesResponse = await providerService.getProviderLicenses(
-              providerId
-            );
+            const licensesResponse =
+              await providerService.getProviderLicenses(providerId);
             if (licensesResponse.success && licensesResponse.data) {
               const now = new Date();
               const thirtyDaysFromNow = new Date(
                 now.getTime() + 30 * 24 * 60 * 60 * 1000
               );
               const expiring = licensesResponse.data.filter((license: any) => {
-                if (license.status !== "ACTIVE") return false;
+                if (license.status !== LicenseStatus.ACTIVE) return false;
                 const expirationDate = new Date(license.expirationDate);
                 return (
                   expirationDate >= now && expirationDate <= thirtyDaysFromNow
@@ -374,13 +376,13 @@ function ProviderDashboardContent() {
 
   // Loading state
   if (isLoading) {
-    return <ProviderLoadingState message="Loading dashboard..." />;
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   // Error state - provider not found or data fetch errors
   if (combinedError || (!providerId && user?.id)) {
     return (
-      <ProviderErrorState
+      <ErrorState
         title={combinedError ? "Error Loading Dashboard" : "Provider Not Found"}
         message={
           combinedError ||
@@ -419,11 +421,11 @@ function ProviderDashboardContent() {
         <div className="flex items-center gap-2">
           <Badge
             variant={
-              tier === "FREE"
+              tier === SubscriptionTier.FREE
                 ? "outline"
-                : tier === "PRO"
+                : tier === SubscriptionTier.PRO
                   ? "healthcarePrimary"
-                  : tier === "PREMIUM"
+                  : tier === SubscriptionTier.PREMIUM
                     ? "healthcareSuccess"
                     : "healthcareWarning"
             }
@@ -434,9 +436,9 @@ function ProviderDashboardContent() {
           {subscription && (
             <Badge
               variant={
-                subscription.status === "ACTIVE"
+                subscriptionStatus.isActive
                   ? "healthcareSuccess"
-                  : subscription.status === "CANCELLED"
+                  : subscriptionStatus.isTrial
                     ? "healthcareWarning"
                     : "destructive"
               }
@@ -538,7 +540,10 @@ function ProviderDashboardContent() {
 
       {/* Stale Openings Alert */}
       {staleOpenings.length > 0 && (
-        <Card variant="healthcare" className="border-destructive/50 bg-destructive/5">
+        <Card
+          variant="healthcare"
+          className="border-destructive/50 bg-destructive/5"
+        >
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />

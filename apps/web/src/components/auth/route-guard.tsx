@@ -220,3 +220,11 @@ export function VendorGuard({ children }: { children: React.ReactNode }) {
     </RouteGuard>
   );
 }
+
+export function PublicGuard({ children }: { children: React.ReactNode }) {
+  return (
+    <RouteGuard requiredRoles={[UserRole.PUBLIC]}>
+      {children}
+    </RouteGuard>
+  );
+}

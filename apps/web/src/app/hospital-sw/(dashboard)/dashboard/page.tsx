@@ -18,10 +18,7 @@ import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { DischargeStatus } from "@carelink/types";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import {
-  HospitalSWLoadingState,
-  HospitalSWStatsGrid,
-} from "@/components/hospital-sw";
+import { LoadingState, StatsGrid } from "@/components/shared";
 import { useDischargeCases } from "@/hooks/use-hospital-sw-data";
 import {
   isDischargeCaseActive,
@@ -133,13 +130,13 @@ function HospitalSWDashboardContent() {
   );
 
   if (isLoading) {
-    return <HospitalSWLoadingState message="Loading dashboard..." />;
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   return (
     <div className="space-y-8">
       {/* Quick Stats */}
-      <HospitalSWStatsGrid stats={statsData} columns={4} />
+      <StatsGrid stats={statsData} columns={4} />
 
       {/* Quick Actions */}
       <Card variant="healthcare">
@@ -155,7 +152,7 @@ function HospitalSWDashboardContent() {
               onClick={() => router.push("/hospital-sw/discharges/create")}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create Discharge Case
+              Create Discharge Case (AI-Powered Matching)
             </Button>
           )}
           {canViewDischarges && (
@@ -178,7 +175,18 @@ function HospitalSWDashboardContent() {
               }
             >
               <Clock className="mr-2 h-4 w-4" />
-              Review Pending Discharges
+              Provider Invitations & Responses
+              <ArrowRight className="ml-auto h-4 w-4" />
+            </Button>
+          )}
+          {canCreateDischarges && (
+            <Button
+              variant="healthcareSecondary"
+              className="w-full justify-start"
+              onClick={() => router.push("/hospital-sw/discharges")}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              NEMT Booking & Follow-up Checklists
               <ArrowRight className="ml-auto h-4 w-4" />
             </Button>
           )}

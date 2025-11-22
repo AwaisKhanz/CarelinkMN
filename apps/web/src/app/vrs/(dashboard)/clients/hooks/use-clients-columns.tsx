@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Eye,
-  Edit,
-  MoreVertical,
-} from "lucide-react";
+import { Eye, Edit, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,16 +42,16 @@ export function useClientsColumns() {
         accessorKey: "eligibilityType",
         header: "Eligibility",
         cell: ({ row }) => {
-          return (
-            <div className="text-sm">{row.original.eligibilityType}</div>
-          );
+          return <div className="text-sm">{row.original.eligibilityType}</div>;
         },
       },
       {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          const statusConfig = getVRSClientStatusBadgeConfig(row.original.status);
+          const statusConfig = getVRSClientStatusBadgeConfig(
+            row.original.status
+          );
           return (
             <Badge variant={statusConfig.variant} className="whitespace-nowrap">
               {statusConfig.label}
@@ -118,4 +114,3 @@ export function useClientsColumns() {
 
   return columns;
 }
-

@@ -10,7 +10,7 @@ import { ReferralForm } from "@/components/forms/referral-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CaseManagerErrorState } from "@/components/case-manager";
+import { ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
@@ -89,7 +89,7 @@ function CreateReferralPageContent() {
 
       {/* Error State */}
       {error && (
-        <CaseManagerErrorState
+        <ErrorState
           title="Error Creating Referral"
           message={error}
           action={{

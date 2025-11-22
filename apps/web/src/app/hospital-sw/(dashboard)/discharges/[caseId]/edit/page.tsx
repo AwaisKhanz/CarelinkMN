@@ -11,11 +11,8 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { DischargeCaseForm } from "@/components/forms/discharge-case-form";
-import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
-  HospitalSWDetailHeader,
-} from "@/components/hospital-sw";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { HospitalSWDetailHeader } from "@/components/hospital-sw";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useDischargeCase } from "@/hooks/use-hospital-sw-data";
@@ -190,13 +187,13 @@ function EditDischargeCasePageContent() {
 
   if (isLoading) {
     return (
-      <HospitalSWLoadingState message="Loading discharge case..." fullHeight />
+      <LoadingState message="Loading discharge case..." fullHeight />
     );
   }
 
   if (fetchError || !dischargeCase) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
         title="Error Loading Discharge Case"
         message={fetchError?.message || "Discharge case not found"}
         action={{

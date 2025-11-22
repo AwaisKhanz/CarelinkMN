@@ -3,9 +3,9 @@
  * Shared components for admin dashboard
  */
 
-export { AdminLoadingState } from "./admin-loading-state";
-export { AdminErrorState } from "./admin-error-state";
-export { AdminEmptyState } from "./admin-empty-state";
-export { AdminStatsGrid } from "./admin-stats-grid";
+// AdminLoadingState, AdminErrorState, and AdminEmptyState have been replaced with shared components
+// See: @/components/shared/LoadingState, @/components/shared/ErrorState, @/components/shared/EmptyState
+// AdminStatsGrid has been replaced with shared StatsGrid component
+// See: @/components/shared/StatsGrid
 export { AdminDetailHeader } from "./admin-detail-header";
 

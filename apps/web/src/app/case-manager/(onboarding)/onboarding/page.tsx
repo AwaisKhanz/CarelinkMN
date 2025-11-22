@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { caseManagerService, organizationService, CaseManager } from "@/lib/api";
+import {
+  caseManagerService,
+  organizationService,
+  CaseManager,
+} from "@/lib/api";
 import {
   CaseManagerOnboardingOrganizationData,
   CaseManagerOnboardingLicenseData,
@@ -32,6 +36,8 @@ import { toast } from "sonner";
 import { OrganizationSetup } from "./components/organization-setup";
 import { LicenseUpload } from "./components/license-upload";
 import { ReviewAndSubmit } from "./components/review-and-submit";
+import { OrganizationStatus } from "@carelink/types";
+import { getOrganizationStatusBadgeConfig } from "@/lib/utils/admin";
 
 const STEPS = [
   {
@@ -73,7 +79,9 @@ export default function CaseManagerOnboardingPage() {
   const [organizationStatus, setOrganizationStatus] = useState<string | null>(
     null
   );
-  const [caseManagerData, setCaseManagerData] = useState<CaseManager | null>(null);
+  const [caseManagerData, setCaseManagerData] = useState<CaseManager | null>(
+    null
+  );
   const validateStepRef = useRef<(() => Promise<boolean>) | null>(null);
 
   // Load existing data on mount
@@ -200,7 +208,10 @@ export default function CaseManagerOnboardingPage() {
 
   // If organization is VERIFIED, redirect to dashboard (onboarding is complete)
   useEffect(() => {
-    if (organizationStatus === "VERIFIED" && caseManagerData?.licenseNumber) {
+    if (
+      organizationStatus === OrganizationStatus.VERIFIED &&
+      caseManagerData?.licenseNumber
+    ) {
       toast.success("Your onboarding has been approved!");
       router.push("/case-manager/dashboard");
     }
@@ -208,7 +219,13 @@ export default function CaseManagerOnboardingPage() {
 
   // Auto-save function with debouncing
   const saveStepData = useCallback(
-    async (step: number, data: CaseManagerOnboardingOrganizationData | CaseManagerOnboardingLicenseData, isComplete: boolean = false) => {
+    async (
+      step: number,
+      data:
+        | CaseManagerOnboardingOrganizationData
+        | CaseManagerOnboardingLicenseData,
+      isComplete: boolean = false
+    ) => {
       console.log("💾 saveStepData called", {
         step,
         data,
@@ -222,8 +239,14 @@ export default function CaseManagerOnboardingPage() {
         // Update local state first
         setOnboardingState((prev) => ({
           ...prev,
-          organizationData: step === 0 ? (data as CaseManagerOnboardingOrganizationData) : prev.organizationData,
-          licenseData: step === 1 ? (data as CaseManagerOnboardingLicenseData) : prev.licenseData,
+          organizationData:
+            step === 0
+              ? (data as CaseManagerOnboardingOrganizationData)
+              : prev.organizationData,
+          licenseData:
+            step === 1
+              ? (data as CaseManagerOnboardingLicenseData)
+              : prev.licenseData,
           completedSteps:
             isComplete && !prev.completedSteps.includes(step)
               ? [...prev.completedSteps, step]
@@ -255,7 +278,10 @@ export default function CaseManagerOnboardingPage() {
           // Update organization
           const orgData = data as CaseManagerOnboardingOrganizationData;
           if (orgId) {
-            console.log("📤 Updating organization via API", { orgId, data: orgData });
+            console.log("📤 Updating organization via API", {
+              orgId,
+              data: orgData,
+            });
             try {
               await organizationService.updateOrganization(orgId, {
                 name: orgData.organizationName,
@@ -317,9 +343,19 @@ export default function CaseManagerOnboardingPage() {
 
         // Extract detailed error message from API response
         let errorMessage = "Failed to save progress";
-        if (error && typeof error === 'object' && 'response' in error) {
-          const apiError = error as { response?: { data?: { errors?: Array<{ field: string; message: string }>; message?: string } } };
-          if (apiError.response?.data?.errors && Array.isArray(apiError.response.data.errors)) {
+        if (error && typeof error === "object" && "response" in error) {
+          const apiError = error as {
+            response?: {
+              data?: {
+                errors?: Array<{ field: string; message: string }>;
+                message?: string;
+              };
+            };
+          };
+          if (
+            apiError.response?.data?.errors &&
+            Array.isArray(apiError.response.data.errors)
+          ) {
             // Show first validation error
             const firstError = apiError.response.data.errors[0];
             errorMessage = `${firstError.field}: ${firstError.message}`;
@@ -340,7 +376,11 @@ export default function CaseManagerOnboardingPage() {
   );
 
   const handleStepComplete = useCallback(
-    async (stepData: CaseManagerOnboardingOrganizationData | CaseManagerOnboardingLicenseData) => {
+    async (
+      stepData:
+        | CaseManagerOnboardingOrganizationData
+        | CaseManagerOnboardingLicenseData
+    ) => {
       console.log("🔄 handleStepComplete called", { currentStep, stepData });
       // Save step data when step is completed
       await saveStepData(currentStep, stepData, true);
@@ -485,47 +525,122 @@ export default function CaseManagerOnboardingPage() {
     );
   }
 
-  // Show submitted/pending review state
-  // If organization is PENDING and both steps are completed, show waiting for review message
+  // Show status message for different organization statuses
+  // For PENDING: only show if application is submitted (both steps completed)
+  // For SUSPENDED/DEACTIVATED: always show regardless of completion status (admin action)
   const hasCompletedSteps =
     completedSteps.includes(0) && completedSteps.includes(1);
-  if (
-    organizationStatus === "PENDING" &&
-    hasCompletedSteps &&
-    caseManagerData?.licenseNumber
-  ) {
+
+  const shouldShowStatus =
+    organizationStatus &&
+    organizationStatus !== OrganizationStatus.VERIFIED && // VERIFIED is handled separately (redirects to dashboard)
+    // Show if status is SUSPENDED or DEACTIVATED (admin action)
+    (organizationStatus === OrganizationStatus.SUSPENDED ||
+      organizationStatus === OrganizationStatus.DEACTIVATED ||
+      // Show if status is PENDING and application is submitted
+      (organizationStatus === OrganizationStatus.PENDING &&
+        hasCompletedSteps &&
+        caseManagerData?.licenseNumber));
+
+  if (shouldShowStatus) {
+    const status = organizationStatus as OrganizationStatus;
+    const statusConfig = getOrganizationStatusBadgeConfig(status);
+
+    // Different UI for different statuses
+    let title = "";
+    let description = "";
+    let icon: JSX.Element | null = null;
+    let infoMessage = "";
+    let showExpectedReviewTime = false;
+
+    switch (status) {
+      case OrganizationStatus.PENDING:
+        title = "Application Under Review";
+        description =
+          "Your case manager application has been submitted and is currently being reviewed by our admin team.";
+        icon = <CheckCircle className="h-12 w-12 text-warning mx-auto mb-4" />;
+        infoMessage =
+          "You'll receive an email notification once your application has been reviewed and approved. You can check back here anytime to see your application status.";
+        showExpectedReviewTime = true;
+        break;
+      case OrganizationStatus.SUSPENDED:
+        title = "Application Suspended";
+        description =
+          "Your case manager application has been suspended. Please contact support for more information.";
+        icon = (
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+        );
+        infoMessage =
+          "If you believe this is an error or have questions about the suspension, please contact our support team for assistance.";
+        showExpectedReviewTime = false;
+        break;
+      case OrganizationStatus.DEACTIVATED:
+        title = "Application Deactivated";
+        description =
+          "Your case manager application has been deactivated. Please contact support to reactivate your account.";
+        icon = (
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        );
+        infoMessage =
+          "Your account has been deactivated. Please contact our support team if you wish to reactivate your account.";
+        showExpectedReviewTime = false;
+        break;
+      default:
+        title = "Application Status";
+        description = `Your application status: ${statusConfig.label}`;
+        icon = <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />;
+        infoMessage =
+          "Please check back here anytime to see your application status.";
+        showExpectedReviewTime = false;
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CheckCircle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <CardTitle>Application Under Review</CardTitle>
-            <CardDescription>
-              Your case manager application has been submitted and is currently
-              being reviewed by our admin team.
-            </CardDescription>
+            {icon}
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge variant="healthcareWarning">Under Review</Badge>
+                <Badge variant={statusConfig.variant}>
+                  {statusConfig.label}
+                </Badge>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  Expected Review Time
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  2-3 business days
-                </span>
-              </div>
+              {showExpectedReviewTime && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    Expected Review Time
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    2-3 business days
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className="p-3 bg-info/10 border border-info/20 rounded-lg">
-              <p className="text-sm text-info text-center">
-                You'll receive an email notification once your application has
-                been reviewed and approved. You can check back here anytime to
-                see your application status.
+            <div
+              className={`p-3 rounded-lg ${
+                status === OrganizationStatus.SUSPENDED
+                  ? "bg-destructive/10 border border-destructive/20"
+                  : status === OrganizationStatus.DEACTIVATED
+                    ? "bg-muted/10 border border-muted/20"
+                    : "bg-info/10 border border-info/20"
+              }`}
+            >
+              <p
+                className={`text-sm text-center ${
+                  status === OrganizationStatus.SUSPENDED
+                    ? "text-destructive"
+                    : status === OrganizationStatus.DEACTIVATED
+                      ? "text-muted-foreground"
+                      : "text-info"
+                }`}
+              >
+                {infoMessage}
               </p>
             </div>
 

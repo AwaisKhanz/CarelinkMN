@@ -3,7 +3,107 @@
  *
  * This file contains all reusable constants used across the application.
  * Import from here instead of hardcoding values in individual components.
+ *
+ * NOTE: Pure data constants are now exported from @carelink/utils.
+ * This file re-exports them for backward compatibility and includes
+ * UI-specific constants (badge configs with icons, etc.).
  */
+
+// ============================================
+// RE-EXPORT SHARED CONSTANTS FROM @carelink/utils
+// ============================================
+// Re-export all pure data constants from the shared package
+export {
+  // Minnesota counties
+  MINNESOTA_COUNTIES,
+  // Care levels
+  CARE_LEVELS,
+  type CareLevelOption,
+  // Supported needs
+  SUPPORTED_NEEDS,
+  type SupportedNeedOption,
+  // Behavioral needs
+  BEHAVIORAL_NEEDS,
+  type BehavioralNeedOption,
+  // Medical needs
+  MEDICAL_NEEDS,
+  type MedicalNeedOption,
+  // Payers (PAYER_OPTIONS not re-exported - web app has its own version with Payer enum)
+  PAYER_TYPES,
+  // License types
+  LICENSE_TYPES,
+  type LicenseTypeOption,
+  // Gender options
+  GENDER_OPTIONS,
+  GENDER_PREFERENCES,
+  type GenderOption,
+  // Transport types
+  TRANSPORT_TYPES,
+  type TransportTypeOption,
+  // Mobility status
+  MOBILITY_STATUS_OPTIONS,
+  MOBILITY_LEVELS,
+  type MobilityStatusOption,
+  // Cognitive status
+  COGNITIVE_STATUS_OPTIONS,
+  type CognitiveStatusOption,
+  // DME needs
+  DME_NEEDS_OPTIONS,
+  type DMENeedOption,
+  // Behavioral concerns
+  BEHAVIORAL_CONCERNS_OPTIONS,
+  type BehavioralConcernOption,
+  // Hospital locations
+  HOSPITAL_LOCATIONS,
+  type HospitalLocationOption,
+  // Countries
+  COUNTRIES,
+  type Country,
+  // Other constants
+  SERVICE_CATEGORIES,
+  USER_ROLES,
+  // Note: ORGANIZATION_TYPES is NOT re-exported - web app has its own version with labels
+  URGENCY_LEVELS,
+  PERFORMANCE_TARGETS,
+  ERROR_CODES,
+  FILE_LIMITS,
+  RATE_LIMITS,
+  CACHE_TTL,
+  BUSINESS_HOURS,
+  NOTIFICATION_CHANNELS,
+  AUDIT_ACTIONS,
+  OPENING_EXPIRY_HOURS,
+  OPENING_EXPIRY_WARNING_HOURS,
+  MAX_OPENINGS_FETCH_LIMIT,
+  RECENT_ITEMS_LIMIT,
+  PAGINATION_DEFAULTS,
+  SUBSCRIPTION_TIERS,
+  // AI Search
+  AI_SEARCH_RATE_LIMIT,
+  AI_SEARCH_MIN_QUERY_LENGTH,
+  // Vehicle types
+  VEHICLE_TYPES,
+  type VehicleTypeOption,
+  // Lead sources
+  LEAD_SOURCES,
+  type LeadSourceOption,
+} from "@carelink/utils";
+
+// Import constants explicitly for use in MAP helpers below
+import {
+  TRANSPORT_TYPES,
+  MOBILITY_STATUS_OPTIONS,
+  COGNITIVE_STATUS_OPTIONS,
+  DME_NEEDS_OPTIONS,
+  BEHAVIORAL_CONCERNS_OPTIONS,
+  HOSPITAL_LOCATIONS,
+  GENDER_OPTIONS,
+  CARE_LEVELS,
+  SUPPORTED_NEEDS,
+  BEHAVIORAL_NEEDS,
+  MEDICAL_NEEDS,
+  MOBILITY_LEVELS,
+} from "@carelink/utils";
 
 import {
   Check,
@@ -30,63 +130,15 @@ import {
   PlacementStatus,
   DischargeStatus,
   InviteResponse,
+  SubscriptionTier,
 } from "@carelink/types";
 import type { BadgeProps } from "@/components/ui/badge";
+import { LICENSE_TYPES } from "@carelink/utils";
 
 // ============================================
-// LICENSE TYPES
+// LICENSE TYPES MAP (UI-specific helper)
 // ============================================
-
-export interface LicenseTypeOption {
-  value: string;
-  label: string;
-  category?: string;
-}
-
-export const LICENSE_TYPES: LicenseTypeOption[] = [
-  {
-    value: "144D",
-    label: "144D - Assisted Living (Dementia Care)",
-    category: "Assisted Living",
-  },
-  {
-    value: "245D_BASIC",
-    label: "245D Basic",
-    category: "Community Residential",
-  },
-  {
-    value: "245D_INTENSIVE",
-    label: "245D Intensive",
-    category: "Community Residential",
-  },
-  {
-    value: "CRS",
-    label: "CRS - Community Residential Services",
-    category: "Community Residential",
-  },
-  {
-    value: "ALF",
-    label: "ALF - Assisted Living Facility",
-    category: "Assisted Living",
-  },
-  {
-    value: "ICF_DD",
-    label: "ICF/DD - Intermediate Care Facility",
-    category: "Residential",
-  },
-  {
-    value: "SIL",
-    label: "SIL - Semi-Independent Living",
-    category: "Independent Living",
-  },
-  {
-    value: "OTHER",
-    label: "Other",
-    category: "Other",
-  },
-];
-
-// License types as a map for quick lookups
+// Create a map for quick lookups (UI-specific helper, stays in web app)
 export const LICENSE_TYPES_MAP: Record<string, string> = LICENSE_TYPES.reduce(
   (acc, type) => {
     acc[type.value] = type.label;
@@ -243,7 +295,7 @@ export const SUBSCRIPTION_PLANS_SIMPLE: Record<string, string> = {
 
 export interface ProviderFeatureGateConfig {
   feature: string;
-  requiredPlan: "PRO" | "PREMIUM" | "ENTERPRISE";
+  requiredPlan: SubscriptionTier;
   description: string;
   compact?: boolean;
 }
@@ -254,31 +306,31 @@ export const PROVIDER_FEATURE_GATES: Record<
 > = {
   analytics: {
     feature: "Analytics Dashboard",
-    requiredPlan: "PRO",
+    requiredPlan: SubscriptionTier.PRO,
     description:
       "Upgrade to Pro to access performance insights, conversion metrics, and referral analytics tailored to your organization.",
   },
   placements: {
     feature: "Placement Management",
-    requiredPlan: "PRO",
+    requiredPlan: SubscriptionTier.PRO,
     description:
       "Upgrade to Pro to manage active placements, track statuses, and maintain compliance with real-time placement records.",
   },
   residents: {
     feature: "Resident Management",
-    requiredPlan: "PRO",
+    requiredPlan: SubscriptionTier.PRO,
     description:
       "Upgrade to Pro to view and manage active residents, track care plans, and keep your occupancy data up to date.",
   },
   availability: {
     feature: "Availability Management",
-    requiredPlan: "PRO",
+    requiredPlan: SubscriptionTier.PRO,
     description:
       "Upgrade to Pro to manage organization-wide availability, set occupancy alerts, and publish updates to CareLinkMN search.",
   },
   messages: {
     feature: "Messaging Center",
-    requiredPlan: "PRO",
+    requiredPlan: SubscriptionTier.PRO,
     description:
       "Upgrade to Pro to unlock secure messaging with case managers, families, and referral partners directly within CareLinkMN.",
   },
@@ -359,6 +411,51 @@ export const STATES_MAP: Record<string, string> = US_STATES.reduce(
 );
 
 // ============================================
+// STANDARD AMENITIES (Web App Specific)
+// ============================================
+// Standard amenities list for provider homes
+export const STANDARD_AMENITIES = [
+  "24/7 Nursing Care",
+  "Medication Management",
+  "Physical Therapy",
+  "Occupational Therapy",
+  "Speech Therapy",
+  "Memory Care",
+  "Dementia Care",
+  "Hospice Care",
+  "Private Room",
+  "Semi-Private Room",
+  "Private Bathroom",
+  "Kitchenette",
+  "Balcony/Patio",
+  "Garden Access",
+  "Activity Room",
+  "Library",
+  "Game Room",
+  "Fitness Center",
+  "Swimming Pool",
+  "Walking Paths",
+  "Restaurant-Style Dining",
+  "Private Dining Room",
+  "Snack Bar",
+  "Special Diets",
+  "Transportation Services",
+  "Medical Appointments",
+  "Shopping Trips",
+  "WiFi",
+  "Cable TV",
+  "Computer Access",
+  "Video Calling",
+  "24/7 Security",
+  "Emergency Response",
+  "Smoke Detectors",
+  "Sprinkler System",
+  "Pet Friendly",
+  "Family Visits",
+  "Overnight Stays",
+] as const;
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
@@ -392,100 +489,7 @@ export function getStateLabel(code: string): string {
   return STATES_MAP[code] || code;
 }
 
-// ============================================
-// MINNESOTA COUNTIES
-// ============================================
-
-// Minnesota counties list (all 87 counties, alphabetically sorted)
-export const MINNESOTA_COUNTIES: string[] = [
-  "Aitkin",
-  "Anoka",
-  "Becker",
-  "Beltrami",
-  "Benton",
-  "Big Stone",
-  "Blue Earth",
-  "Brown",
-  "Carlton",
-  "Carver",
-  "Cass",
-  "Chippewa",
-  "Chisago",
-  "Clay",
-  "Clearwater",
-  "Cook",
-  "Cottonwood",
-  "Crow Wing",
-  "Dakota",
-  "Dodge",
-  "Douglas",
-  "Faribault",
-  "Fillmore",
-  "Freeborn",
-  "Goodhue",
-  "Grant",
-  "Hennepin",
-  "Houston",
-  "Hubbard",
-  "Isanti",
-  "Itasca",
-  "Jackson",
-  "Kanabec",
-  "Kandiyohi",
-  "Kittson",
-  "Koochiching",
-  "Lac qui Parle",
-  "Lake",
-  "Lake of the Woods",
-  "Le Sueur",
-  "Lincoln",
-  "Lyon",
-  "Mahnomen",
-  "Marshall",
-  "Martin",
-  "McLeod",
-  "Meeker",
-  "Mille Lacs",
-  "Morrison",
-  "Mower",
-  "Murray",
-  "Nicollet",
-  "Nobles",
-  "Norman",
-  "Olmsted",
-  "Otter Tail",
-  "Pennington",
-  "Pine",
-  "Pipestone",
-  "Polk",
-  "Pope",
-  "Ramsey",
-  "Red Lake",
-  "Redwood",
-  "Renville",
-  "Rice",
-  "Rock",
-  "Roseau",
-  "Scott",
-  "Sherburne",
-  "Sibley",
-  "St. Louis",
-  "Stearns",
-  "Steele",
-  "Stevens",
-  "Swift",
-  "Todd",
-  "Traverse",
-  "Wabasha",
-  "Wadena",
-  "Waseca",
-  "Washington",
-  "Watonwan",
-  "Wilkin",
-  "Winona",
-  "Wright",
-  "Yellow Medicine",
-];
+// MINNESOTA_COUNTIES is now exported from @carelink/utils (see re-exports above)
 
 // ============================================
 // REFERRAL & CASE MANAGER CONSTANTS
@@ -674,89 +678,42 @@ export const INVITE_RESPONSE_CONFIG: Record<
   },
 };
 
-// Transport Types
-export interface TransportTypeOption {
-  value: string;
-  label: string;
-}
+// ============================================
+// UI-SPECIFIC MAP HELPERS (using imported constants)
+// ============================================
+// These maps are created from the shared constants for quick lookups
 
-export const TRANSPORT_TYPES: TransportTypeOption[] = [
-  { value: "AMBULANCE", label: "Ambulance" },
-  { value: "WHEELCHAIR_VAN", label: "Wheelchair Van" },
-  { value: "MEDICAL_TRANSPORT", label: "Medical Transport" },
-  { value: "FAMILY_TRANSPORT", label: "Family Transport" },
-  { value: "OTHER", label: "Other" },
-];
+// Transport types as a map for quick lookups (using imported TRANSPORT_TYPES)
+export const TRANSPORT_TYPES_MAP: Record<string, string> =
+  TRANSPORT_TYPES.reduce(
+    (acc, type) => {
+      acc[type.value] = type.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
-// Transport types as a map for quick lookups
-export const TRANSPORT_TYPES_MAP: Record<string, string> = TRANSPORT_TYPES.reduce(
-  (acc, type) => {
-    acc[type.value] = type.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
+// Mobility status as a map for quick lookups (using imported MOBILITY_STATUS_OPTIONS)
+export const MOBILITY_STATUS_MAP: Record<string, string> =
+  MOBILITY_STATUS_OPTIONS.reduce(
+    (acc, status) => {
+      acc[status.value] = status.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
-// Mobility Status Options
-export interface MobilityStatusOption {
-  value: string;
-  label: string;
-}
+// Cognitive status as a map for quick lookups (using imported COGNITIVE_STATUS_OPTIONS)
+export const COGNITIVE_STATUS_MAP: Record<string, string> =
+  COGNITIVE_STATUS_OPTIONS.reduce(
+    (acc, status) => {
+      acc[status.value] = status.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
-export const MOBILITY_STATUS_OPTIONS: MobilityStatusOption[] = [
-  { value: "AMBULATORY", label: "Ambulatory" },
-  { value: "WHEELCHAIR", label: "Wheelchair" },
-  { value: "BEDBOUND", label: "Bedbound" },
-  { value: "ASSISTED_WALKING", label: "Assisted Walking" },
-];
-
-// Mobility status as a map for quick lookups
-export const MOBILITY_STATUS_MAP: Record<string, string> = MOBILITY_STATUS_OPTIONS.reduce(
-  (acc, status) => {
-    acc[status.value] = status.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
-
-// Cognitive Status Options
-export interface CognitiveStatusOption {
-  value: string;
-  label: string;
-}
-
-export const COGNITIVE_STATUS_OPTIONS: CognitiveStatusOption[] = [
-  { value: "ALERT", label: "Alert & Oriented" },
-  { value: "CONFUSED", label: "Confused" },
-  { value: "DEMENTIA", label: "Dementia" },
-  { value: "COMA", label: "Coma" },
-];
-
-// Cognitive status as a map for quick lookups
-export const COGNITIVE_STATUS_MAP: Record<string, string> = COGNITIVE_STATUS_OPTIONS.reduce(
-  (acc, status) => {
-    acc[status.value] = status.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
-
-// DME Needs Options
-export interface DMENeedOption {
-  value: string;
-  label: string;
-}
-
-export const DME_NEEDS_OPTIONS: DMENeedOption[] = [
-  { value: "WHEELCHAIR", label: "Wheelchair" },
-  { value: "WALKER", label: "Walker" },
-  { value: "HOSPITAL_BED", label: "Hospital Bed" },
-  { value: "OXYGEN", label: "Oxygen Equipment" },
-  { value: "CPAP", label: "CPAP Machine" },
-  { value: "LIFT", label: "Patient Lift" },
-];
-
-// DME needs as a map for quick lookups
+// DME needs as a map for quick lookups (using imported DME_NEEDS_OPTIONS)
 export const DME_NEEDS_MAP: Record<string, string> = DME_NEEDS_OPTIONS.reduce(
   (acc, need) => {
     acc[need.value] = need.label;
@@ -765,54 +722,30 @@ export const DME_NEEDS_MAP: Record<string, string> = DME_NEEDS_OPTIONS.reduce(
   {} as Record<string, string>
 );
 
-// Behavioral Concerns Options
-export interface BehavioralConcernOption {
-  value: string;
-  label: string;
-}
+// Behavioral concerns as a map for quick lookups (using imported BEHAVIORAL_CONCERNS_OPTIONS)
+export const BEHAVIORAL_CONCERNS_MAP: Record<string, string> =
+  BEHAVIORAL_CONCERNS_OPTIONS.reduce(
+    (acc, concern) => {
+      acc[concern.value] = concern.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
-export const BEHAVIORAL_CONCERNS_OPTIONS: BehavioralConcernOption[] = [
-  { value: "WANDERING", label: "Wandering" },
-  { value: "AGGRESSION", label: "Aggression" },
-  { value: "SELF_HARM", label: "Self-Harm Risk" },
-  { value: "ELOPEMENT", label: "Elopement Risk" },
-  { value: "SUNDOWNING", label: "Sundowning" },
-];
+// Hospital locations as a map for quick lookups (using imported HOSPITAL_LOCATIONS)
+export const HOSPITAL_LOCATIONS_MAP: Record<string, string> =
+  HOSPITAL_LOCATIONS.reduce(
+    (acc, location) => {
+      acc[location.value] = location.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
-// Behavioral concerns as a map for quick lookups
-export const BEHAVIORAL_CONCERNS_MAP: Record<string, string> = BEHAVIORAL_CONCERNS_OPTIONS.reduce(
-  (acc, concern) => {
-    acc[concern.value] = concern.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
-
-// Hospital Locations
-export interface HospitalLocationOption {
-  value: string;
-  label: string;
-}
-
-export const HOSPITAL_LOCATIONS: HospitalLocationOption[] = [
-  { value: "ICU", label: "ICU" },
-  { value: "MEDICAL_FLOOR", label: "Medical Floor" },
-  { value: "SURGICAL_FLOOR", label: "Surgical Floor" },
-  { value: "REHAB", label: "Rehabilitation" },
-  { value: "ER", label: "Emergency Room" },
-  { value: "OTHER", label: "Other" },
-];
-
-// Hospital locations as a map for quick lookups
-export const HOSPITAL_LOCATIONS_MAP: Record<string, string> = HOSPITAL_LOCATIONS.reduce(
-  (acc, location) => {
-    acc[location.value] = location.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
-
-// Payer labels
+// ============================================
+// PAYER OPTIONS & LABELS (UI-specific - uses Payer enum)
+// ============================================
+// Payer labels as a map for quick lookups (UI-specific, stays in web app)
 export const PAYER_LABELS: Record<Payer, string> = {
   [Payer.MA]: "Medical Assistance",
   [Payer.MEDICARE]: "Medicare",
@@ -823,13 +756,13 @@ export const PAYER_LABELS: Record<Payer, string> = {
   [Payer.DD]: "Developmental Disabilities",
 };
 
-// Payer options for forms
-export interface PayerOption {
+// Web-app-specific PAYER_OPTIONS using Payer enum (overrides shared version)
+export interface PayerOptionWeb {
   value: Payer;
   label: string;
 }
 
-export const PAYER_OPTIONS: PayerOption[] = [
+export const PAYER_OPTIONS_WEB: readonly PayerOptionWeb[] = [
   { value: Payer.MA, label: "Medical Assistance (MA)" },
   { value: Payer.MEDICARE, label: "Medicare" },
   { value: Payer.PRIVATE, label: "Private Pay" },
@@ -837,110 +770,10 @@ export const PAYER_OPTIONS: PayerOption[] = [
   { value: Payer.BI_TBI, label: "BI/TBI" },
   { value: Payer.EW, label: "Elderly Waiver (EW)" },
   { value: Payer.DD, label: "Developmental Disabilities (DD)" },
-];
+] as const;
 
-// Gender options
-export interface GenderOption {
-  value: Gender;
-  label: string;
-}
-
-export const GENDER_OPTIONS: GenderOption[] = [
-  { value: Gender.NO_PREFERENCE, label: "No Preference" },
-  { value: Gender.MALE, label: "Male" },
-  { value: Gender.FEMALE, label: "Female" },
-  { value: Gender.OTHER, label: "Other" },
-];
-
-// Care levels
-export interface CareLevelOption {
-  value: string;
-  label: string;
-}
-
-export const CARE_LEVELS: CareLevelOption[] = [
-  { value: "BASIC", label: "Basic Care" },
-  { value: "INTERMEDIATE", label: "Intermediate Care" },
-  { value: "INTENSIVE", label: "Intensive Care" },
-  { value: "MEMORY_CARE", label: "Memory Care" },
-  { value: "RESPITE", label: "Respite Care" },
-];
-
-// Supported needs / Services needed
-export interface SupportedNeedOption {
-  value: string;
-  label: string;
-}
-
-export const SUPPORTED_NEEDS: SupportedNeedOption[] = [
-  { value: "MOBILITY", label: "Mobility Support" },
-  { value: "MEMORY_CARE", label: "Memory Care" },
-  { value: "BEHAVIORAL", label: "Behavioral Support" },
-  { value: "MEDICAL", label: "Medical Management" },
-  { value: "DIABETES", label: "Diabetes Care" },
-  { value: "DEMENTIA", label: "Dementia Care" },
-  { value: "ALZHEIMERS", label: "Alzheimer's Care" },
-  { value: "PARKINSONS", label: "Parkinson's Care" },
-  { value: "STROKE", label: "Stroke Recovery" },
-  { value: "RESPIRATORY", label: "Respiratory Support" },
-];
-
-// Behavioral needs
-export interface BehavioralNeedOption {
-  value: string;
-  label: string;
-}
-
-export const BEHAVIORAL_NEEDS: BehavioralNeedOption[] = [
-  { value: "AGGRESSION", label: "Aggression" },
-  { value: "WANDERING", label: "Wandering" },
-  { value: "SELF_HARM", label: "Self-Harm" },
-  { value: "VERBAL_AGGRESSION", label: "Verbal Aggression" },
-  { value: "PHYSICAL_AGGRESSION", label: "Physical Aggression" },
-  { value: "ELOPEMENT", label: "Elopement Risk" },
-  { value: "SUNDOWNING", label: "Sundowning" },
-  { value: "ANXIETY", label: "Anxiety" },
-  { value: "DEPRESSION", label: "Depression" },
-  { value: "PSYCHOSIS", label: "Psychosis" },
-];
-
-// Medical needs
-export interface MedicalNeedOption {
-  value: string;
-  label: string;
-}
-
-export const MEDICAL_NEEDS: MedicalNeedOption[] = [
-  { value: "DIABETES", label: "Diabetes Management" },
-  { value: "HYPERTENSION", label: "Hypertension" },
-  { value: "HEART_DISEASE", label: "Heart Disease" },
-  { value: "RESPIRATORY", label: "Respiratory Support" },
-  { value: "OXYGEN", label: "Oxygen Therapy" },
-  { value: "DEMENTIA", label: "Dementia Care" },
-  { value: "ALZHEIMERS", label: "Alzheimer's Care" },
-  { value: "PARKINSONS", label: "Parkinson's Disease" },
-  { value: "STROKE", label: "Stroke Recovery" },
-  { value: "MOBILITY", label: "Mobility Assistance" },
-  { value: "INCONTINENCE", label: "Incontinence Care" },
-  { value: "WOUND_CARE", label: "Wound Care" },
-  { value: "MEDICATION_MANAGEMENT", label: "Medication Management" },
-  { value: "IV_THERAPY", label: "IV Therapy" },
-  { value: "FEEDING_TUBE", label: "Feeding Tube" },
-];
-
-// Mobility levels
-export interface MobilityLevelOption {
-  value: string;
-  label: string;
-}
-
-export const MOBILITY_LEVELS: MobilityLevelOption[] = [
-  { value: "INDEPENDENT", label: "Independent" },
-  { value: "WALKER", label: "Walker" },
-  { value: "WHEELCHAIR", label: "Wheelchair" },
-  { value: "BEDBOUND", label: "Bedbound" },
-  { value: "ASSISTANCE_REQUIRED", label: "Assistance Required" },
-];
+// Re-export as PAYER_OPTIONS for web app (overrides shared version)
+export const PAYER_OPTIONS = PAYER_OPTIONS_WEB;
 
 // Helper functions for referral constants
 export function getUrgencyLabel(urgency: Urgency): string {
@@ -988,7 +821,9 @@ export function getMedicalNeedLabel(need: string): string {
 }
 
 export function getMobilityLevelLabel(level: string): string {
-  return MOBILITY_LEVELS.find((opt) => opt.value === level)?.label || level;
+  return (
+    MOBILITY_STATUS_OPTIONS.find((opt) => opt.value === level)?.label || level
+  );
 }
 
 // Helper functions for discharge case constants
@@ -1034,31 +869,29 @@ export interface OpeningStatusConfig {
   icon: LucideIcon;
 }
 
-export const OPENING_STATUS_CONFIG: Record<
-  OpeningStatus,
-  OpeningStatusConfig
-> = {
-  [OpeningStatus.OPEN]: {
-    label: "Open",
-    color: "healthcareSuccess",
-    icon: CheckCircle,
-  },
-  [OpeningStatus.PENDING]: {
-    label: "Pending",
-    color: "healthcareWarning",
-    icon: Clock,
-  },
-  [OpeningStatus.FILLED]: {
-    label: "Filled",
-    color: "healthcareInfo",
-    icon: CheckCircle,
-  },
-  [OpeningStatus.EXPIRED]: {
-    label: "Expired",
-    color: "secondary",
-    icon: XCircle,
-  },
-};
+export const OPENING_STATUS_CONFIG: Record<OpeningStatus, OpeningStatusConfig> =
+  {
+    [OpeningStatus.OPEN]: {
+      label: "Open",
+      color: "healthcareSuccess",
+      icon: CheckCircle,
+    },
+    [OpeningStatus.PENDING]: {
+      label: "Pending",
+      color: "healthcareWarning",
+      icon: Clock,
+    },
+    [OpeningStatus.FILLED]: {
+      label: "Filled",
+      color: "healthcareInfo",
+      icon: CheckCircle,
+    },
+    [OpeningStatus.EXPIRED]: {
+      label: "Expired",
+      color: "secondary",
+      icon: XCircle,
+    },
+  };
 
 // ============================================
 // PLACEMENT STATUS CONFIGURATION

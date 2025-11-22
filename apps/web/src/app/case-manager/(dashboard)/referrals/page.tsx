@@ -11,8 +11,6 @@ import { format as formatDate } from "date-fns";
 import { ReferralStatus, Urgency, Payer } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
-  ReferralsHeader,
-  ReferralsStats,
   ReferralsFilters,
   ReferralsKanban,
   ReferralsTable,
@@ -22,7 +20,8 @@ import {
   BatchAddToShortlistDialog,
   BatchMessageDialogList,
 } from "./components";
-import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { LoadingState, ErrorState, PageHeader, StatsGrid } from "@/components/shared";
+import { Plus, RefreshCw } from "lucide-react";
 import {
   useReferralsColumns,
   useReferralsStats,
@@ -420,18 +419,61 @@ function CaseManagerReferralsPageContent() {
   };
 
   if (isLoading && referrals.length === 0) {
-    return <CaseManagerLoadingState message="Loading referrals..." fullHeight />;
+    return <LoadingState message="Loading referrals..." fullHeight />;
   }
 
   return (
     <div className="space-y-6">
-      <ReferralsHeader 
-        onRefresh={handleRefresh} 
-        isRefreshing={isRefreshing}
-        canCreate={canCreateReferrals}
+      <PageHeader
+        title="My Cases"
+        description="Manage your referrals and placements"
+        actions={[
+          ...(canCreateReferrals
+            ? [
+                {
+                  label: "New Referral",
+                  onClick: () => router.push("/case-manager/referrals/create"),
+                  icon: Plus,
+                  variant: "healthcare" as const,
+                },
+              ]
+            : []),
+          {
+            label: isRefreshing ? "Refreshing..." : "Refresh",
+            onClick: handleRefresh,
+            icon: RefreshCw,
+            variant: "outline" as const,
+            loading: isRefreshing,
+          },
+        ]}
       />
 
-      <ReferralsStats stats={stats} />
+      <StatsGrid
+        stats={[
+          { label: "Total Referrals", value: stats.total },
+          {
+            label: "Active",
+            value: stats.active,
+            valueClassName: "text-info",
+          },
+          {
+            label: "Urgent",
+            value: stats.urgent,
+            valueClassName: "text-destructive",
+          },
+          {
+            label: "Placed",
+            value: stats.placed,
+            valueClassName: "text-success",
+          },
+          {
+            label: "Closed",
+            value: stats.closed,
+            valueClassName: "text-muted-foreground",
+          },
+        ]}
+        columns={5}
+      />
 
       <ReferralsFilters
         searchQuery={searchInput}
@@ -445,7 +487,7 @@ function CaseManagerReferralsPageContent() {
       />
 
       {error && (
-        <CaseManagerErrorState
+        <ErrorState
           title="Error Loading Referrals"
           message={error}
           action={{

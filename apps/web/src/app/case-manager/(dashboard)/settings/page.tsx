@@ -32,7 +32,7 @@ import { caseManagerService, CaseManager } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { useCaseManager } from "@/contexts/case-manager-context";
 import { usePageMetadata } from "../use-page-metadata";
-import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -53,12 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  NotificationPreferences,
-  DefaultReferralSettings,
-  Urgency,
-  Payer,
-} from "@carelink/types";
+import { DefaultReferralSettings, Urgency, Payer } from "@carelink/types";
 import {
   CARE_LEVELS,
   SUPPORTED_NEEDS,
@@ -68,6 +63,9 @@ import {
 } from "@/lib/constants";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { CountiesMultiSelect } from "@/components/settings/counties-multi-select";
+import { CareLevelsMultiSelect } from "@/components/settings/care-levels-multi-select";
+import { ServicesNeededMultiSelect } from "@/components/settings/services-needed-multi-select";
 
 const profileSchema = z.object({
   firstName: z
@@ -99,39 +97,32 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 function CaseManagerSettingsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const { caseManager: contextCaseManager, caseManagerId, refetch: refetchCaseManager } = useCaseManager();
+  const {
+    caseManager: contextCaseManager,
+    caseManagerId,
+    refetch: refetchCaseManager,
+  } = useCaseManager();
   const { setTitle, setDescription } = usePageMetadata();
 
-  const [caseManager, setCaseManager] = useState<CaseManager | null>(contextCaseManager);
+  const [caseManager, setCaseManager] = useState<CaseManager | null>(
+    contextCaseManager
+  );
   const [isLoading, setIsLoading] = useState(!contextCaseManager);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
-  // Notification preferences state
-  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
-    emailNotifications: true,
-    emailNewReferrals: true,
-    emailProviderResponses: true,
-    emailPlacementUpdates: true,
-    emailUrgentCases: true,
-    inAppNotifications: true,
-    inAppNewReferrals: true,
-    inAppProviderResponses: true,
-    inAppPlacementUpdates: true,
-    inAppUrgentCases: true,
-  });
-
   // Default referral settings state
-  const [defaultReferralSettings, setDefaultReferralSettings] = useState<DefaultReferralSettings>({
-    defaultUrgency: Urgency.ROUTINE,
-    defaultPrimaryPayer: undefined,
-    defaultPreferredCounties: [],
-    defaultPreferredCities: [],
-    defaultMaxDistance: undefined,
-    defaultCareLevels: [],
-    defaultServicesNeeded: [],
-  });
+  const [defaultReferralSettings, setDefaultReferralSettings] =
+    useState<DefaultReferralSettings>({
+      defaultUrgency: Urgency.ROUTINE,
+      defaultPrimaryPayer: undefined,
+      defaultPreferredCounties: [],
+      defaultPreferredCities: [],
+      defaultMaxDistance: undefined,
+      defaultCareLevels: [],
+      defaultServicesNeeded: [],
+    });
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -199,11 +190,6 @@ function CaseManagerSettingsPageContent() {
             setUploadedFiles([]);
           }
 
-          // Set notification preferences
-          if (data.notificationPreferences) {
-            setNotificationPrefs(data.notificationPreferences);
-          }
-
           // Set default referral settings
           if (data.defaultReferralSettings) {
             setDefaultReferralSettings(data.defaultReferralSettings);
@@ -214,9 +200,7 @@ function CaseManagerSettingsPageContent() {
         }
       } catch (err) {
         console.error("Error fetching case manager:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load profile"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load profile");
         toast.error("Failed to load case manager profile");
       } finally {
         setIsLoading(false);
@@ -241,14 +225,15 @@ function CaseManagerSettingsPageContent() {
         licenseExpiry: data.licenseExpiry
           ? data.licenseExpiry.toISOString()
           : undefined,
-        licenseDocumentUrl: uploadedFiles[0]?.url || data.licenseDocumentUrl || undefined,
-        licenseFileName: uploadedFiles[0]?.fileName || data.licenseFileName || undefined,
-        notificationPreferences: notificationPrefs,
+        licenseDocumentUrl:
+          uploadedFiles[0]?.url || data.licenseDocumentUrl || undefined,
+        licenseFileName:
+          uploadedFiles[0]?.fileName || data.licenseFileName || undefined,
         defaultReferralSettings: defaultReferralSettings,
       };
 
       const response = await caseManagerService.updateCaseManager(
-        caseManagerId || user!.id,
+        user!.id,
         updateData
       );
 
@@ -273,12 +258,12 @@ function CaseManagerSettingsPageContent() {
   };
 
   if (isLoading) {
-    return <CaseManagerLoadingState message="Loading settings..." fullHeight />;
+    return <LoadingState message="Loading settings..." fullHeight />;
   }
 
   if (error && !caseManager) {
     return (
-      <CaseManagerErrorState
+      <ErrorState
         title="Error Loading Profile"
         message={error}
         action={{
@@ -295,7 +280,7 @@ function CaseManagerSettingsPageContent() {
 
   if (!caseManager) {
     return (
-      <CaseManagerErrorState
+      <ErrorState
         title="Profile Not Found"
         message="Case manager profile not found. Please contact support."
         action={{
@@ -321,7 +306,10 @@ function CaseManagerSettingsPageContent() {
 
       {/* Error Alert */}
       {error && (
-        <Card variant="healthcare" className="border-destructive/50 bg-destructive/5">
+        <Card
+          variant="healthcare"
+          className="border-destructive/50 bg-destructive/5"
+        >
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
@@ -437,7 +425,8 @@ function CaseManagerSettingsPageContent() {
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !form.watch("licenseExpiry") && "text-muted-foreground",
-                        form.formState.errors.licenseExpiry && "border-destructive"
+                        form.formState.errors.licenseExpiry &&
+                          "border-destructive"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -485,7 +474,8 @@ function CaseManagerSettingsPageContent() {
                 />
                 {caseManager.licenseDocumentUrl && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Current document: {caseManager.licenseFileName || "License document"}
+                    Current document:{" "}
+                    {caseManager.licenseFileName || "License document"}
                   </p>
                 )}
               </div>
@@ -588,207 +578,13 @@ function CaseManagerSettingsPageContent() {
               </div>
               <Badge
                 variant={
-                  caseManager.isActive ? "healthcareSuccess" : "healthcareWarning"
+                  caseManager.isActive
+                    ? "healthcareSuccess"
+                    : "healthcareWarning"
                 }
               >
                 {caseManager.isActive ? "Active" : "Inactive"}
               </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notification Preferences */}
-        <Card variant="healthcare">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Notification Preferences
-            </CardTitle>
-            <CardDescription>
-              Manage how you receive notifications
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Email Notifications */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base font-medium">Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications via email
-                  </p>
-                </div>
-                <Switch
-                  checked={notificationPrefs.emailNotifications}
-                  onCheckedChange={(checked) =>
-                    setNotificationPrefs((prev) => ({
-                      ...prev,
-                      emailNotifications: checked,
-                      // Disable individual email settings if master is off
-                      emailNewReferrals: checked ? prev.emailNewReferrals : false,
-                      emailProviderResponses: checked ? prev.emailProviderResponses : false,
-                      emailPlacementUpdates: checked ? prev.emailPlacementUpdates : false,
-                      emailUrgentCases: checked ? prev.emailUrgentCases : false,
-                    }))
-                  }
-                />
-              </div>
-              {notificationPrefs.emailNotifications && (
-                <div className="ml-6 space-y-3 border-l-2 border-border pl-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailNewReferrals" className="font-normal">
-                      New Referrals
-                    </Label>
-                    <Switch
-                      id="emailNewReferrals"
-                      checked={notificationPrefs.emailNewReferrals}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          emailNewReferrals: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailProviderResponses" className="font-normal">
-                      Provider Responses
-                    </Label>
-                    <Switch
-                      id="emailProviderResponses"
-                      checked={notificationPrefs.emailProviderResponses}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          emailProviderResponses: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailPlacementUpdates" className="font-normal">
-                      Placement Updates
-                    </Label>
-                    <Switch
-                      id="emailPlacementUpdates"
-                      checked={notificationPrefs.emailPlacementUpdates}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          emailPlacementUpdates: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailUrgentCases" className="font-normal">
-                      Urgent Cases
-                    </Label>
-                    <Switch
-                      id="emailUrgentCases"
-                      checked={notificationPrefs.emailUrgentCases}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          emailUrgentCases: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* In-App Notifications */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base font-medium">In-App Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications in the application
-                  </p>
-                </div>
-                <Switch
-                  checked={notificationPrefs.inAppNotifications}
-                  onCheckedChange={(checked) =>
-                    setNotificationPrefs((prev) => ({
-                      ...prev,
-                      inAppNotifications: checked,
-                      // Disable individual in-app settings if master is off
-                      inAppNewReferrals: checked ? prev.inAppNewReferrals : false,
-                      inAppProviderResponses: checked ? prev.inAppProviderResponses : false,
-                      inAppPlacementUpdates: checked ? prev.inAppPlacementUpdates : false,
-                      inAppUrgentCases: checked ? prev.inAppUrgentCases : false,
-                    }))
-                  }
-                />
-              </div>
-              {notificationPrefs.inAppNotifications && (
-                <div className="ml-6 space-y-3 border-l-2 border-border pl-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="inAppNewReferrals" className="font-normal">
-                      New Referrals
-                    </Label>
-                    <Switch
-                      id="inAppNewReferrals"
-                      checked={notificationPrefs.inAppNewReferrals}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          inAppNewReferrals: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="inAppProviderResponses" className="font-normal">
-                      Provider Responses
-                    </Label>
-                    <Switch
-                      id="inAppProviderResponses"
-                      checked={notificationPrefs.inAppProviderResponses}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          inAppProviderResponses: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="inAppPlacementUpdates" className="font-normal">
-                      Placement Updates
-                    </Label>
-                    <Switch
-                      id="inAppPlacementUpdates"
-                      checked={notificationPrefs.inAppPlacementUpdates}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          inAppPlacementUpdates: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="inAppUrgentCases" className="font-normal">
-                      Urgent Cases
-                    </Label>
-                    <Switch
-                      id="inAppUrgentCases"
-                      checked={notificationPrefs.inAppUrgentCases}
-                      onCheckedChange={(checked) =>
-                        setNotificationPrefs((prev) => ({
-                          ...prev,
-                          inAppUrgentCases: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -801,7 +597,8 @@ function CaseManagerSettingsPageContent() {
               Default Referral Settings
             </CardTitle>
             <CardDescription>
-              Set default preferences that will be pre-filled when creating new referrals
+              Set default preferences that will be pre-filled when creating new
+              referrals
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -833,13 +630,18 @@ function CaseManagerSettingsPageContent() {
 
               {/* Default Primary Payer */}
               <div>
-                <Label htmlFor="defaultPrimaryPayer">Default Primary Payer</Label>
+                <Label htmlFor="defaultPrimaryPayer">
+                  Default Primary Payer
+                </Label>
                 <Select
-                  value={defaultReferralSettings.defaultPrimaryPayer || ""}
+                  value={
+                    defaultReferralSettings.defaultPrimaryPayer || "__NONE__"
+                  }
                   onValueChange={(value) =>
                     setDefaultReferralSettings((prev) => ({
                       ...prev,
-                      defaultPrimaryPayer: value ? (value as Payer) : undefined,
+                      defaultPrimaryPayer:
+                        value === "__NONE__" ? undefined : (value as Payer),
                     }))
                   }
                 >
@@ -847,7 +649,7 @@ function CaseManagerSettingsPageContent() {
                     <SelectValue placeholder="Select default payer (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (No default)</SelectItem>
+                    <SelectItem value="__NONE__">None (No default)</SelectItem>
                     {PAYER_OPTIONS.map((payer) => (
                       <SelectItem key={payer.value} value={payer.value}>
                         {payer.label}
@@ -862,101 +664,63 @@ function CaseManagerSettingsPageContent() {
             <div>
               <Label>Default Preferred Counties</Label>
               <p className="text-sm text-muted-foreground mb-2">
-                Select counties that will be pre-selected when creating new referrals
+                Select counties that will be pre-selected when creating new
+                referrals
               </p>
-              <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
-                {MINNESOTA_COUNTIES.map((county) => (
-                  <div key={county} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`county-${county}`}
-                      checked={defaultReferralSettings.defaultPreferredCounties.includes(county)}
-                      onCheckedChange={(checked) => {
-                        setDefaultReferralSettings((prev) => ({
-                          ...prev,
-                          defaultPreferredCounties: checked
-                            ? [...prev.defaultPreferredCounties, county]
-                            : prev.defaultPreferredCounties.filter((c) => c !== county),
-                        }));
-                      }}
-                    />
-                    <Label
-                      htmlFor={`county-${county}`}
-                      className="font-normal cursor-pointer"
-                    >
-                      {county}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <CountiesMultiSelect
+                selectedCounties={
+                  defaultReferralSettings.defaultPreferredCounties
+                }
+                onCountiesChange={(counties) =>
+                  setDefaultReferralSettings((prev) => ({
+                    ...prev,
+                    defaultPreferredCounties: counties,
+                  }))
+                }
+              />
             </div>
 
             {/* Default Care Levels */}
             <div>
               <Label>Default Care Levels</Label>
               <p className="text-sm text-muted-foreground mb-2">
-                Select care levels that will be pre-selected when creating new referrals
+                Select care levels that will be pre-selected when creating new
+                referrals
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {CARE_LEVELS.map((level) => (
-                  <div key={level.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`careLevel-${level.value}`}
-                      checked={defaultReferralSettings.defaultCareLevels.includes(level.value)}
-                      onCheckedChange={(checked) => {
-                        setDefaultReferralSettings((prev) => ({
-                          ...prev,
-                          defaultCareLevels: checked
-                            ? [...prev.defaultCareLevels, level.value]
-                            : prev.defaultCareLevels.filter((l) => l !== level.value),
-                        }));
-                      }}
-                    />
-                    <Label
-                      htmlFor={`careLevel-${level.value}`}
-                      className="font-normal cursor-pointer"
-                    >
-                      {level.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <CareLevelsMultiSelect
+                selectedCareLevels={defaultReferralSettings.defaultCareLevels}
+                onCareLevelsChange={(careLevels) =>
+                  setDefaultReferralSettings((prev) => ({
+                    ...prev,
+                    defaultCareLevels: careLevels,
+                  }))
+                }
+              />
             </div>
 
             {/* Default Services Needed */}
             <div>
               <Label>Default Services Needed</Label>
               <p className="text-sm text-muted-foreground mb-2">
-                Select services that will be pre-selected when creating new referrals
+                Select services that will be pre-selected when creating new
+                referrals
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {SUPPORTED_NEEDS.map((service) => (
-                  <div key={service.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`service-${service.value}`}
-                      checked={defaultReferralSettings.defaultServicesNeeded.includes(service.value)}
-                      onCheckedChange={(checked) => {
-                        setDefaultReferralSettings((prev) => ({
-                          ...prev,
-                          defaultServicesNeeded: checked
-                            ? [...prev.defaultServicesNeeded, service.value]
-                            : prev.defaultServicesNeeded.filter((s) => s !== service.value),
-                        }));
-                      }}
-                    />
-                    <Label
-                      htmlFor={`service-${service.value}`}
-                      className="font-normal cursor-pointer"
-                    >
-                      {service.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <ServicesNeededMultiSelect
+                selectedServices={defaultReferralSettings.defaultServicesNeeded}
+                onServicesChange={(services) =>
+                  setDefaultReferralSettings((prev) => ({
+                    ...prev,
+                    defaultServicesNeeded: services,
+                  }))
+                }
+              />
             </div>
 
             {/* Default Max Distance */}
             <div>
-              <Label htmlFor="defaultMaxDistance">Default Max Distance (miles)</Label>
+              <Label htmlFor="defaultMaxDistance">
+                Default Max Distance (miles)
+              </Label>
               <Input
                 id="defaultMaxDistance"
                 type="number"
@@ -1017,4 +781,3 @@ export default function CaseManagerSettingsPage() {
     </RequirePermission>
   );
 }
-

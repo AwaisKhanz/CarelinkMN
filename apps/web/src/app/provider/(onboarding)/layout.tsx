@@ -1,6 +1,7 @@
 "use client";
 
 import { ProviderGuard } from "@/components/auth/route-guard";
+import { EmailVerificationGuard } from "@/components/auth/email-verification-guard";
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,11 @@ export default function OnboardingLayout({
 }: OnboardingLayoutProps) {
   // Onboarding layout - only role guard, no onboarding check
   // Route groups ensure this layout is separate from dashboard
-  return <ProviderGuard>{children}</ProviderGuard>;
+  // Guard order: EmailVerificationGuard -> ProviderGuard
+  return (
+    <EmailVerificationGuard>
+      <ProviderGuard>{children}</ProviderGuard>
+    </EmailVerificationGuard>
+  );
 }
 

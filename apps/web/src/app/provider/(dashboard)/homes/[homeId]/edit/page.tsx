@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { homeService, UpdateHomeData, Home } from "@/lib/api";
+import { geocodeAddress } from "@/lib/utils/geocoding";
 import { usePageMetadata } from "../../../use-page-metadata";
 import { HomeForm, HomeFormData } from "@/components/forms/home-form";
 import { UploadedFile } from "@/components/ui/file-uploader";
@@ -56,30 +57,9 @@ function EditHomePageContent() {
     address: string
   ): Promise<{ latitude: number; longitude: number }> => {
     try {
-      // Using OpenStreetMap Nominatim (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-        {
-          headers: {
-            "User-Agent": "CareLinkMN/1.0", // Required by Nominatim
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        return {
-          latitude: parseFloat(data[0].lat),
-          longitude: parseFloat(data[0].lon),
-        };
-      }
-
-      // Fallback: return existing coordinates or default
-      return {
-        latitude: home?.latitude || 44.9778,
-        longitude: home?.longitude || -93.265,
-      };
+      // Use geocoding utility which uses apiService
+      const coords = await geocodeAddress(address);
+      return coords;
     } catch (error) {
       console.error("Geocoding error:", error);
       // Fallback: return existing coordinates or default

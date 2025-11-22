@@ -46,6 +46,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { usePermissions } from "@/hooks/use-permissions";
+import { UserStatus } from "@carelink/types";
 
 function ProviderStaffPageContent() {
   const router = useRouter();
@@ -187,7 +188,7 @@ function ProviderStaffPageContent() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "ACTIVE":
+      case UserStatus.ACTIVE:
         return (
           <Badge variant="healthcareSuccess" className="gap-1">
             <CheckCircle className="h-3 w-3" />

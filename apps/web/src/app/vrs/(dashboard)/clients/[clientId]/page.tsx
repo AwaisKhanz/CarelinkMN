@@ -11,11 +11,8 @@ import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-  VRSDetailHeader,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { VRSDetailHeader } from "@/components/vrs";
 import {
   ClientDemographicsCard,
   VRSInfoCard,
@@ -145,16 +142,18 @@ function VRSClientDetailPageContent() {
   };
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading client details..." />;
+    return <LoadingState message="Loading client details..." />;
   }
 
   if (error || !client) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Client"
         message={error || "Client not found"}
         action={{
           label: "Back to Clients",
           onClick: () => router.push("/vrs/clients"),
+          variant: "healthcare",
         }}
       />
     );

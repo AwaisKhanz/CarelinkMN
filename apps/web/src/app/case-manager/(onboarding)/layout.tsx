@@ -11,6 +11,7 @@ export default function OnboardingLayout({
 }: OnboardingLayoutProps) {
   // Onboarding layout - only role guard, no onboarding check
   // Route groups ensure this layout is separate from dashboard
+  // Note: EmailVerificationGuard is applied at root layout level
   return <CaseManagerGuard>{children}</CaseManagerGuard>;
 }
 

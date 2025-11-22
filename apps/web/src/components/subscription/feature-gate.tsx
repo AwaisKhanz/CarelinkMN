@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
-import { SubscriptionTier } from "@/types/subscription";
+import { SubscriptionTier } from "@carelink/types";
 import { PLAN_HIERARCHY } from "@/lib/constants/subscription";
 import { UpgradeBanner } from "./upgrade-banner";
 import { Loader2 } from "lucide-react";

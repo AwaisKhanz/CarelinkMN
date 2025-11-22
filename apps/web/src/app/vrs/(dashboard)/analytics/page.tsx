@@ -6,10 +6,7 @@ import { vrsService, type VRSAnalytics } from "@/lib/api";
 import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
   AnalyticsStats,
   RetentionBreakdownCard,
@@ -60,16 +57,18 @@ function VRSAnalyticsPageContent() {
   const { stats, retentionBreakdown } = useAnalyticsStats(analytics);
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading analytics..." />;
+    return <LoadingState message="Loading analytics..." />;
   }
 
   if (error) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Analytics"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchAnalytics,
+          variant: "healthcare",
         }}
       />
     );
@@ -77,11 +76,13 @@ function VRSAnalyticsPageContent() {
 
   if (!analytics) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="No Data Available"
         message="No analytics data available"
         action={{
           label: "Refresh",
           onClick: fetchAnalytics,
+          variant: "healthcare",
         }}
       />
     );

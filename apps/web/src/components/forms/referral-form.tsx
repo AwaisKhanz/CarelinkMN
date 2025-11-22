@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -33,21 +32,25 @@ import { Save, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Gender, Payer, Urgency, ReferralStatus } from "@carelink/types";
 import {
-  CARE_LEVELS,
-  SUPPORTED_NEEDS,
-  BEHAVIORAL_NEEDS,
-  MEDICAL_NEEDS,
-  MOBILITY_LEVELS,
+  MOBILITY_STATUS_OPTIONS,
   PAYER_OPTIONS,
   GENDER_OPTIONS,
-  MINNESOTA_COUNTIES,
   URGENCY_CONFIG,
   REFERRAL_STATUS_CONFIG,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { FormError } from "@/components/ui/form-error";
-import type { CreateReferralData, UpdateReferralData, Referral } from "@/lib/api";
+import type {
+  CreateReferralData,
+  UpdateReferralData,
+  Referral,
+} from "@/lib/api";
+import { CareLevelsMultiSelect } from "@/components/settings/care-levels-multi-select";
+import { ServicesNeededMultiSelect } from "@/components/settings/services-needed-multi-select";
+import { CountiesMultiSelect } from "@/components/settings/counties-multi-select";
+import { BehavioralNeedsMultiSelect } from "@/components/settings/behavioral-needs-multi-select";
+import { MedicalNeedsMultiSelect } from "@/components/settings/medical-needs-multi-select";
 
 // Base schema for creating a referral
 const createReferralSchema = z.object({
@@ -72,13 +75,17 @@ const createReferralSchema = z.object({
 
   // Care Needs
   careLevels: z.array(z.string()).min(1, "At least one care level is required"),
-  servicesNeeded: z.array(z.string()).min(1, "At least one service is required"),
+  servicesNeeded: z
+    .array(z.string())
+    .min(1, "At least one service is required"),
   mobilityLevel: z.string().optional(),
   behavioralNeeds: z.array(z.string()).optional().default([]),
   medicalNeeds: z.array(z.string()).optional().default([]),
 
   // Location Preferences
-  preferredCounties: z.array(z.string()).min(1, "At least one preferred county is required"),
+  preferredCounties: z
+    .array(z.string())
+    .min(1, "At least one preferred county is required"),
   preferredCities: z.array(z.string()).optional().default([]),
   maxDistance: z
     .number({
@@ -111,11 +118,9 @@ const createReferralSchema = z.object({
 });
 
 // Edit schema - all fields optional except for status (which is only for edit)
-const editReferralSchema = createReferralSchema
-  .partial()
-  .extend({
-    status: z.nativeEnum(ReferralStatus).optional(),
-  });
+const editReferralSchema = createReferralSchema.partial().extend({
+  status: z.nativeEnum(ReferralStatus).optional(),
+});
 
 export type ReferralFormFields = z.infer<typeof createReferralSchema> & {
   status?: ReferralStatus;
@@ -161,7 +166,10 @@ export function ReferralForm({
         : undefined,
       urgency: initialData?.urgency || Urgency.ROUTINE,
       internalNotes: initialData?.internalNotes || "",
-      providerIds: (initialData && "providerIds" in initialData ? initialData.providerIds : undefined) || [],
+      providerIds:
+        (initialData && "providerIds" in initialData
+          ? initialData.providerIds
+          : undefined) || [],
       ...(mode === "edit" && initialData && "status" in initialData
         ? { status: initialData.status }
         : {}),
@@ -199,7 +207,10 @@ export function ReferralForm({
           : undefined,
         urgency: initialData.urgency || Urgency.ROUTINE,
         internalNotes: initialData.internalNotes || "",
-        providerIds: ("providerIds" in initialData ? initialData.providerIds : undefined) || [],
+        providerIds:
+          ("providerIds" in initialData
+            ? initialData.providerIds
+            : undefined) || [],
         ...(initialData && "status" in initialData
           ? { status: initialData.status }
           : {}),
@@ -212,24 +223,27 @@ export function ReferralForm({
   const selectedBehavioralNeeds = watch("behavioralNeeds") || [];
   const selectedMedicalNeeds = watch("medicalNeeds") || [];
   const selectedCounties = watch("preferredCounties") || [];
-  const selectedCities = watch("preferredCities") || [];
   const targetMoveDate = watch("targetMoveDate");
   const primaryPayer = watch("primaryPayer");
   const urgency = watch("urgency");
 
-  const toggleArrayItem = (
-    field: "careLevels" | "servicesNeeded" | "behavioralNeeds" | "medicalNeeds" | "preferredCounties" | "preferredCities" | "providerIds",
-    value: string
-  ) => {
-    const current = watch(field) || [];
-    if (current.includes(value)) {
-      setValue(field, current.filter((item) => item !== value), {
-        shouldValidate: true,
-      });
-    } else {
-      setValue(field, [...current, value], { shouldValidate: true });
+  const extractFieldError = (error: unknown): FieldError | undefined => {
+    if (!error || typeof error !== "object") return undefined;
+    if ("message" in error && typeof (error as any).message === "string") {
+      return error as FieldError;
     }
+    return undefined;
   };
+
+  const careLevelsFieldError = extractFieldError(
+    (errors.careLevels as any)?.root || (errors.careLevels as any)
+  );
+  const servicesNeededFieldError = extractFieldError(
+    (errors.servicesNeeded as any)?.root || (errors.servicesNeeded as any)
+  );
+  const preferredCountiesFieldError = extractFieldError(
+    (errors.preferredCounties as any)?.root || (errors.preferredCounties as any)
+  );
 
   const handleFormSubmit = async (data: ReferralFormFields) => {
     try {
@@ -292,7 +306,9 @@ export function ReferralForm({
                 maxLength={2}
                 className={cn(errors.clientInitials && "border-destructive")}
                 onChange={(e) => {
-                  const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+                  const value = e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z]/g, "");
                   setValue("clientInitials", value, { shouldValidate: true });
                 }}
               />
@@ -360,68 +376,52 @@ export function ReferralForm({
             <Label>
               Care Levels <span className="text-destructive">*</span>
             </Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-              {CARE_LEVELS.map((level) => (
-                <div key={level.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`careLevel-${level.value}`}
-                    checked={selectedCareLevels.includes(level.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem("careLevels", level.value)
-                    }
-                  />
-                  <Label
-                    htmlFor={`careLevel-${level.value}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {level.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <FormError error={(errors.careLevels as any)?.root || (errors.careLevels as any)} />
+            <CareLevelsMultiSelect
+              selectedCareLevels={selectedCareLevels}
+              onCareLevelsChange={(values) =>
+                setValue("careLevels", values, { shouldValidate: true })
+              }
+              name="careLevels"
+              helperText="Select all levels of care required for this client."
+              error={careLevelsFieldError?.message}
+              badgeDisplayLimit={Infinity}
+            />
           </div>
 
           <div>
             <Label>
               Services Needed <span className="text-destructive">*</span>
             </Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-              {SUPPORTED_NEEDS.map((service) => (
-                <div key={service.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`service-${service.value}`}
-                    checked={selectedServicesNeeded.includes(service.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem("servicesNeeded", service.value)
-                    }
-                  />
-                  <Label
-                    htmlFor={`service-${service.value}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {service.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <FormError error={(errors.servicesNeeded as any)?.root || (errors.servicesNeeded as any)} />
+            <ServicesNeededMultiSelect
+              selectedServices={selectedServicesNeeded}
+              onServicesChange={(values) =>
+                setValue("servicesNeeded", values, { shouldValidate: true })
+              }
+              name="servicesNeeded"
+              helperText="Select all applicable service needs."
+              error={servicesNeededFieldError?.message}
+              badgeDisplayLimit={Infinity}
+            />
           </div>
 
           <div>
             <Label htmlFor="mobilityLevel">Mobility Level</Label>
             <Select
-              value={watch("mobilityLevel") || ""}
+              value={watch("mobilityLevel") || "__NONE__"}
               onValueChange={(value) =>
-                setValue("mobilityLevel", value, { shouldValidate: true })
+                setValue(
+                  "mobilityLevel",
+                  value === "__NONE__" ? undefined : value,
+                  { shouldValidate: true }
+                )
               }
             >
               <SelectTrigger id="mobilityLevel">
                 <SelectValue placeholder="Select mobility level" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {MOBILITY_LEVELS.map((level) => (
+                <SelectItem value="__NONE__">None</SelectItem>
+                {MOBILITY_STATUS_OPTIONS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     {level.label}
                   </SelectItem>
@@ -432,48 +432,28 @@ export function ReferralForm({
 
           <div>
             <Label>Behavioral Needs</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-              {BEHAVIORAL_NEEDS.map((need) => (
-                <div key={need.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`behavioral-${need.value}`}
-                    checked={selectedBehavioralNeeds.includes(need.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem("behavioralNeeds", need.value)
-                    }
-                  />
-                  <Label
-                    htmlFor={`behavioral-${need.value}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {need.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            <BehavioralNeedsMultiSelect
+              selectedNeeds={selectedBehavioralNeeds}
+              onNeedsChange={(values) =>
+                setValue("behavioralNeeds", values, { shouldValidate: true })
+              }
+              name="behavioralNeeds"
+              helperText="Select any behavioral supports that apply."
+              badgeDisplayLimit={Infinity}
+            />
           </div>
 
           <div>
             <Label>Medical Needs</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-              {MEDICAL_NEEDS.map((need) => (
-                <div key={need.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`medical-${need.value}`}
-                    checked={selectedMedicalNeeds.includes(need.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem("medicalNeeds", need.value)
-                    }
-                  />
-                  <Label
-                    htmlFor={`medical-${need.value}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {need.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            <MedicalNeedsMultiSelect
+              selectedNeeds={selectedMedicalNeeds}
+              onNeedsChange={(values) =>
+                setValue("medicalNeeds", values, { shouldValidate: true })
+              }
+              name="medicalNeeds"
+              helperText="Select the medical needs that require attention."
+              badgeDisplayLimit={Infinity}
+            />
           </div>
         </CardContent>
       </Card>
@@ -491,26 +471,16 @@ export function ReferralForm({
             <Label>
               Preferred Counties <span className="text-destructive">*</span>
             </Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2 max-h-60 overflow-y-auto border border-border rounded-lg p-4">
-              {MINNESOTA_COUNTIES.map((county) => (
-                <div key={county} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`county-${county}`}
-                    checked={selectedCounties.includes(county)}
-                    onCheckedChange={() =>
-                      toggleArrayItem("preferredCounties", county)
-                    }
-                  />
-                  <Label
-                    htmlFor={`county-${county}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {county}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <FormError error={(errors.preferredCounties as any)?.root || (errors.preferredCounties as any)} />
+            <CountiesMultiSelect
+              selectedCounties={selectedCounties}
+              onCountiesChange={(values) =>
+                setValue("preferredCounties", values, { shouldValidate: true })
+              }
+              name="preferredCounties"
+              helperText="Select all counties that match the client's preferences."
+              error={preferredCountiesFieldError?.message}
+              badgeDisplayLimit={Infinity}
+            />
           </div>
 
           <div>
@@ -531,9 +501,7 @@ export function ReferralForm({
       <Card variant="healthcare">
         <CardHeader>
           <CardTitle>Payer Information</CardTitle>
-          <CardDescription>
-            Select primary and secondary payers
-          </CardDescription>
+          <CardDescription>Select primary and secondary payers</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -569,11 +537,11 @@ export function ReferralForm({
             <div>
               <Label htmlFor="secondaryPayer">Secondary Payer</Label>
               <Select
-                value={watch("secondaryPayer") || ""}
+                value={watch("secondaryPayer") || "__NONE__"}
                 onValueChange={(value) =>
                   setValue(
                     "secondaryPayer",
-                    value ? (value as Payer) : undefined,
+                    value === "__NONE__" ? undefined : (value as Payer),
                     { shouldValidate: true }
                   )
                 }
@@ -582,7 +550,7 @@ export function ReferralForm({
                   <SelectValue placeholder="Select secondary payer (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__NONE__">None</SelectItem>
                   {PAYER_OPTIONS.filter(
                     (option) => option.value !== primaryPayer
                   ).map((option) => (
@@ -636,7 +604,9 @@ export function ReferralForm({
                         shouldValidate: true,
                       })
                     }
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
                     initialFocus
                   />
                 </PopoverContent>
@@ -713,11 +683,13 @@ export function ReferralForm({
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(REFERRAL_STATUS_CONFIG).map(([value, config]) => (
-                  <SelectItem key={value} value={value}>
-                    {config.label}
-                  </SelectItem>
-                ))}
+                {Object.entries(REFERRAL_STATUS_CONFIG).map(
+                  ([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      {config.label}
+                    </SelectItem>
+                  )
+                )}
               </SelectContent>
             </Select>
           </CardContent>
@@ -740,7 +712,8 @@ export function ReferralForm({
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              {submitLabel || (mode === "create" ? "Create Referral" : "Update Referral")}
+              {submitLabel ||
+                (mode === "create" ? "Create Referral" : "Update Referral")}
             </>
           )}
         </Button>
@@ -748,4 +721,3 @@ export function ReferralForm({
     </form>
   );
 }
-

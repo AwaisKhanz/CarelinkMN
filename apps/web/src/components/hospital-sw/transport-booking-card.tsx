@@ -57,15 +57,9 @@ import {
   Search,
 } from "lucide-react";
 import { format as formatDate } from "date-fns";
-import { PAYER_LABELS } from "@/lib/constants/index";
+import { PAYER_LABELS, VEHICLE_TYPES } from "@/lib/constants/index";
 import { organizationService } from "@/lib/api/services/organization.service";
 import { OrganizationType } from "@carelink/types";
-
-const VEHICLE_TYPES = [
-  { value: "AMBULANCE", label: "Ambulance" },
-  { value: "WHEELCHAIR_VAN", label: "Wheelchair Van" },
-  { value: "SEDAN", label: "Sedan" },
-];
 
 const EQUIPMENT_OPTIONS = [
   "Oxygen",

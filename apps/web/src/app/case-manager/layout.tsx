@@ -2,14 +2,21 @@
 
 import { ReactNode } from "react";
 import { CaseManagerGuard } from "@/components/auth/route-guard";
+import { EmailVerificationGuard } from "@/components/auth/email-verification-guard";
 
 interface CaseManagerLayoutProps {
   children: ReactNode;
 }
 
 export default function CaseManagerLayout({ children }: CaseManagerLayoutProps) {
-  // Root layout - just handles role guard
+  // Root layout - handles role guard and email verification
   // Onboarding and Dashboard route groups have their own layouts
-  return <CaseManagerGuard>{children}</CaseManagerGuard>;
+  // Guard order: EmailVerificationGuard -> CaseManagerGuard
+  // EmailVerificationGuard is applied here at the root level to avoid redundant nesting
+  return (
+    <EmailVerificationGuard>
+      <CaseManagerGuard>{children}</CaseManagerGuard>
+    </EmailVerificationGuard>
+  );
 }
 

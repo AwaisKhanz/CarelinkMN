@@ -1,5 +1,5 @@
-export { ReferralsHeader } from "./referrals-header";
-export { ReferralsStats } from "./referrals-stats";
+// ReferralsHeader and ReferralsStats have been replaced with shared components
+// See: @/components/shared/PageHeader and @/components/shared/StatsGrid
 export { ReferralsFilters } from "./referrals-filters";
 export { ReferralsErrorState } from "./referrals-error-state";
 export { ReferralsLoadingSkeleton } from "./referrals-loading-skeleton";

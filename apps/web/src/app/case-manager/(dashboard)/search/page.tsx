@@ -63,10 +63,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  CaseManagerLoadingState,
-  CaseManagerErrorState,
-} from "@/components/case-manager";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -224,7 +221,7 @@ function CaseManagerSearchPageContent() {
         page: pagination.page,
         limit: pagination.limit,
         search: debouncedSearch || undefined,
-        status: "ACTIVE",
+        status: OrganizationStatus.VERIFIED,
         county: selectedCounties.length === 1 ? selectedCounties[0] : undefined,
       };
 
@@ -502,9 +499,7 @@ function CaseManagerSearchPageContent() {
   };
 
   if (isLoading && providers.length === 0) {
-    return (
-      <CaseManagerLoadingState message="Searching providers..." fullHeight />
-    );
+    return <LoadingState message="Searching providers..." fullHeight />;
   }
 
   return (
@@ -813,7 +808,7 @@ function CaseManagerSearchPageContent() {
 
           {/* Error State */}
           {error && (
-            <CaseManagerErrorState
+            <ErrorState
               title="Error Loading Providers"
               message={error}
               action={{

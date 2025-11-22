@@ -8,12 +8,25 @@ import { usePageMetadata } from "../use-page-metadata";
 import { caseManagerService, Referral } from "@/lib/api";
 import type { CaseManagerDashboard } from "@/lib/api";
 import { getUrgencyBadgeConfig } from "@/lib/utils/case-manager";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Users, Clock, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import {
+  FileText,
+  Users,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Search,
+} from "lucide-react";
 import { format } from "date-fns";
-import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
@@ -25,7 +38,7 @@ function CaseManagerDashboardContent() {
   const { setTitle, setDescription } = usePageMetadata();
   const { canCreateReferrals, hasCapability } = useRolePermissions();
   const canViewSearch = hasCapability(CASE_MANAGER_CAPABILITIES.SEARCH_VIEW);
-  
+
   const [dashboard, setDashboard] = useState<CaseManagerDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +54,14 @@ function CaseManagerDashboardContent() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      if (!caseManagerId && !user?.id) return;
+      // The dashboard endpoint expects the user's ID, not the case manager's ID
+      if (!user?.id) return;
 
       try {
         setIsLoading(true);
         setError(null);
-        const response = await caseManagerService.getDashboard(caseManagerId || user!.id);
+        // Always use user.id - the API endpoint expects the user's ID, not the case manager's ID
+        const response = await caseManagerService.getDashboard(user.id);
         if (response.success && response.data) {
           setDashboard(response.data);
         } else {
@@ -54,24 +69,24 @@ function CaseManagerDashboardContent() {
         }
       } catch (err) {
         console.error("Error fetching dashboard:", err);
-        setError(err instanceof Error ? err.message : "Failed to load dashboard");
+        setError(
+          err instanceof Error ? err.message : "Failed to load dashboard"
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDashboard();
-  }, [caseManagerId, user?.id]);
+  }, [user?.id]);
 
   if (isLoading) {
-    return (
-      <CaseManagerLoadingState message="Loading dashboard..." fullHeight />
-    );
+    return <LoadingState message="Loading dashboard..." fullHeight />;
   }
 
   if (error) {
     return (
-      <CaseManagerErrorState
+      <ErrorState
         title="Error Loading Dashboard"
         message={error}
         action={{
@@ -104,7 +119,9 @@ function CaseManagerDashboardContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card variant="healthcare">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Referrals
+            </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -117,7 +134,9 @@ function CaseManagerDashboardContent() {
 
         <Card variant="healthcare">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Referrals</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Referrals
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -130,7 +149,9 @@ function CaseManagerDashboardContent() {
 
         <Card variant="healthcare">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Placements</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Pending Placements
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -147,7 +168,9 @@ function CaseManagerDashboardContent() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.responseRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">
+              {stats.responseRate.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground">
               Average {stats.averagePlacementTime.toFixed(1)} days to placement
             </p>
@@ -176,7 +199,9 @@ function CaseManagerDashboardContent() {
                   <div
                     key={referral.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg bg-warning/5 cursor-pointer hover:bg-warning/10 transition-colors"
-                    onClick={() => router.push(`/case-manager/referrals/${referral.id}`)}
+                    onClick={() =>
+                      router.push(`/case-manager/referrals/${referral.id}`)
+                    }
                   >
                     <div className="flex items-center space-x-4 flex-1">
                       <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
@@ -186,7 +211,8 @@ function CaseManagerDashboardContent() {
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
                           {referral.referralNumber}
-                          {referral.targetMoveDate && ` • Move date: ${format(new Date(referral.targetMoveDate), "MMM d, yyyy")}`}
+                          {referral.targetMoveDate &&
+                            ` • Move date: ${format(new Date(referral.targetMoveDate), "MMM d, yyyy")}`}
                         </p>
                       </div>
                     </div>
@@ -201,7 +227,9 @@ function CaseManagerDashboardContent() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => router.push("/case-manager/referrals?urgency=URGENT")}
+                    onClick={() =>
+                      router.push("/case-manager/referrals?urgency=URGENT")
+                    }
                   >
                     View All Urgent Referrals ({urgentReferrals.length})
                   </Button>
@@ -214,9 +242,7 @@ function CaseManagerDashboardContent() {
         <Card variant="healthcare">
           <CardHeader>
             <CardTitle>Recent Referrals</CardTitle>
-            <CardDescription>
-              Latest referral activity
-            </CardDescription>
+            <CardDescription>Latest referral activity</CardDescription>
           </CardHeader>
           <CardContent>
             {recentReferrals.length === 0 ? (
@@ -230,7 +256,9 @@ function CaseManagerDashboardContent() {
                   <div
                     key={referral.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => router.push(`/case-manager/referrals/${referral.id}`)}
+                    onClick={() =>
+                      router.push(`/case-manager/referrals/${referral.id}`)
+                    }
                   >
                     <div className="flex items-center space-x-4 flex-1">
                       <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -266,9 +294,7 @@ function CaseManagerDashboardContent() {
         <Card variant="healthcare">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common case management tasks
-            </CardDescription>
+            <CardDescription>Common case management tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {canViewSearch && (
@@ -278,7 +304,7 @@ function CaseManagerDashboardContent() {
                 onClick={() => router.push("/case-manager/search")}
               >
                 <Search className="mr-2 h-4 w-4" />
-                Search Available Providers
+                AI-Assisted Search (CareBot Pro)
               </Button>
             )}
             {canCreateReferrals && (
@@ -297,17 +323,25 @@ function CaseManagerDashboardContent() {
               onClick={() => router.push("/case-manager/referrals")}
             >
               <Users className="mr-2 h-4 w-4" />
-              Manage Referrals
+              Manage Referrals (Kanban View)
             </Button>
+            {canCreateReferrals && (
+              <Button
+                variant="healthcareSecondary"
+                className="w-full justify-start"
+                onClick={() => router.push("/case-manager/referrals")}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Batch Outreach & Export
+              </Button>
+            )}
           </CardContent>
         </Card>
 
         <Card variant="healthcare">
           <CardHeader>
             <CardTitle>Recent Placements</CardTitle>
-            <CardDescription>
-              Latest placement activity
-            </CardDescription>
+            <CardDescription>Latest placement activity</CardDescription>
           </CardHeader>
           <CardContent>
             {recentPlacements.length === 0 ? (
@@ -321,7 +355,11 @@ function CaseManagerDashboardContent() {
                   <div
                     key={placement.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => router.push(`/case-manager/referrals/${placement.referralId}`)}
+                    onClick={() =>
+                      router.push(
+                        `/case-manager/referrals/${placement.referralId}`
+                      )
+                    }
                   >
                     <div className="flex items-center space-x-4 flex-1">
                       <CheckCircle className="h-5 w-5 text-success shrink-0" />
@@ -330,7 +368,11 @@ function CaseManagerDashboardContent() {
                           {placement.referral?.referralNumber || "Placement"}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
-                          {format(new Date(placement.placementDate), "MMM d, yyyy")} • {placement.status}
+                          {format(
+                            new Date(placement.placementDate),
+                            "MMM d, yyyy"
+                          )}{" "}
+                          • {placement.status}
                         </p>
                       </div>
                     </div>
@@ -342,7 +384,9 @@ function CaseManagerDashboardContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => router.push("/case-manager/referrals?status=PLACED")}
+                  onClick={() =>
+                    router.push("/case-manager/referrals?status=PLACED")
+                  }
                 >
                   View All Placements
                 </Button>

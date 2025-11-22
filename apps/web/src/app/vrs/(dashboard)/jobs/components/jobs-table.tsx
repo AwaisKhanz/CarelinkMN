@@ -1,9 +1,8 @@
 "use client";
 
 import { DataTable } from "@/components/ui/data-table";
-import { Loader2 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/shared";
 import type { VRSJob } from "@/lib/api";
-import { VRSEmptyState } from "@/components/vrs";
 import { Briefcase } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useJobsColumns } from "../hooks/use-jobs-columns";
@@ -34,16 +33,12 @@ export function JobsTable({
   const columns = useJobsColumns();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingState message="Loading jobs..." />;
   }
 
   if (jobs.length === 0) {
     return (
-      <VRSEmptyState
+      <EmptyState
         icon={Briefcase}
         title="No jobs found"
         description={
@@ -56,6 +51,7 @@ export function JobsTable({
             ? {
                 label: "Add Job",
                 onClick: () => router.push("/vrs/jobs/create"),
+                icon: Briefcase,
               }
             : undefined
         }

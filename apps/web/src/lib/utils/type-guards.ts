@@ -71,7 +71,7 @@ export function isLicenseStatus(value: unknown): value is LicenseStatus {
 export function isOpeningStatus(value: unknown): value is OpeningStatus {
   return (
     typeof value === "string" &&
-    ["OPEN", "PENDING", "FILLED", "EXPIRED", "CANCELLED"].includes(value)
+    ["OPEN", "PENDING", "FILLED", "EXPIRED"].includes(value)
   );
 }
 
@@ -81,7 +81,7 @@ export function isOpeningStatus(value: unknown): value is OpeningStatus {
 export function isReferralStatus(value: unknown): value is ReferralStatus {
   return (
     typeof value === "string" &&
-    ["NEW", "VIEWED", "SHORTLISTED", "ACCEPTED", "REJECTED", "PLACED", "CLOSED"].includes(value)
+    ["NEW", "IN_REVIEW", "TOURING", "OFFER_MADE", "PLACED", "CLOSED", "CANCELLED"].includes(value)
   );
 }
 

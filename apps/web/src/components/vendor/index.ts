@@ -1,5 +1,3 @@
-export { VendorLoadingState } from "./vendor-loading-state";
-export { VendorErrorState } from "./vendor-error-state";
-export { VendorEmptyState } from "./vendor-empty-state";
+// VendorLoadingState, VendorErrorState, and VendorEmptyState have been replaced with shared components
+// See: @/components/shared/LoadingState, @/components/shared/ErrorState, @/components/shared/EmptyState
 export { VendorDetailHeader } from "./vendor-detail-header";
-

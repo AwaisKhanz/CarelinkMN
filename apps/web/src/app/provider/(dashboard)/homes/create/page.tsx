@@ -7,13 +7,10 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { homeService, CreateHomeData } from "@/lib/api";
+import { geocodeAddress } from "@/lib/utils/geocoding";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { usePageMetadata } from "../../use-page-metadata";
-import {
-  HomeForm,
-  HomeFormData,
-  STANDARD_AMENITIES,
-} from "@/components/forms/home-form";
+import { HomeForm, HomeFormData } from "@/components/forms/home-form";
 import { UploadedFile } from "@/components/ui/file-uploader";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
@@ -35,34 +32,8 @@ function CreateHomePageContent() {
   const geocodeAddress = async (
     address: string
   ): Promise<{ latitude: number; longitude: number }> => {
-    try {
-      // Using OpenStreetMap Nominatim (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-        {
-          headers: {
-            "User-Agent": "CareLinkMN/1.0", // Required by Nominatim
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        return {
-          latitude: parseFloat(data[0].lat),
-          longitude: parseFloat(data[0].lon),
-        };
-      }
-
-      // Fallback: return default coordinates (Minneapolis, MN)
-      console.warn("Geocoding failed, using default coordinates");
-      return { latitude: 44.9778, longitude: -93.265 };
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      // Fallback: return default coordinates (Minneapolis, MN)
-      return { latitude: 44.9778, longitude: -93.265 };
-    }
+    // Use geocoding utility which uses apiService
+    return geocodeAddress(address);
   };
 
   const handleSubmit = async (

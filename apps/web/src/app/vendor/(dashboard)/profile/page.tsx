@@ -22,10 +22,7 @@ import { vendorService } from "@/lib/api";
 import { usePageMetadata } from "../use-page-metadata";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { VENDOR_CATEGORIES, SPONSORSHIP_TIERS } from "@/lib/constants/vendor";
@@ -156,16 +153,18 @@ export default function VendorProfilePage() {
   };
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading vendor profile..." />;
+    return <LoadingState message="Loading vendor profile..." />;
   }
 
   if (error) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Profile"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchVendor,
+          variant: "healthcare",
         }}
       />
     );

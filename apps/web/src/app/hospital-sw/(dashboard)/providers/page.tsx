@@ -36,11 +36,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
-  HospitalSWStatsGrid,
-} from "@/components/hospital-sw";
+import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { getLicenseTypeLabel } from "@/lib/constants";
 
@@ -341,16 +337,18 @@ function HospitalSWProvidersPageContent() {
   }, [providers, pagination]);
 
   if (isLoading && providers.length === 0) {
-    return <HospitalSWLoadingState message="Loading providers..." fullHeight />;
+    return <LoadingState message="Loading providers..." fullHeight />;
   }
 
   if (error && providers.length === 0) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
+        title="Error Loading Providers"
         message={error || "Failed to load providers"}
         action={{
           label: "Retry",
           onClick: handleRefresh,
+          variant: "healthcare",
         }}
       />
     );
@@ -359,7 +357,7 @@ function HospitalSWProvidersPageContent() {
   return (
     <div className="space-y-6">
       {/* Stats Cards - Use shared component */}
-      <HospitalSWStatsGrid stats={statsData} columns={4} />
+      <StatsGrid stats={statsData} columns={4} />
 
       {/* Data Table */}
       <Card variant="healthcare">

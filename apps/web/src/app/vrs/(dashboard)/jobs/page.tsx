@@ -9,10 +9,7 @@ import { JobStatus, RetentionStatus } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   JobsHeader,
@@ -190,7 +187,7 @@ function VRSJobsPageContent() {
     isLoading &&
     (activeTab === "jobs" ? jobs.length === 0 : placements.length === 0)
   ) {
-    return <VRSLoadingState message={`Loading ${activeTab}...`} />;
+    return <LoadingState message={`Loading ${activeTab}...`} />;
   }
 
   if (
@@ -198,11 +195,13 @@ function VRSJobsPageContent() {
     (activeTab === "jobs" ? jobs.length === 0 : placements.length === 0)
   ) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title={`Error Loading ${activeTab === "jobs" ? "Jobs" : "Placements"}`}
         message={error}
         action={{
           label: "Retry",
           onClick: handleRefresh,
+          variant: "healthcare",
         }}
       />
     );

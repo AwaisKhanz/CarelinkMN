@@ -11,11 +11,8 @@ import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-  VRSDetailHeader,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { VRSDetailHeader } from "@/components/vrs";
 import {
   Card,
   CardContent,
@@ -85,16 +82,18 @@ function EmployerDetailPageContent() {
   }, [employerId, setTitle, setDescription]);
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading employer details..." />;
+    return <LoadingState message="Loading employer details..." />;
   }
 
   if (error || !employer) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Employer"
         message={error || "Employer not found"}
         action={{
           label: "Back to Employers",
           onClick: () => router.push("/vrs/employers"),
+          variant: "healthcare",
         }}
       />
     );

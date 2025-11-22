@@ -12,12 +12,7 @@ import { UserStatus, UserRole } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminEmptyState,
-  AdminStatsGrid,
-} from "@/components/admin";
+import { LoadingState, ErrorState, EmptyState, StatsGrid } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -254,12 +249,12 @@ function AdminUsersPageContent() {
   );
 
   if (isLoading && users.length === 0) {
-    return <AdminLoadingState message="Loading users..." fullHeight />;
+    return <LoadingState message="Loading users..." fullHeight />;
   }
 
   if (error && users.length === 0) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Users"
         message={error}
         action={{
@@ -274,7 +269,7 @@ function AdminUsersPageContent() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} variant="card" />
 
       {/* Filters and Search */}
       <Card variant="healthcare">
@@ -329,7 +324,7 @@ function AdminUsersPageContent() {
           </div>
 
           {users.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={Users}
               title="No users found"
               description="No users match your current filters"

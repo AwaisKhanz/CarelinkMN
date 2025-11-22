@@ -23,7 +23,7 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Controller } from "react-hook-form";
-import { VRSLoadingState, VRSErrorState } from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 
 const employerSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -163,16 +163,18 @@ function EditEmployerPageContent() {
   };
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading employer..." />;
+    return <LoadingState message="Loading employer..." />;
   }
 
   if (error || !employer) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Employer"
         message={error || "Employer not found"}
         action={{
           label: "Back to Employers",
           onClick: () => router.push("/vrs/employers"),
+          variant: "healthcare",
         }}
       />
     );

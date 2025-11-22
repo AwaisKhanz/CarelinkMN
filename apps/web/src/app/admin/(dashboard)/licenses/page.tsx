@@ -11,12 +11,7 @@ import { format } from "date-fns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminEmptyState,
-  AdminStatsGrid,
-} from "@/components/admin";
+import { LoadingState, ErrorState, EmptyState, StatsGrid } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -328,12 +323,12 @@ function AdminLicensesPageContent() {
   );
 
   if (isLoading && licenses.length === 0) {
-    return <AdminLoadingState message="Loading licenses..." fullHeight />;
+    return <LoadingState message="Loading licenses..." fullHeight />;
   }
 
   if (error && licenses.length === 0) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Licenses"
         message={error}
         action={{
@@ -348,7 +343,7 @@ function AdminLicensesPageContent() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} variant="card" />
 
       {/* Filters and Search */}
       <Card variant="healthcare">
@@ -398,7 +393,7 @@ function AdminLicensesPageContent() {
           </div>
 
           {licenses.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={ShieldCheck}
               title="No licenses found"
               description="No licenses match your current filters"

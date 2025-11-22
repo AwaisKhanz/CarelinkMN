@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
@@ -17,7 +17,6 @@ export const metadata: Metadata = {
     "case management",
   ],
   authors: [{ name: "CareLinkMN Team" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
   openGraph: {
     type: "website",
@@ -34,6 +33,11 @@ export const metadata: Metadata = {
     description:
       "Connect families, case managers, and care providers through intelligent, payer-aware search with real-time availability tracking.",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

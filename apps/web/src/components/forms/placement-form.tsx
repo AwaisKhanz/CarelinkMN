@@ -28,7 +28,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Save, Loader2, Calendar as CalendarIcon, X } from "lucide-react";
-import { Opening, Placement } from "@/lib/api";
+import { OpeningStatus } from "@carelink/types";
+import type { Opening, Placement } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -158,7 +159,7 @@ export function PlacementForm({
                       {openings
                         .filter(
                           (opening) =>
-                            opening.status === "OPEN" ||
+                            opening.status === OpeningStatus.OPEN ||
                             opening.id === initialData?.openingId ||
                             opening.id === selectedOpeningId
                         )

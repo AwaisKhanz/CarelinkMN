@@ -14,7 +14,7 @@ export function VerificationStatusBanner() {
   const [resendSuccess, setResendSuccess] = useState(false);
 
   // Don't show banner if user is verified, not logged in, or banner is dismissed
-  if (!user || (user as any).emailVerified || isDismissed) {
+  if (!user || user.emailVerified || isDismissed) {
     return null;
   }
 
@@ -22,15 +22,10 @@ export function VerificationStatusBanner() {
     try {
       setIsResending(true);
 
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: user.email }),
-      });
+      const { authService } = await import("@/lib/api");
+      const response = await authService.resendVerificationEmail(user.email);
 
-      if (response.ok) {
+      if (response.success) {
         setResendSuccess(true);
         setTimeout(() => setResendSuccess(false), 5000);
       }

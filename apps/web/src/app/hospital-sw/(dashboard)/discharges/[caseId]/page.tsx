@@ -39,9 +39,8 @@ import { format as formatDate } from "date-fns";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
   HospitalSWDetailHeader,
   TransportBookingCard,
   ConsentCard,
@@ -365,13 +364,13 @@ function DischargeCaseDetailPageContent() {
 
   if (isLoading) {
     return (
-      <HospitalSWLoadingState message="Loading discharge case..." fullHeight />
+      <LoadingState message="Loading discharge case..." fullHeight />
     );
   }
 
   if (caseError || !dischargeCase) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
         title="Error Loading Discharge Case"
         message={caseError?.message || "Discharge case not found"}
         action={{

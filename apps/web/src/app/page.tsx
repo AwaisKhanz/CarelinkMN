@@ -34,6 +34,9 @@ import {
   Calendar,
   FileText,
   Activity,
+  ShieldCheck,
+  Briefcase,
+  Package,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
@@ -89,7 +92,9 @@ export default function HomePage() {
                     Welcome, {user?.firstName}!
                   </span>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={user ? getDashboardPath(user.role) : "/search"}>Dashboard</Link>
+                    <Link href={user ? getDashboardPath(user.role) : "/search"}>
+                      Dashboard
+                    </Link>
                   </Button>
                 </>
               ) : (
@@ -126,9 +131,10 @@ export default function HomePage() {
                   Platform
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                  Connect families, case managers, and licensed care providers
-                  through intelligent, payer-aware search with real-time
-                  availability tracking and AI-powered matching.
+                  Connect families seeking care, case managers coordinating
+                  services, hospital discharge planners, and licensed care
+                  providers through intelligent, payer-aware search with
+                  real-time availability tracking and AI-powered matching.
                 </p>
               </div>
 
@@ -141,7 +147,9 @@ export default function HomePage() {
                       asChild
                       className="text-lg px-8 py-6"
                     >
-                      <Link href={user ? getDashboardPath(user.role) : "/search"}>
+                      <Link
+                        href={user ? getDashboardPath(user.role) : "/search"}
+                      >
                         <Search className="w-5 h-5 mr-2" />
                         Go to Dashboard
                       </Link>
@@ -318,15 +326,15 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Advanced search filters
+                  Sub-1 second response time (p95)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Real-time availability
+                  48-hour freshness enforcement
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Payer compatibility
+                  Payer-aware results
                 </li>
               </ul>
             </Card>
@@ -339,21 +347,21 @@ export default function HomePage() {
                 HIPAA Compliant
               </h3>
               <p className="text-muted-foreground mb-6">
-                Enterprise-grade security with end-to-end encryption, audit
-                logging, and compliance monitoring.
+                Enterprise-grade security with row-level security, PHI
+                minimization, signed URLs, and immutable audit logs.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  End-to-end encryption
+                  Row-level security (RLS)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Audit logging
+                  PHI minimization
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Compliance monitoring
+                  Immutable audit logs
                 </li>
               </ul>
             </Card>
@@ -393,21 +401,21 @@ export default function HomePage() {
                 Real-Time Updates
               </h3>
               <p className="text-muted-foreground mb-6">
-                Live availability tracking, instant notifications, and seamless
-                coordination between all parties.
+                Real-time availability tracking with 48-hour freshness
+                enforcement, instant notifications, and seamless coordination.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  Live availability
+                  48-hour freshness enforcement
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  Real-time updates
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
                   Instant notifications
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-success" />
-                  Seamless coordination
                 </li>
               </ul>
             </Card>
@@ -477,12 +485,12 @@ export default function HomePage() {
               Solutions for Every Role
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Tailored experiences designed for families, case managers, and
-              care providers
+              Tailored experiences designed for every role in Minnesota's care
+              coordination ecosystem
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Card variant="healthcare" className="p-8 text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <Users className="w-8 h-8 text-primary" />
@@ -498,29 +506,23 @@ export default function HomePage() {
               <ul className="text-left space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Advanced search with filters</span>
+                  <span className="text-sm">Public search with filters</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Provider profiles with photos</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Save favorites functionality</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <span className="text-sm">
-                    Real-time availability updates
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Payer compatibility checking</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">
-                    Location-based recommendations
+                    Referral handoff to case managers
                   </span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full">
-                Learn More
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
             </Card>
 
             <Card variant="healthcareSuccess" className="p-8 text-center">
@@ -538,26 +540,28 @@ export default function HomePage() {
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <span className="text-sm">
-                    AI-powered matching algorithms
+                    AI-assisted search (CareBot Pro)
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Referral management system</span>
+                  <span className="text-sm">
+                    Referral creation and management
+                  </span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Compliance tracking</span>
+                  <span className="text-sm">Batch outreach capabilities</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Progress monitoring</span>
+                  <span className="text-sm">Pipeline Kanban view</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Export functionality</span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full">
-                Learn More
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
             </Card>
 
             <Card variant="healthcareInfo" className="p-8 text-center">
@@ -574,27 +578,159 @@ export default function HomePage() {
               <ul className="text-left space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Multi-facility management</span>
+                  <span className="text-sm">Multi-home management</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Services mapping interface</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <span className="text-sm">
-                    Real-time availability updates
+                    Opening management with Kanban
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Qualified referral system</span>
+                  <span className="text-sm">Analytics dashboard</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Analytics and reporting</span>
+                  <span className="text-sm">Messaging center</span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full">
-                Learn More
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+            </Card>
+
+            <Card variant="healthcareWarning" className="p-8 text-center">
+              <div className="w-16 h-16 bg-warning/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <FileText className="w-8 h-8 text-warning" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Hospital Social Workers
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Facilitate urgent discharges with AI-powered matching, provider
+                invitations, and NEMT booking integration.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Discharge intake forms</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">AI-powered matching</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Provider invitation system</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">NEMT booking</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Follow-up checklists</span>
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcare" className="p-8 text-center">
+              <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Administrators
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Verify licenses, monitor compliance, track platform metrics, and
+                support users with comprehensive admin tools.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Approval workflows</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">License verification</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Compliance monitoring</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Analytics dashboards</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Audit log access</span>
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareSuccess" className="p-8 text-center">
+              <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Briefcase className="w-8 h-8 text-success" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For VRS Specialists
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Match clients with employers, track job placements, and monitor
+                retention metrics with dedicated VRS tools.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Client management</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Job matching interface</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Employer CRM</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Retention analytics</span>
+                </li>
+              </ul>
+            </Card>
+
+            <Card variant="healthcareInfo" className="p-8 text-center">
+              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Package className="w-8 h-8 text-accent" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                For Marketplace Vendors
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                List services, receive qualified leads, manage bookings (NEMT),
+                and track performance with vendor tools.
+              </p>
+              <ul className="text-left space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Vendor profiles</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Lead management</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Booking queue (NEMT)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Analytics access</span>
+                </li>
+              </ul>
             </Card>
           </div>
         </div>

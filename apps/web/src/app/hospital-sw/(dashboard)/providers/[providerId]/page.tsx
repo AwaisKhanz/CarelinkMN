@@ -27,15 +27,12 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
-  HospitalSWDetailHeader,
-  HospitalSWEmptyState,
-} from "@/components/hospital-sw";
+import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
+import { HospitalSWDetailHeader } from "@/components/hospital-sw";
 import { format } from "date-fns";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { getLicenseTypeLabel } from "@/lib/constants";
+import { LicenseStatus } from "@carelink/types";
 
 function ProviderProfilePageContent() {
   const params = useParams();
@@ -91,7 +88,7 @@ function ProviderProfilePageContent() {
 
   if (isLoading) {
     return (
-      <HospitalSWLoadingState
+      <LoadingState
         message="Loading provider profile..."
         fullHeight
       />
@@ -100,11 +97,13 @@ function ProviderProfilePageContent() {
 
   if (error || !provider) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
+        title="Error Loading Provider"
         message={error || "Provider not found"}
         action={{
           label: "Retry",
           onClick: fetchProvider,
+          variant: "healthcare",
         }}
         secondaryAction={{
           label: "Back to Providers",
@@ -321,7 +320,7 @@ function ProviderProfilePageContent() {
                   ))}
                 </div>
               ) : (
-                <HospitalSWEmptyState
+                <EmptyState
                   icon={Building}
                   title="No Homes"
                   description="This provider has no care facilities registered."
@@ -361,7 +360,7 @@ function ProviderProfilePageContent() {
                   })}
                 </div>
               ) : (
-                <HospitalSWEmptyState
+                <EmptyState
                   icon={FileText}
                   title="No Services"
                   description="This provider has no services registered."
@@ -404,7 +403,7 @@ function ProviderProfilePageContent() {
                       </div>
                       <Badge
                         variant={
-                          license.status === "ACTIVE"
+                          license.status === LicenseStatus.ACTIVE
                             ? "healthcareSuccess"
                             : "outline"
                         }
@@ -415,7 +414,7 @@ function ProviderProfilePageContent() {
                   ))}
                 </div>
               ) : (
-                <HospitalSWEmptyState
+                <EmptyState
                   icon={FileText}
                   title="No Licenses"
                   description="This provider has no licenses registered."

@@ -3,6 +3,6 @@
  * Reusable components for case manager dashboard
  */
 
-export { CaseManagerLoadingState } from "./case-manager-loading-state";
-export { CaseManagerErrorState } from "./case-manager-error-state";
+// CaseManagerLoadingState and CaseManagerErrorState have been replaced with shared components
+// See: @/components/shared/LoadingState, @/components/shared/ErrorState
 

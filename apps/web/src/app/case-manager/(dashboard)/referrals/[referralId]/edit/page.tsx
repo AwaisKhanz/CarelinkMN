@@ -10,7 +10,7 @@ import { ReferralForm } from "@/components/forms/referral-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 
@@ -105,12 +105,12 @@ function EditReferralPageContent() {
   };
 
   if (isLoading) {
-    return <CaseManagerLoadingState message="Loading referral..." fullHeight />;
+    return <LoadingState message="Loading referral..." fullHeight />;
   }
 
   if (error && !referral) {
     return (
-      <CaseManagerErrorState
+      <ErrorState
         title="Error Loading Referral"
         message={error}
         action={{
@@ -155,7 +155,7 @@ function EditReferralPageContent() {
 
       {/* Error State */}
       {error && (
-        <CaseManagerErrorState
+        <ErrorState
           title="Error Updating Referral"
           message={error}
           action={{

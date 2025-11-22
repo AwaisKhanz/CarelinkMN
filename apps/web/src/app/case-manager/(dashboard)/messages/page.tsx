@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../use-page-metadata";
 import { MessageCenter } from "@/components/messaging";
@@ -12,6 +13,8 @@ import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 function CaseManagerMessagesPageContent() {
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
+  const searchParams = useSearchParams();
+  const providerId = searchParams.get("providerId") || undefined;
 
   useEffect(() => {
     setTitle("Messages");
@@ -37,6 +40,7 @@ function CaseManagerMessagesPageContent() {
 
   return (
     <MessageCenter
+      providerId={providerId}
       getThreadContext={getThreadContext}
       getThreadTitle={getThreadTitle}
     />

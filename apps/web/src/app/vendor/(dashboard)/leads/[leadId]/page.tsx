@@ -19,11 +19,8 @@ import { vendorService } from "@/lib/api";
 import { usePageMetadata } from "../../use-page-metadata";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-  VendorDetailHeader,
-} from "@/components/vendor";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { VendorDetailHeader } from "@/components/vendor";
 import { VendorLead, LeadStatus } from "@carelink/types";
 import { getLeadStatusBadgeConfig } from "@/lib/utils/vendor";
 import { formatLeadSource } from "@/lib/utils/vendor";
@@ -122,16 +119,18 @@ export default function VendorLeadDetailPage() {
   };
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading lead details..." />;
+    return <LoadingState message="Loading lead details..." />;
   }
 
   if (error || !lead) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Lead"
         message={error || "Lead not found"}
         action={{
           label: "Back to Leads",
           onClick: () => router.push("/vendor/leads"),
+          variant: "healthcare",
         }}
       />
     );

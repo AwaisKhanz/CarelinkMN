@@ -250,3 +250,17 @@ export type {
   UpdateVendorData,
   UpdateLeadStatusData,
 } from "@carelink/types";
+
+// Export public service (Family Member Dashboard)
+export { publicService } from "./services/public.service";
+export type {
+  PublicSearchParams,
+  PublicSearchResponse,
+  ProviderPublicProfile,
+  GetFavoritesResponse,
+  Favorite,
+  CreateFavoriteData,
+  CareBotQueryRequest,
+  CareBotQueryResponse,
+  GetPublicProviderParams,
+} from "./services/public.service";

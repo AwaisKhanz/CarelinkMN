@@ -37,6 +37,7 @@ import aiSearchRoutes from "./routes/ai-search.routes";
 import notificationRoutes from "./routes/notification.routes";
 import messageTemplateRoutes from "./routes/message-template.routes";
 import dischargeCaseRoutes from "./routes/discharge-case.routes";
+import publicRoutes from "./routes/public.routes";
 
 // Import middleware
 import {
@@ -161,6 +162,7 @@ app.use("/api", caseManagerRoutes);
 app.use("/api", hospitalStaffRoutes);
 app.use("/api/vrs", vrsRoutes);
 app.use("/api", vendorRoutes);
+app.use("/api", publicRoutes);
 app.use("/api", homeRoutes);
 app.use("/api", amenityRoutes);
 app.use("/api", openingRoutes);

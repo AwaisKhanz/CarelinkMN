@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { providerService, referralService, Provider } from "@/lib/api";
+import { ReferralStatus } from "@carelink/types";
 import { usePageMetadata } from "../../use-page-metadata";
 import { useAuth } from "@/contexts/auth-context";
 import { format } from "date-fns";
@@ -115,9 +116,11 @@ function ProviderProfilePageContent() {
     setIsLoadingMetrics(true);
     try {
       // Get referrals for this provider to calculate metrics
+      // Note: API limit is max 100, so we use the maximum allowed limit
+      // If we need more data, we'd need to implement pagination
       const referralsResponse = await providerService.getProviderReferrals(
         providerId,
-        { page: 1, limit: 1000 }
+        { page: 1, limit: 100 }
       );
 
       if (referralsResponse.success && referralsResponse.data) {
@@ -128,7 +131,9 @@ function ProviderProfilePageContent() {
         // For now, we'll use a simplified calculation
         // In a real implementation, you'd query message threads
         const respondedReferrals = referrals.filter(
-          (r) => r.status !== "NEW" && r.status !== "CANCELLED"
+          (r) =>
+            r.status !== ReferralStatus.NEW &&
+            r.status !== ReferralStatus.CANCELLED
         ).length;
 
         const responseRate =
@@ -136,7 +141,7 @@ function ProviderProfilePageContent() {
 
         // Calculate placements
         const placements = referrals.filter(
-          (r) => r.status === "PLACED"
+          (r) => r.status === ReferralStatus.PLACED
         ).length;
         const placementSuccessRate =
           totalReferrals > 0 ? (placements / totalReferrals) * 100 : 0;
@@ -229,11 +234,7 @@ function ProviderProfilePageContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -529,7 +530,9 @@ function ProviderProfilePageContent() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div>
-                            <CardTitle className="text-lg">{home.name}</CardTitle>
+                            <CardTitle className="text-lg">
+                              {home.name}
+                            </CardTitle>
                             <CardDescription className="mt-1">
                               {home.city}, {home.state}
                               {home.county && ` • ${home.county} County`}
@@ -563,7 +566,9 @@ function ProviderProfilePageContent() {
                               <span className="text-muted-foreground">
                                 Accessibility:
                               </span>
-                              <p className="font-medium">Wheelchair Accessible</p>
+                              <p className="font-medium">
+                                Wheelchair Accessible
+                              </p>
                             </div>
                           )}
                         </div>
@@ -572,9 +577,7 @@ function ProviderProfilePageContent() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No homes found
-                </p>
+                <p className="text-sm text-muted-foreground">No homes found</p>
               )}
             </CardContent>
           </Card>
@@ -633,4 +636,3 @@ export default function ProviderProfilePage() {
     </RequirePermission>
   );
 }
-

@@ -36,10 +36,9 @@ import { useProviderData } from "@/hooks/use-provider-data";
 import { useProviderServices } from "@/hooks/use-provider-services";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UpgradeBanner } from "@/components/subscription/upgrade-banner";
-import { ProviderLoadingState } from "@/components/provider/provider-loading-state";
-import { ProviderErrorState } from "@/components/provider/provider-error-state";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
-import { SubscriptionTier } from "@carelink/types";
+import { SubscriptionTier, LicenseStatus } from "@carelink/types";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 
@@ -78,13 +77,17 @@ function ProviderServicesPageContent() {
   useEffect(() => {
     if (provider?.licenses) {
       const licenses = provider.licenses
-        .filter((l) => l.status === "ACTIVE" || l.status === "PENDING")
+        .filter(
+          (l) =>
+            l.status === LicenseStatus.ACTIVE ||
+            l.status === LicenseStatus.PENDING
+        )
         .map((l) => l.licenseType);
       setProviderLicenses(licenses);
 
       // Check if any licenses are PENDING
       const pendingLicenses = provider.licenses.filter(
-        (l) => l.status === "PENDING"
+        (l) => l.status === LicenseStatus.PENDING
       );
       if (pendingLicenses.length > 0) {
         toast.warning(
@@ -105,7 +108,9 @@ function ProviderServicesPageContent() {
       if (!canAddServices(selectedServiceIds.length)) {
         toast.error(
           `You've reached your plan's service limit (${limits.maxServices} services). ` +
-            (tier === "FREE" ? "Upgrade to Pro for unlimited services." : "")
+            (tier === SubscriptionTier.FREE
+              ? "Upgrade to Pro for unlimited services."
+              : "")
         );
         return;
       }
@@ -181,17 +186,18 @@ function ProviderServicesPageContent() {
   };
 
   if (isLoading) {
-    return <ProviderLoadingState message="Loading services..." />;
+    return <LoadingState message="Loading services..." />;
   }
 
   if (error && !currentServices.length && !availableServices.length) {
     return (
-      <ProviderErrorState
+      <ErrorState
         title="Error Loading Services"
         message={error}
         action={{
           label: "Retry",
           onClick: () => window.location.reload(),
+          variant: "healthcare",
         }}
         secondaryAction={{
           label: "Go Back",
@@ -274,15 +280,16 @@ function ProviderServicesPageContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!canAddServices(selectedServiceIds.length) && tier === "FREE" && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You've reached your plan's service limit ({limits.maxServices}{" "}
-                services). Upgrade to Pro or Premium for unlimited services.
-              </AlertDescription>
-            </Alert>
-          )}
+          {!canAddServices(selectedServiceIds.length) &&
+            tier === SubscriptionTier.FREE && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  You've reached your plan's service limit ({limits.maxServices}{" "}
+                  services). Upgrade to Pro or Premium for unlimited services.
+                </AlertDescription>
+              </Alert>
+            )}
           {currentServices.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {currentServices.map((providerService) => (
@@ -298,12 +305,12 @@ function ProviderServicesPageContent() {
       </Card>
 
       {/* Upgrade Banner for FREE tier */}
-      {tier === "FREE" &&
+      {tier === SubscriptionTier.FREE &&
         selectedServiceIds.length >= limits.maxServices * 0.8 && (
           <UpgradeBanner
             feature="Unlimited Services"
             currentPlan={tier}
-            requiredPlan="PRO"
+            requiredPlan={SubscriptionTier.PRO}
             description="Upgrade to Pro or Premium for unlimited services and enhanced visibility."
             compact={true}
           />

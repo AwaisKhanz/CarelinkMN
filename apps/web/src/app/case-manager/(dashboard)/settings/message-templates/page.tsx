@@ -458,14 +458,14 @@ function MessageTemplatesPageContent() {
             <div>
               <Label htmlFor="category">Category</Label>
               <Select
-                value={form.watch("category") || ""}
-                onValueChange={(value) => form.setValue("category", value || undefined)}
+                value={form.watch("category") || "__NONE__"}
+                onValueChange={(value) => form.setValue("category", value === "__NONE__" ? undefined : value)}
               >
                 <SelectTrigger id="category" className="mt-1">
                   <SelectValue placeholder="Select category (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__NONE__">None</SelectItem>
                   {TEMPLATE_CATEGORIES.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat.replace(/_/g, " ")}

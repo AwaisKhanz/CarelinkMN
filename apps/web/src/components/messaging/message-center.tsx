@@ -244,7 +244,47 @@ export function MessageCenter({
   };
 
   const handleSendMessage = async () => {
-    if (!selectedThread || (!messageContent.trim() && attachments.length === 0)) return;
+    if (!messageContent.trim() && attachments.length === 0) return;
+
+    // If no thread exists but providerId is provided, create a new thread first
+    if (!selectedThread && providerId) {
+      setIsSending(true);
+      try {
+        const response = await messagingService.createThread({
+          providerId,
+          referralId: referralId || undefined,
+          dischargeCaseId: dischargeCaseId || undefined,
+          initialMessage: messageContent.trim(),
+          attachments: attachments.length > 0 ? attachments : undefined,
+        });
+
+        if (response.success && response.data) {
+          setMessageContent("");
+          setAttachments([]);
+          // Refresh threads to include the new one
+          await fetchThreads();
+          // Select the newly created thread
+          if (response.data) {
+            setSelectedThread(response.data);
+            if (onThreadSelect) {
+              onThreadSelect(response.data);
+            }
+          }
+          toast.success("Message sent successfully");
+        } else {
+          toast.error(response.message || "Failed to create conversation.");
+        }
+      } catch (err) {
+        console.error("Error creating thread:", err);
+        toast.error("Failed to start conversation.");
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
+    // Normal message sending to existing thread
+    if (!selectedThread) return;
 
     setIsSending(true);
     try {
@@ -422,6 +462,10 @@ export function MessageCenter({
         onUpdateStatus={handleUpdateStatus}
         getThreadContext={getThreadContext}
         getThreadTitle={getThreadTitle}
+        providerId={providerId}
+        referralId={referralId}
+        dischargeCaseId={dischargeCaseId}
+        canCreateThread={!!providerId}
       />
 
       {/* Batch Message Dialog */}

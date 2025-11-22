@@ -23,6 +23,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayoutWrapper({ children }: DashboardLayoutProps) {
   // Dashboard layout - includes onboarding guard to redirect if needed
   // Route groups ensure onboarding layout doesn't include this guard
+  // Note: EmailVerificationGuard is applied at root layout level
+  // Guard order: CaseManagerOnboardingGuard -> CaseManagerProvider -> PageMetadataProvider
   return (
     <CaseManagerOnboardingGuard>
       <CaseManagerProvider>

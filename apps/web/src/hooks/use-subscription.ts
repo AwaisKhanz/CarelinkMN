@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { providerService } from "@/lib/api";
-import { SubscriptionTier, SubscriptionLimits } from "@/types/subscription";
+import { SubscriptionTier, UserRole } from "@carelink/types";
 import { PLAN_LIMITS } from "@/lib/constants/subscription";
+import type { SubscriptionLimits } from "@/types/subscription";
 
 // Re-export types for backward compatibility
-export type { SubscriptionTier, SubscriptionLimits };
+export type { SubscriptionLimits };
 
 export interface UseSubscriptionReturn {
   tier: SubscriptionTier;
@@ -25,7 +26,7 @@ export interface UseSubscriptionReturn {
  */
 export function useSubscription(): UseSubscriptionReturn {
   const { user } = useAuth();
-  const [tier, setTier] = useState<SubscriptionTier>("FREE");
+  const [tier, setTier] = useState<SubscriptionTier>(SubscriptionTier.FREE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,19 +34,25 @@ export function useSubscription(): UseSubscriptionReturn {
       // Only fetch for provider roles
       if (
         !user?.id ||
-        !["PROVIDER_OWNER", "PROVIDER_STAFF"].includes(user.role)
+        !(
+          user.role === UserRole.PROVIDER_OWNER ||
+          user.role === UserRole.PROVIDER_STAFF
+        )
       ) {
         setIsLoading(false);
-        setTier("FREE");
+        setTier(SubscriptionTier.FREE);
         return;
       }
 
       try {
         const provider = await providerService.getProviderByUserId(user.id);
-        setTier((provider.subscriptionTier as SubscriptionTier) || "FREE");
+        setTier(
+          (provider.subscriptionTier as SubscriptionTier) ||
+            SubscriptionTier.FREE
+        );
       } catch (error) {
         console.error("Error fetching subscription tier:", error);
-        setTier("FREE"); // Default to FREE on error
+        setTier(SubscriptionTier.FREE); // Default to FREE on error
       } finally {
         setIsLoading(false);
       }

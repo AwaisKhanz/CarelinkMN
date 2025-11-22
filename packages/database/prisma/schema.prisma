@@ -45,6 +45,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   messageTemplates        MessageTemplate[]
+  favorites                Favorite[]
 
   @@index([email])
   @@index([organizationId])
@@ -275,6 +276,7 @@ model Provider {
   placements      Placement[]
   analyticsEvents AnalyticsEvent[]
   onboardingState ProviderOnboardingState?
+  favorites        Favorite[]
 
   @@index([organizationId])
   @@index([subscriptionTier])
@@ -1727,4 +1729,22 @@ enum TicketStatus {
   CLOSED
 
   @@schema("audit")
+}
+
+// ============================================
+// PUBLIC USER SCHEMA (Family Member)
+// ============================================
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, providerId])
+  @@index([userId])
+  @@index([providerId])
+  @@schema("core")
 }

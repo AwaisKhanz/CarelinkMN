@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -25,55 +25,187 @@ import {
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
-import { AdminStatsGrid } from "@/components/admin";
+import { StatsGrid, LoadingState, ErrorState } from "@/components/shared";
+import { adminService, onboardingService } from "@/lib/api";
+import { toast } from "sonner";
+import { LicenseStatus, OrganizationStatus } from "@carelink/types";
 
 function AdminDashboardContent() {
   const router = useRouter();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState({
+    totalUsers: 0,
+    totalOrganizations: 0,
+    pendingVerifications: 0,
+    activeLicenses: 0,
+    pendingLicenseVerifications: 0,
+    pendingProviderApprovals: 0,
+    complianceIssues: 0,
+  });
+
   useEffect(() => {
     setTitle("Admin Dashboard");
     setDescription(`Welcome back, ${user?.firstName} ${user?.lastName}`);
   }, [setTitle, setDescription, user]);
 
-  // TODO: Replace with actual data fetching
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch all data in parallel
+      const [
+        usersResponse,
+        organizationsResponse,
+        licensesResponse,
+        pendingReviewsResponse,
+        complianceResponse,
+      ] = await Promise.all([
+        adminService.getUsers({ page: 1, limit: 1 }),
+        adminService.getOrganizations({ page: 1, limit: 1 }),
+        adminService.getLicenses({
+          page: 1,
+          limit: 1,
+          status: LicenseStatus.ACTIVE,
+        }),
+        onboardingService.getPendingReviews().catch(() => []),
+        adminService
+          .getComplianceIssues({ page: 1, limit: 1, status: "open" })
+          .catch(() => ({
+            success: false,
+            data: { issues: [], pagination: { total: 0 } },
+          })),
+      ]);
+
+      // Extract totals from pagination
+      const totalUsers =
+        usersResponse.success && usersResponse.data?.pagination
+          ? usersResponse.data.pagination.total
+          : 0;
+
+      const totalOrganizations =
+        organizationsResponse.success && organizationsResponse.data?.pagination
+          ? organizationsResponse.data.pagination.total
+          : 0;
+
+      const activeLicenses =
+        licensesResponse.success && licensesResponse.data?.pagination
+          ? licensesResponse.data.pagination.total
+          : 0;
+
+      // Count pending license verifications
+      const pendingLicenseVerifications =
+        licensesResponse.success &&
+        licensesResponse.data?.licenses &&
+        Array.isArray(licensesResponse.data.licenses)
+          ? licensesResponse.data.licenses.filter(
+              (l) => l.status === LicenseStatus.PENDING
+            ).length
+          : 0;
+
+      // Count pending provider approvals (from onboarding reviews)
+      const pendingProviderApprovals = Array.isArray(pendingReviewsResponse)
+        ? pendingReviewsResponse.filter(
+            (review) => review.adminReviewStatus === "PENDING"
+          ).length
+        : 0;
+
+      // Count compliance issues
+      const complianceIssues =
+        complianceResponse.success && complianceResponse.data?.pagination
+          ? complianceResponse.data.pagination.total
+          : 0;
+
+      // Count pending verifications (organizations with PENDING status)
+      const pendingVerifications =
+        organizationsResponse.success &&
+        organizationsResponse.data?.organizations &&
+        Array.isArray(organizationsResponse.data.organizations)
+          ? organizationsResponse.data.organizations.filter(
+              (org) => org.status === OrganizationStatus.PENDING
+            ).length
+          : 0;
+
+      setDashboardData({
+        totalUsers,
+        totalOrganizations,
+        pendingVerifications,
+        activeLicenses,
+        pendingLicenseVerifications,
+        pendingProviderApprovals,
+        complianceIssues,
+      });
+    } catch (err) {
+      console.error("Error fetching admin dashboard data:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load dashboard data"
+      );
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
   const stats = useMemo(
     () => [
       {
         label: "Total Users",
-        value: "1,234",
+        value: dashboardData.totalUsers.toLocaleString(),
         icon: <Users className="h-4 w-4 text-muted-foreground" />,
-        description: "+12% from last month",
-        trend: { value: "+12%", isPositive: true },
+        description: "All registered users",
       },
       {
         label: "Organizations",
-        value: "89",
+        value: dashboardData.totalOrganizations.toLocaleString(),
         icon: <Building2 className="h-4 w-4 text-muted-foreground" />,
-        description: "+3 new this week",
-        trend: { value: "+3", isPositive: true },
+        description: "Active organizations",
       },
       {
         label: "Pending Verifications",
-        value: "12",
+        value: dashboardData.pendingVerifications.toLocaleString(),
         icon: <Clock className="h-4 w-4 text-muted-foreground" />,
         description: "Requires attention",
       },
       {
         label: "Active Licenses",
-        value: "456",
+        value: dashboardData.activeLicenses.toLocaleString(),
         icon: <ShieldCheck className="h-4 w-4 text-muted-foreground" />,
-        description: "94% compliance rate",
+        description: "Currently active",
       },
     ],
-    []
+    [dashboardData]
   );
+
+  if (isLoading) {
+    return <LoadingState message="Loading dashboard..." fullHeight />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Error Loading Dashboard"
+        message={error}
+        action={{
+          label: "Retry",
+          onClick: fetchDashboardData,
+          variant: "healthcare",
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Quick Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -143,56 +275,89 @@ function AdminDashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
-                <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">
-                    12 License Verifications
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Pending review
-                  </p>
+              {dashboardData.pendingLicenseVerifications > 0 && (
+                <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">
+                      {dashboardData.pendingLicenseVerifications} License
+                      {dashboardData.pendingLicenseVerifications !== 1
+                        ? "s"
+                        : ""}{" "}
+                      Verification
+                      {dashboardData.pendingLicenseVerifications !== 1
+                        ? "s"
+                        : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Pending review
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      router.push("/admin/licenses?status=PENDING")
+                    }
+                  >
+                    Review
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/admin/licenses?status=PENDING")}
-                >
-                  Review
-                </Button>
-              </div>
-              <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
-                <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">5 Provider Approvals</p>
-                  <p className="text-xs text-muted-foreground">
-                    Awaiting verification
-                  </p>
+              )}
+              {dashboardData.pendingProviderApprovals > 0 && (
+                <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">
+                      {dashboardData.pendingProviderApprovals} Provider
+                      {dashboardData.pendingProviderApprovals !== 1
+                        ? "s"
+                        : ""}{" "}
+                      Approval
+                      {dashboardData.pendingProviderApprovals !== 1 ? "s" : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Awaiting verification
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/admin/onboarding-reviews")}
+                  >
+                    Review
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/admin/onboarding-reviews")}
-                >
-                  Review
-                </Button>
-              </div>
-              <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
-                <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">3 Compliance Issues</p>
-                  <p className="text-xs text-muted-foreground">
-                    Requires attention
-                  </p>
+              )}
+              {dashboardData.complianceIssues > 0 && (
+                <div className="flex items-center space-x-4 p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">
+                      {dashboardData.complianceIssues} Compliance Issue
+                      {dashboardData.complianceIssues !== 1 ? "s" : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Requires attention
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/admin/compliance")}
+                  >
+                    View
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/admin/compliance")}
-                >
-                  View
-                </Button>
-              </div>
+              )}
+              {dashboardData.pendingLicenseVerifications === 0 &&
+                dashboardData.pendingProviderApprovals === 0 &&
+                dashboardData.complianceIssues === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No pending reviews</p>
+                  </div>
+                )}
             </div>
           </CardContent>
         </Card>

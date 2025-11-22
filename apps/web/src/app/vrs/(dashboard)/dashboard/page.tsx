@@ -17,7 +17,7 @@ import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vrsService } from "@/lib/api";
 import { toast } from "sonner";
-import { VRSLoadingState, VRSErrorState } from "@/components/vrs";
+import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
 import { JobStatus } from "@carelink/types";
 
 export default function VRSDashboardPage() {
@@ -91,16 +91,18 @@ export default function VRSDashboardPage() {
   }, [fetchDashboardData]);
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading dashboard..." />;
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   if (error) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Dashboard"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchDashboardData,
+          variant: "healthcare",
         }}
       />
     );
@@ -113,60 +115,35 @@ export default function VRSDashboardPage() {
       description="You don't have permission to view the VRS dashboard."
     >
       <div className="space-y-8">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-          <Card variant="healthcare">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Clients
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalClients}</div>
-              <p className="text-xs text-muted-foreground">
-                All clients in system
-              </p>
-            </CardContent>
-          </Card>
-          <Card variant="healthcare">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeJobs}</div>
-              <p className="text-xs text-muted-foreground">Currently open</p>
-            </CardContent>
-          </Card>
-          <Card variant="healthcare">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Placements
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPlacements}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </CardContent>
-          </Card>
-          <Card variant="healthcare">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                This Quarter
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.placementsThisMonth}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Placements this quarter
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <StatsGrid
+          stats={[
+            {
+              label: "Total Clients",
+              value: stats.totalClients,
+              icon: <Users className="h-4 w-4 text-muted-foreground" />,
+              description: "All clients in system",
+            },
+            {
+              label: "Active Jobs",
+              value: stats.activeJobs,
+              icon: <Briefcase className="h-4 w-4 text-muted-foreground" />,
+              description: "Currently open",
+            },
+            {
+              label: "Total Placements",
+              value: stats.totalPlacements,
+              icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+              description: "All time",
+            },
+            {
+              label: "This Quarter",
+              value: stats.placementsThisMonth,
+              icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
+              description: "Placements this quarter",
+            },
+          ]}
+          columns={4}
+        />
 
         <Card variant="healthcare">
           <CardHeader>

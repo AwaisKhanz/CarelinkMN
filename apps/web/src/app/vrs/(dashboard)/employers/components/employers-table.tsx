@@ -1,9 +1,8 @@
 "use client";
 
 import { DataTable } from "@/components/ui/data-table";
-import { Loader2 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/shared";
 import type { VRSEmployer } from "@/lib/api";
-import { VRSEmptyState } from "@/components/vrs";
 import { Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEmployersColumns } from "../hooks/use-employers-columns";
@@ -32,16 +31,12 @@ export function EmployersTable({
   const columns = useEmployersColumns();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingState message="Loading employers..." />;
   }
 
   if (employers.length === 0) {
     return (
-      <VRSEmptyState
+      <EmptyState
         icon={Building2}
         title="No employers found"
         description={
@@ -54,6 +49,7 @@ export function EmployersTable({
             ? {
                 label: "Add Employer",
                 onClick: () => router.push("/vrs/employers/create"),
+                icon: Building2,
               }
             : undefined
         }

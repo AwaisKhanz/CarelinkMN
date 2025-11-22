@@ -2,7 +2,8 @@
  * Subscription utility functions
  */
 
-import { Subscription, SubscriptionStatusInfo, SubscriptionTier } from "@/types/subscription";
+import { SubscriptionTier } from "@carelink/types";
+import { Subscription, SubscriptionStatusInfo } from "@/types/subscription";
 import { PLAN_HIERARCHY } from "@/lib/constants/subscription";
 import { SUBSCRIPTION_EXPIRY_WARNING_DAYS } from "@/lib/constants/subscription";
 

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ReferralStatus, Urgency, Payer } from "@carelink/types";
-import { PAYER_LABELS } from "@/lib/constants";
+import { PAYER_LABELS, PAYER_OPTIONS } from "@/lib/constants";
 
 interface ReferralsFiltersProps {
   searchQuery: string;
@@ -86,13 +86,11 @@ export function ReferralsFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Payers</SelectItem>
-                <SelectItem value={Payer.MA}>Medical Assistance</SelectItem>
-                <SelectItem value={Payer.MEDICARE}>Medicare</SelectItem>
-                <SelectItem value={Payer.PRIVATE}>Private Pay</SelectItem>
-                <SelectItem value={Payer.CADI}>CADI</SelectItem>
-                <SelectItem value={Payer.BI_TBI}>BI/TBI</SelectItem>
-                <SelectItem value={Payer.EW}>Elderly Waiver</SelectItem>
-                <SelectItem value={Payer.DD}>Developmental Disabilities</SelectItem>
+                {PAYER_OPTIONS.map((payer) => (
+                  <SelectItem key={payer.value} value={payer.value}>
+                    {payer.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

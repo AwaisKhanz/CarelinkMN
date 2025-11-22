@@ -21,8 +21,10 @@ import { FileUploader, UploadedFile } from "@/components/ui/file-uploader";
 import { HomePhoto, HomeAmenity } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/use-subscription";
+import { SubscriptionTier } from "@carelink/types";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AmenitiesMultiSelect } from "@/components/settings/amenities-multi-select";
 
 const homeSchema = z.object({
   name: z.string().min(1, "Home name is required"),
@@ -51,46 +53,8 @@ const homeSchema = z.object({
 
 export type HomeFormData = z.infer<typeof homeSchema>;
 
-export const STANDARD_AMENITIES = [
-  "24/7 Nursing Care",
-  "Medication Management",
-  "Physical Therapy",
-  "Occupational Therapy",
-  "Speech Therapy",
-  "Memory Care",
-  "Dementia Care",
-  "Hospice Care",
-  "Private Room",
-  "Semi-Private Room",
-  "Private Bathroom",
-  "Kitchenette",
-  "Balcony/Patio",
-  "Garden Access",
-  "Activity Room",
-  "Library",
-  "Game Room",
-  "Fitness Center",
-  "Swimming Pool",
-  "Walking Paths",
-  "Restaurant-Style Dining",
-  "Private Dining Room",
-  "Snack Bar",
-  "Special Diets",
-  "Transportation Services",
-  "Medical Appointments",
-  "Shopping Trips",
-  "WiFi",
-  "Cable TV",
-  "Computer Access",
-  "Video Calling",
-  "24/7 Security",
-  "Emergency Response",
-  "Smoke Detectors",
-  "Sprinkler System",
-  "Pet Friendly",
-  "Family Visits",
-  "Overnight Stays",
-];
+// Re-export STANDARD_AMENITIES from constants for backward compatibility
+export { STANDARD_AMENITIES } from "@/lib/constants";
 
 interface HomeFormProps {
   mode: "create" | "edit";
@@ -194,13 +158,6 @@ export function HomeForm({
     });
   };
 
-  const toggleAmenity = (amenity: string) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(amenity)
-        ? prev.filter((a) => a !== amenity)
-        : [...prev, amenity]
-    );
-  };
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -305,20 +262,10 @@ export function HomeForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {STANDARD_AMENITIES.map((amenity) => (
-              <div key={amenity} className="flex items-center space-x-2">
-                <Checkbox
-                  id={amenity}
-                  checked={selectedAmenities.includes(amenity)}
-                  onCheckedChange={() => toggleAmenity(amenity)}
+          <AmenitiesMultiSelect
+            selectedAmenities={selectedAmenities}
+            onAmenitiesChange={setSelectedAmenities}
                 />
-                <Label htmlFor={amenity} className="text-sm">
-                  {amenity}
-                </Label>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
@@ -402,8 +349,8 @@ export function HomeForm({
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 You've reached your plan's photo limit ({limits.maxPhotos} photo{limits.maxPhotos !== 1 ? 's' : ''}).
-                {tier === 'FREE' && ' Upgrade to Pro for 5 photos or Premium for unlimited photos.'}
-                {tier === 'PRO' && ' Upgrade to Premium for unlimited photos.'}
+                {tier === SubscriptionTier.FREE && ' Upgrade to Pro for 5 photos or Premium for unlimited photos.'}
+                {tier === SubscriptionTier.PRO && ' Upgrade to Premium for unlimited photos.'}
               </AlertDescription>
             </Alert>
           )}

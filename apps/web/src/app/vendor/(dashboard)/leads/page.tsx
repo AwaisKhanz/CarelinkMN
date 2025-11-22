@@ -12,11 +12,7 @@ import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-  VendorEmptyState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { ColumnDef } from "@tanstack/react-table";
 import { VendorLead, LeadStatus } from "@carelink/types";
 import { getLeadStatusBadgeConfig } from "@/lib/utils/vendor";
@@ -200,16 +196,18 @@ export default function VendorLeadsPage() {
   );
 
   if (isLoading && !vendorId) {
-    return <VendorLoadingState message="Loading leads..." />;
+    return <LoadingState message="Loading leads..." />;
   }
 
   if (error && !vendorId) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Leads"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchVendor,
+          variant: "healthcare",
         }}
       />
     );
@@ -291,17 +289,20 @@ export default function VendorLeadsPage() {
         </div>
 
         {isLoading ? (
-          <VendorLoadingState message="Loading leads..." />
+          <LoadingState message="Loading leads..." />
         ) : error ? (
-          <VendorErrorState
+          <ErrorState
+            title="Error Loading Leads"
             message={error}
             action={{
               label: "Retry",
               onClick: fetchLeads,
+              variant: "healthcare",
             }}
           />
         ) : leads.length === 0 ? (
-          <VendorEmptyState
+          <EmptyState
+            icon={FileText}
             title="No leads found"
             description="You don't have any leads yet. Leads will appear here when customers express interest in your services."
           />

@@ -3,11 +3,11 @@
  * Reusable components for Hospital Social Worker dashboard
  */
 
-export { HospitalSWLoadingState } from "./hospital-sw-loading-state";
-export { HospitalSWErrorState } from "./hospital-sw-error-state";
-export { HospitalSWEmptyState } from "./hospital-sw-empty-state";
+// HospitalSWLoadingState, HospitalSWErrorState, and HospitalSWEmptyState have been replaced with shared components
+// See: @/components/shared/LoadingState, @/components/shared/ErrorState, @/components/shared/EmptyState
 export { HospitalSWDetailHeader } from "./hospital-sw-detail-header";
-export { HospitalSWStatsGrid } from "./hospital-sw-stats-grid";
+// HospitalSWStatsGrid has been replaced with shared StatsGrid component
+// See: @/components/shared/StatsGrid
 export { TransportBookingCard } from "./transport-booking-card";
 export { ConsentCard } from "./consent-card";
 

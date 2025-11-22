@@ -79,7 +79,7 @@ export function ProviderProvider({ children }: { children: React.ReactNode }) {
   }, [provider?.verified]);
 
   const subscriptionTier = useMemo(() => {
-    return (provider?.subscriptionTier as SubscriptionTier) || "FREE";
+    return (provider?.subscriptionTier as SubscriptionTier) || SubscriptionTier.FREE;
   }, [provider?.subscriptionTier]);
 
   const hasProPlan = useMemo(() => {

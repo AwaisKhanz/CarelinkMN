@@ -21,11 +21,8 @@ import { vendorService } from "@/lib/api";
 import { usePageMetadata } from "../../use-page-metadata";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-  VendorDetailHeader,
-} from "@/components/vendor";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { VendorDetailHeader } from "@/components/vendor";
 import { TransportBooking, BookingStatus } from "@carelink/types";
 import { getBookingStatusBadgeConfig } from "@/lib/utils/vendor";
 import { formatVehicleType } from "@/lib/utils/vendor";
@@ -146,16 +143,18 @@ export default function VendorBookingDetailPage() {
   };
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading booking details..." />;
+    return <LoadingState message="Loading booking details..." />;
   }
 
   if (error || !booking) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Booking"
         message={error || "Booking not found"}
         action={{
           label: "Back to Bookings",
           onClick: () => router.push("/vendor/bookings"),
+          variant: "healthcare",
         }}
       />
     );

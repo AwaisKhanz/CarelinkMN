@@ -17,10 +17,7 @@ import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
 import { StatsCard } from "@/components/ui/stats-card";
 
 export default function VendorDashboardPage() {
@@ -88,16 +85,18 @@ export default function VendorDashboardPage() {
   }, [fetchDashboardData]);
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading dashboard..." />;
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   if (error) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Dashboard"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchDashboardData,
+          variant: "healthcare",
         }}
       />
     );
@@ -110,28 +109,35 @@ export default function VendorDashboardPage() {
       description="You don't have permission to view the vendor dashboard."
     >
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Total Leads"
-            value={stats.totalLeads}
-            description={`${stats.newLeads} new`}
-          />
-          <StatsCard
-            title="Pending Bookings"
-            value={stats.pendingBookings}
-            description="Requires attention"
-          />
-          <StatsCard
-            title="Completed Bookings"
-            value={stats.completedBookings}
-            description="This month"
-          />
-          <StatsCard
-            title="Conversion Rate"
-            value={`${stats.conversionRate}%`}
-            description="Lead to booking"
-          />
-        </div>
+        <StatsGrid
+          stats={[
+            {
+              label: "Total Leads",
+              value: stats.totalLeads,
+              description: `${stats.newLeads} new`,
+              icon: <Package className="h-4 w-4 text-muted-foreground" />,
+            },
+            {
+              label: "Pending Bookings",
+              value: stats.pendingBookings,
+              description: "Requires attention",
+              icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+            },
+            {
+              label: "Completed Bookings",
+              value: stats.completedBookings,
+              description: "This month",
+              icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+            },
+            {
+              label: "Conversion Rate",
+              value: `${stats.conversionRate}%`,
+              description: "Lead to booking",
+              icon: <Users className="h-4 w-4 text-muted-foreground" />,
+            },
+          ]}
+          columns={4}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card variant="healthcare">

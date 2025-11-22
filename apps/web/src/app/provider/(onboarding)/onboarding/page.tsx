@@ -30,6 +30,9 @@ import {
   OnboardingState,
   OnboardingStepData,
 } from "@/lib/api/services/onboarding.service";
+import { OrganizationStatus } from "@carelink/types";
+import { getOrganizationStatusBadgeConfig } from "@/lib/utils/admin";
+import { organizationService } from "@/lib/api";
 
 // Import step components
 import { OrganizationSetup } from "./components/organization-setup-new";
@@ -74,7 +77,11 @@ export default function ProviderOnboardingPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [onboardingState, setOnboardingState] =
     useState<OnboardingState | null>(null);
-  const [allAcknowledgmentsChecked, setAllAcknowledgmentsChecked] = useState(false);
+  const [allAcknowledgmentsChecked, setAllAcknowledgmentsChecked] =
+    useState(false);
+  const [organizationStatus, setOrganizationStatus] = useState<string | null>(
+    null
+  );
   const validateStepRef = useRef<(() => Promise<boolean>) | null>(null);
 
   // Load onboarding state on mount
@@ -84,6 +91,20 @@ export default function ProviderOnboardingPage() {
         setIsLoading(true);
         const state = await onboardingService.getOnboardingState();
         setOnboardingState(state);
+
+        // Load organization status if user has organizationId
+        if (user?.organizationId) {
+          try {
+            const orgData = await organizationService.getOrganizationById(
+              user.organizationId
+            );
+            if (orgData) {
+              setOrganizationStatus(orgData.status);
+            }
+          } catch (error) {
+            console.error("Failed to load organization status:", error);
+          }
+        }
 
         // If onboarding is complete and approved, redirect to dashboard
         if (state.isComplete && state.adminReviewStatus === "APPROVED") {
@@ -103,7 +124,6 @@ export default function ProviderOnboardingPage() {
       loadOnboardingState();
     }
   }, [user, router]);
-
 
   // Complete subscription step after returning from Stripe
   useEffect(() => {
@@ -143,34 +163,33 @@ export default function ProviderOnboardingPage() {
   const progress = ((currentStep + 1) / STEPS.length) * 100;
 
   // Save step data function
-  const saveStepData = useCallback(async (
-    step: number,
-    data: any,
-    isComplete: boolean = false
-  ) => {
-    try {
-      setIsSaving(true);
-      const stepData: OnboardingStepData = {
-        step,
-        data,
-        isComplete,
-      };
+  const saveStepData = useCallback(
+    async (step: number, data: any, isComplete: boolean = false) => {
+      try {
+        setIsSaving(true);
+        const stepData: OnboardingStepData = {
+          step,
+          data,
+          isComplete,
+        };
 
-      const updatedState =
-        await onboardingService.updateOnboardingStep(stepData);
-      setOnboardingState(updatedState);
+        const updatedState =
+          await onboardingService.updateOnboardingStep(stepData);
+        setOnboardingState(updatedState);
 
-      if (isComplete) {
-        toast.success(`Step ${step + 1} completed successfully!`);
+        if (isComplete) {
+          toast.success(`Step ${step + 1} completed successfully!`);
+        }
+      } catch (error) {
+        console.error("Failed to save step data:", error);
+        toast.error("Failed to save progress");
+        throw error; // Re-throw so handleNext knows it failed
+      } finally {
+        setIsSaving(false);
       }
-    } catch (error) {
-      console.error("Failed to save step data:", error);
-      toast.error("Failed to save progress");
-      throw error; // Re-throw so handleNext knows it failed
-    } finally {
-      setIsSaving(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleStepComplete = useCallback(
     async (stepData: any) => {
@@ -302,6 +321,107 @@ export default function ProviderOnboardingPage() {
             Loading onboarding data...
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Show organization status message (SUSPENDED, DEACTIVATED) - takes priority over adminReviewStatus
+  if (
+    organizationStatus &&
+    (organizationStatus === OrganizationStatus.SUSPENDED ||
+      organizationStatus === OrganizationStatus.DEACTIVATED)
+  ) {
+    const status = organizationStatus as OrganizationStatus;
+    const statusConfig = getOrganizationStatusBadgeConfig(status);
+
+    let title = "";
+    let description = "";
+    let icon: JSX.Element | null = null;
+    let infoMessage = "";
+
+    switch (status) {
+      case OrganizationStatus.SUSPENDED:
+        title = "Application Suspended";
+        description =
+          "Your provider application has been suspended. Please contact support for more information.";
+        icon = (
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+        );
+        infoMessage =
+          "If you believe this is an error or have questions about the suspension, please contact our support team for assistance.";
+        break;
+      case OrganizationStatus.DEACTIVATED:
+        title = "Application Deactivated";
+        description =
+          "Your provider application has been deactivated. Please contact support to reactivate your account.";
+        icon = (
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        );
+        infoMessage =
+          "Your account has been deactivated. Please contact our support team if you wish to reactivate your account.";
+        break;
+      default:
+        title = "Application Status";
+        description = `Your application status: ${statusConfig.label}`;
+        icon = <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />;
+        infoMessage =
+          "Please check back here anytime to see your application status.";
+    }
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            {icon}
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Status</span>
+                <Badge variant={statusConfig.variant}>
+                  {statusConfig.label}
+                </Badge>
+              </div>
+            </div>
+
+            <div
+              className={`p-3 rounded-lg ${
+                status === OrganizationStatus.SUSPENDED
+                  ? "bg-destructive/10 border border-destructive/20"
+                  : "bg-muted/10 border border-muted/20"
+              }`}
+            >
+              <p
+                className={`text-sm text-center ${
+                  status === OrganizationStatus.SUSPENDED
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {infoMessage}
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => router.push("/")}
+                className="flex-1"
+              >
+                Go Home
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+                className="flex-1"
+              >
+                Refresh Status
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

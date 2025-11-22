@@ -19,9 +19,8 @@ export function useAnalyticsStats(analytics: VRSAnalytics | null) {
     // Calculate retention rate
     const retentionData = analytics.retention || [];
     const retainedCount =
-      retentionData.find(
-        (r) => r.day90Status === RetentionStatus.RETAINED
-      )?._count.day90Status || 0;
+      retentionData.find((r) => r.day90Status === RetentionStatus.RETAINED)
+        ?._count.day90Status || 0;
     const totalWithStatus = retentionData.reduce(
       (sum, r) => sum + (r._count.day90Status || 0),
       0
@@ -50,7 +49,7 @@ export function useAnalyticsStats(analytics: VRSAnalytics | null) {
         : { label: "Pending", variant: "outline" as const };
 
       return {
-        status: item.day90Status || "PENDING",
+        status: item.day90Status || RetentionStatus.PENDING,
         label: statusConfig.label,
         variant: statusConfig.variant,
         count: item._count.day90Status || 0,
@@ -60,4 +59,3 @@ export function useAnalyticsStats(analytics: VRSAnalytics | null) {
 
   return { stats, retentionBreakdown };
 }
-

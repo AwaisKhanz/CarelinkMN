@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { EmailVerificationGuard } from "@/components/auth/email-verification-guard";
 import { PageMetadataProvider, usePageMetadata } from "./use-page-metadata";
 import { AdminGuard } from "@/components/auth/route-guard";
 
@@ -22,11 +23,14 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayoutWrapper({
   children,
 }: DashboardLayoutProps) {
+  // Guard order: EmailVerificationGuard -> AdminGuard -> PageMetadataProvider
   return (
-    <AdminGuard>
-      <PageMetadataProvider>
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </PageMetadataProvider>
-    </AdminGuard>
+    <EmailVerificationGuard>
+      <AdminGuard>
+        <PageMetadataProvider>
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </PageMetadataProvider>
+      </AdminGuard>
+    </EmailVerificationGuard>
   );
 }

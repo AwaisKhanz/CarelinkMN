@@ -34,9 +34,6 @@ import { Gender, Payer } from "@carelink/types";
 import {
   PAYER_OPTIONS,
   GENDER_OPTIONS,
-  MINNESOTA_COUNTIES,
-  DME_NEEDS_OPTIONS,
-  BEHAVIORAL_CONCERNS_OPTIONS,
   MOBILITY_STATUS_OPTIONS,
   COGNITIVE_STATUS_OPTIONS,
   TRANSPORT_TYPES,
@@ -50,20 +47,10 @@ import type {
   CreateDischargeCaseData,
   UpdateDischargeCaseData,
 } from "@carelink/types";
-
-// Diagnosis codes - in a real app, this would come from ICD-10 database
-const DIAGNOSIS_CODE_OPTIONS = [
-  "E11.9 - Type 2 diabetes without complications",
-  "I10 - Essential hypertension",
-  "F03.90 - Unspecified dementia without behavioral disturbance",
-  "M79.3 - Panniculitis, unspecified",
-  "Z99.3 - Dependence on wheelchair",
-  "I50.9 - Heart failure, unspecified",
-  "E78.5 - Hyperlipidemia, unspecified",
-  "N18.6 - End stage renal disease",
-  "G30.9 - Alzheimer's disease, unspecified",
-  "I25.10 - Atherosclerotic heart disease",
-];
+import { CountiesMultiSelect } from "@/components/settings/counties-multi-select";
+import { DiagnosisCodesMultiSelect } from "@/components/settings/diagnosis-codes-multi-select";
+import { BehavioralConcernsMultiSelect } from "@/components/settings/behavioral-concerns-multi-select";
+import { DMENeedsMultiSelect } from "@/components/settings/dme-needs-multi-select";
 
 const dischargeCaseSchema = z
   .object({
@@ -230,6 +217,7 @@ export function DischargeCaseForm({
     control,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<DischargeCaseFormData>({
     resolver: zodResolver(dischargeCaseSchema),
@@ -265,10 +253,6 @@ export function DischargeCaseForm({
 
   const requiresProximity = watch("requiresProximity");
   const needsTransport = watch("needsTransport");
-  const selectedDiagnosisCodes = watch("diagnosisCodes") || [];
-  const selectedBehavioralConcerns = watch("behavioralConcerns") || [];
-  const selectedDmeNeeds = watch("dmeNeeds") || [];
-  const selectedCounties = watch("preferredCounties") || [];
   const selectedCities = watch("preferredCities") || [];
 
   const handleFormSubmit = (data: DischargeCaseFormData) => {
@@ -358,12 +342,7 @@ export function DischargeCaseForm({
   const toggleArrayItem = (
     array: string[],
     item: string,
-    fieldName:
-      | "diagnosisCodes"
-      | "behavioralConcerns"
-      | "dmeNeeds"
-      | "preferredCounties"
-      | "preferredCities"
+    fieldName: "preferredCounties" | "preferredCities"
   ) => {
     const newArray = array.includes(item)
       ? array.filter((i) => i !== item)
@@ -483,35 +462,21 @@ export function DischargeCaseForm({
             <Label>
               Diagnosis Codes <span className="text-destructive">*</span>
             </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-md p-4">
-              {DIAGNOSIS_CODE_OPTIONS.map((code) => (
-                <div key={code} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`diagnosis-${code}`}
-                    checked={selectedDiagnosisCodes.includes(code)}
-                    onCheckedChange={() =>
-                      toggleArrayItem(
-                        selectedDiagnosisCodes,
-                        code,
-                        "diagnosisCodes"
-                      )
-                    }
-                  />
-                  <label
-                    htmlFor={`diagnosis-${code}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {code}
-                  </label>
-                </div>
-              ))}
-            </div>
-            {errors.diagnosisCodes && (
-              <p className="text-sm text-destructive mt-1">
-                {errors.diagnosisCodes.message ||
-                  "At least one diagnosis code is required"}
-              </p>
+            <Controller
+              control={control}
+              name="diagnosisCodes"
+              render={({ field }) => (
+                <DiagnosisCodesMultiSelect
+                  selectedCodes={field.value || []}
+                  onCodesChange={(codes) => {
+                    field.onChange(codes);
+                    setValue("diagnosisCodes", codes, { shouldValidate: true });
+                  }}
+                  name="diagnosisCodes"
+                  error={errors.diagnosisCodes?.message}
+                />
             )}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -573,32 +538,22 @@ export function DischargeCaseForm({
 
           <div>
             <Label>Behavioral Concerns</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-md p-4">
-              {BEHAVIORAL_CONCERNS_OPTIONS.map((concern) => (
-                <div
-                  key={concern.value}
-                  className="flex items-center space-x-2"
-                >
-                  <Checkbox
-                    id={`behavioral-${concern.value}`}
-                    checked={selectedBehavioralConcerns.includes(concern.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem(
-                        selectedBehavioralConcerns,
-                        concern.value,
-                        "behavioralConcerns"
-                      )
-                    }
-                  />
-                  <label
-                    htmlFor={`behavioral-${concern.value}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {concern.label}
-                  </label>
-                </div>
-              ))}
-            </div>
+            <Controller
+              control={control}
+              name="behavioralConcerns"
+              render={({ field }) => (
+                <BehavioralConcernsMultiSelect
+                  selectedConcerns={field.value || []}
+                  onConcernsChange={(concerns) => {
+                    field.onChange(concerns);
+                    setValue("behavioralConcerns", concerns, {
+                      shouldValidate: true,
+                    });
+                  }}
+                  name="behavioralConcerns"
+                />
+              )}
+            />
           </div>
         </CardContent>
       </Card>
@@ -612,25 +567,20 @@ export function DischargeCaseForm({
         <CardContent className="space-y-4">
           <div>
             <Label>DME Needs</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-md p-4">
-              {DME_NEEDS_OPTIONS.map((dme) => (
-                <div key={dme.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`dme-${dme.value}`}
-                    checked={selectedDmeNeeds.includes(dme.value)}
-                    onCheckedChange={() =>
-                      toggleArrayItem(selectedDmeNeeds, dme.value, "dmeNeeds")
-                    }
-                  />
-                  <label
-                    htmlFor={`dme-${dme.value}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {dme.label}
-                  </label>
-                </div>
-              ))}
-            </div>
+            <Controller
+              control={control}
+              name="dmeNeeds"
+              render={({ field }) => (
+                <DMENeedsMultiSelect
+                  selectedNeeds={field.value || []}
+                  onNeedsChange={(needs) => {
+                    field.onChange(needs);
+                    setValue("dmeNeeds", needs, { shouldValidate: true });
+                  }}
+                  name="dmeNeeds"
+                />
+              )}
+            />
           </div>
 
           <div className="flex items-center space-x-2">
@@ -748,35 +698,27 @@ export function DischargeCaseForm({
             <Label>
               Preferred Counties <span className="text-destructive">*</span>
             </Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-64 overflow-y-auto border rounded-md p-4">
-              {MINNESOTA_COUNTIES.map((county) => (
-                <div key={county} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`county-${county}`}
-                    checked={selectedCounties.includes(county)}
-                    onCheckedChange={() =>
-                      toggleArrayItem(
-                        selectedCounties,
-                        county,
-                        "preferredCounties"
-                      )
-                    }
-                  />
-                  <label
-                    htmlFor={`county-${county}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {county}
-                  </label>
-                </div>
-              ))}
-            </div>
-            {errors.preferredCounties && (
-              <p className="text-sm text-destructive mt-1">
-                {errors.preferredCounties.message ||
-                  "At least one preferred county is required"}
-              </p>
+            <Controller
+              name="preferredCounties"
+              control={control}
+              render={({ field }) => (
+                <CountiesMultiSelect
+                  selectedCounties={field.value || []}
+                  onCountiesChange={(values) => {
+                    field.onChange(values);
+                    trigger("preferredCounties");
+                  }}
+                  name="preferredCounties"
+                  helperText="Select all counties that meet the patient's placement preferences."
+                  error={
+                    errors.preferredCounties?.message ||
+                    (Array.isArray(field.value) && field.value.length === 0
+                      ? "At least one preferred county is required"
+                      : undefined)
+                  }
+                />
             )}
+            />
           </div>
 
           <div>

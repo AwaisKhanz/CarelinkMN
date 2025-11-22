@@ -60,6 +60,11 @@ export function BatchMessageDialog({
   useEffect(() => {
     if (open) {
       fetchTemplates();
+      // Reset selection when dialog opens
+      setSelectedTemplateId("");
+    } else {
+      // Reset selection when dialog closes
+      setSelectedTemplateId("");
     }
   }, [open]);
 
@@ -116,17 +121,21 @@ export function BatchMessageDialog({
             <Select
               value={selectedTemplateId}
               onValueChange={handleTemplateSelect}
-              disabled={isLoadingTemplates}
+              disabled={isLoadingTemplates || templates.length === 0}
             >
               <SelectTrigger id="template" className="mt-1">
-                <SelectValue placeholder={isLoadingTemplates ? "Loading templates..." : "Select a template..."} />
+                <SelectValue 
+                  placeholder={
+                    isLoadingTemplates 
+                      ? "Loading templates..." 
+                      : templates.length === 0 
+                      ? "No templates available"
+                      : "Select a template..."
+                  } 
+                />
               </SelectTrigger>
               <SelectContent>
-                {templates.length === 0 ? (
-                  <SelectItem value="" disabled>
-                    No templates available
-                  </SelectItem>
-                ) : (
+                {templates.length === 0 ? null : (
                   templates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       <div className="flex items-center gap-2">

@@ -12,11 +12,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
-  HospitalSWEmptyState,
-} from "@/components/hospital-sw";
+import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -328,17 +324,19 @@ function DischargesPageContent() {
 
   if (isLoading && dischargeCases.length === 0) {
     return (
-      <HospitalSWLoadingState message="Loading discharge cases..." fullHeight />
+      <LoadingState message="Loading discharge cases..." fullHeight />
     );
   }
 
   if (fetchError && dischargeCases.length === 0) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
+        title="Error Loading Discharge Cases"
         message={fetchError.message || "Failed to load discharge cases"}
         action={{
           label: "Retry",
           onClick: handleRefresh,
+          variant: "healthcare",
         }}
       />
     );
@@ -415,7 +413,7 @@ function DischargesPageContent() {
 
       {/* Data Table */}
       {dischargeCases.length === 0 && !isLoading ? (
-        <HospitalSWEmptyState
+        <EmptyState
           icon={FileText}
           title="No Discharge Cases"
           description="Get started by creating your first discharge case."
@@ -425,6 +423,7 @@ function DischargesPageContent() {
                   label: "Create Discharge Case",
                   onClick: () => router.push("/hospital-sw/discharges/create"),
                   variant: "healthcare",
+                  icon: FileText,
                 }
               : undefined
           }

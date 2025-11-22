@@ -26,7 +26,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -35,16 +34,19 @@ import {
 } from "@/components/ui/popover";
 import { Save, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Gender, Payer, OpeningStatus, Home } from "@/lib/api";
+import { Gender, Payer, OpeningStatus } from "@carelink/types";
+import type { Home } from "@/lib/api";
 import {
   CARE_LEVELS,
   SUPPORTED_NEEDS,
-  PAYER_OPTIONS,
   GENDER_OPTIONS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { FormError } from "@/components/ui/form-error";
+import { CareLevelsMultiSelect } from "@/components/settings/care-levels-multi-select";
+import { ServicesNeededMultiSelect } from "@/components/settings/services-needed-multi-select";
+import { PayersMultiSelect } from "@/components/settings/payers-multi-select";
 
 export const STATUS_OPTIONS: Array<{ value: OpeningStatus; label: string }> = [
   { value: OpeningStatus.OPEN, label: "Open" },
@@ -368,50 +370,8 @@ export function OpeningForm({
     }
   }, [initialData, mode, reset]);
 
-  const selectedCareLevels = watch("careLevels");
-  const selectedSupportedNeeds = watch("supportedNeeds");
-  const selectedPayers = watch("acceptedPayers");
   const availableFrom = watch("availableFrom");
   const availableUntil = watch("availableUntil");
-
-  const toggleCareLevel = (level: string) => {
-    const current = selectedCareLevels || [];
-    if (current.includes(level)) {
-      setValue(
-        "careLevels",
-        current.filter((l) => l !== level),
-        { shouldValidate: true }
-      );
-    } else {
-      setValue("careLevels", [...current, level], { shouldValidate: true });
-    }
-  };
-
-  const toggleSupportedNeed = (need: string) => {
-    const current = selectedSupportedNeeds || [];
-    if (current.includes(need)) {
-      setValue(
-        "supportedNeeds",
-        current.filter((n) => n !== need),
-        { shouldValidate: true }
-      );
-    } else {
-      setValue("supportedNeeds", [...current, need], { shouldValidate: true });
-    }
-  };
-
-  const togglePayer = (payer: Payer) => {
-    const current = selectedPayers || [];
-    if (current.includes(payer)) {
-      setValue(
-        "acceptedPayers",
-        current.filter((p) => p !== payer),
-        { shouldValidate: true }
-      );
-    } else {
-      setValue("acceptedPayers", [...current, payer], { shouldValidate: true });
-    }
-  };
 
   const onFormSubmit = async (data: OpeningFormFields) => {
     try {
@@ -800,27 +760,22 @@ export function OpeningForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {CARE_LEVELS.map((level) => (
-              <div
-                key={level.value}
-                className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50"
-              >
-                <Checkbox
-                  id={`care-level-${level.value}`}
-                  checked={selectedCareLevels?.includes(level.value) || false}
-                  onCheckedChange={() => toggleCareLevel(level.value)}
-                />
-                <Label
-                  htmlFor={`care-level-${level.value}`}
-                  className="cursor-pointer flex-1"
-                >
-                  {level.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-          <FormError error={getError("careLevels")} className="mt-2" />
+          <Controller
+            name="careLevels"
+            control={control}
+            render={({ field }) => (
+              <CareLevelsMultiSelect
+                selectedCareLevels={field.value || []}
+                onCareLevelsChange={(values) => {
+                  field.onChange(values);
+                  trigger("careLevels");
+                }}
+                name="careLevels"
+                error={getError("careLevels")?.message}
+                helperText="Select all care levels that this opening can support."
+              />
+            )}
+          />
         </CardContent>
       </Card>
 
@@ -833,28 +788,24 @@ export function OpeningForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {SUPPORTED_NEEDS.map((need) => (
-              <div
-                key={need.value}
-                className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50"
-              >
-                <Checkbox
-                  id={`supported-need-${need.value}`}
-                  checked={
-                    selectedSupportedNeeds?.includes(need.value) || false
-                  }
-                  onCheckedChange={() => toggleSupportedNeed(need.value)}
-                />
-                <Label
-                  htmlFor={`supported-need-${need.value}`}
-                  className="cursor-pointer flex-1"
-                >
-                  {need.label}
-                </Label>
-              </div>
-            ))}
-          </div>
+          <Controller
+            name="supportedNeeds"
+            control={control}
+            render={({ field }) => (
+              <ServicesNeededMultiSelect
+                selectedServices={field.value || []}
+                onServicesChange={(values) => {
+                  field.onChange(values);
+                  trigger("supportedNeeds");
+                }}
+                placeholder="Select supported needs..."
+                searchPlaceholder="Search needs..."
+                emptyMessage="No needs found."
+                helperText="Select all needs this opening can accommodate."
+                name="supportedNeeds"
+              />
+            )}
+          />
         </CardContent>
       </Card>
 
@@ -867,31 +818,21 @@ export function OpeningForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {PAYER_OPTIONS.map((payer) => (
-              <div
-                key={payer.value}
-                className={cn(
-                  "flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50",
-                  selectedPayers?.includes(payer.value) &&
-                    "border-primary bg-primary/5"
-                )}
-              >
-                <Checkbox
-                  id={`payer-${payer.value}`}
-                  checked={selectedPayers?.includes(payer.value) || false}
-                  onCheckedChange={() => togglePayer(payer.value)}
-                />
-                <Label
-                  htmlFor={`payer-${payer.value}`}
-                  className="cursor-pointer flex-1"
-                >
-                  {payer.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-          <FormError error={getError("acceptedPayers")} className="mt-2" />
+          <Controller
+            control={control}
+            name="acceptedPayers"
+            render={({ field }) => (
+              <PayersMultiSelect
+                selectedPayers={field.value || []}
+                onPayersChange={(payers) => {
+                  field.onChange(payers);
+                  setValue("acceptedPayers", payers, { shouldValidate: true });
+                }}
+                name="acceptedPayers"
+                error={getError("acceptedPayers")?.message}
+              />
+            )}
+          />
         </CardContent>
       </Card>
 

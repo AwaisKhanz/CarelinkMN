@@ -18,7 +18,7 @@ import {
 import type { MessageThread, Placement } from "@carelink/types";
 import { toast } from "sonner";
 import { ReferralStatus, ShortlistStatus } from "@carelink/types";
-import { CaseManagerLoadingState, CaseManagerErrorState } from "@/components/case-manager";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
   ReferralHeader,
   ClientInfoCard,
@@ -360,13 +360,13 @@ function ReferralDetailPageContent() {
 
   // Loading state
   if (isLoading) {
-    return <CaseManagerLoadingState message="Loading referral details..." fullHeight />;
+    return <LoadingState message="Loading referral details..." fullHeight />;
   }
 
   // Error state
   if (error || !referral) {
     return (
-      <CaseManagerErrorState
+      <ErrorState
         title={error ? "Error Loading Referral" : "Referral Not Found"}
         message={error || "The referral you're looking for doesn't exist."}
         action={{

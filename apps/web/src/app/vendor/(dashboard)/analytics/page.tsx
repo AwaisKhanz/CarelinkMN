@@ -14,10 +14,7 @@ import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { VendorAnalytics } from "@carelink/types";
 import { StatsCard } from "@/components/ui/stats-card";
 import { Star } from "lucide-react";
@@ -82,16 +79,18 @@ export default function VendorAnalyticsPage() {
   }, [vendorId, fetchAnalytics]);
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading analytics..." />;
+    return <LoadingState message="Loading analytics..." />;
   }
 
   if (error || !analytics) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Analytics"
         message={error || "Analytics not available"}
         action={{
           label: "Retry",
           onClick: fetchAnalytics,
+          variant: "healthcare",
         }}
       />
     );

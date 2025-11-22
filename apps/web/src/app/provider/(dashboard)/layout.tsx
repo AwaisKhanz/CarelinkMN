@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { EmailVerificationGuard } from "@/components/auth/email-verification-guard";
 import { ProviderOnboardingCompleteGuard } from "@/components/auth/provider-onboarding-complete-guard";
 import { ProviderVerificationGuard } from "@/components/auth/provider-verification-guard";
 import { ProviderProvider } from "@/contexts/provider-context";
@@ -30,11 +31,12 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
  *
  * Guard order (outer to inner):
  * 1. ErrorBoundary - Catches any errors in the component tree
- * 2. ProviderOnboardingCompleteGuard - Ensures onboarding is complete, redirects if not
- * 3. ProviderProvider - Provides provider context (single source of truth for provider data)
- * 4. ProviderVerificationGuard - Shows verification pending state but allows access (allowPending=true)
- * 5. SubscriptionProvider - Provides subscription context
- * 6. PageMetadataProvider - Provides page metadata context
+ * 2. EmailVerificationGuard - Ensures user email is verified
+ * 3. ProviderOnboardingCompleteGuard - Ensures onboarding is complete, redirects if not
+ * 4. ProviderProvider - Provides provider context (single source of truth for provider data)
+ * 5. ProviderVerificationGuard - Shows verification pending state but allows access (allowPending=true)
+ * 6. SubscriptionProvider - Provides subscription context
+ * 7. PageMetadataProvider - Provides page metadata context
  *
  * Note: For pages that require specific subscription tiers, use ProviderSubscriptionGuard at the page level.
  * For pages that require full verification (not just pending), use ProviderVerificationGuard with allowPending=false.
@@ -56,15 +58,17 @@ export default function DashboardLayoutWrapper({
   const isProviderOwner = user?.role === UserRole.PROVIDER_OWNER;
 
   const content = (
-    <ProviderProvider>
-      <ProviderVerificationGuard allowPending={true}>
-        <SubscriptionProvider>
-          <PageMetadataProvider>
-            <DashboardLayoutContent>{children}</DashboardLayoutContent>
-          </PageMetadataProvider>
-        </SubscriptionProvider>
-      </ProviderVerificationGuard>
-    </ProviderProvider>
+    <EmailVerificationGuard>
+      <ProviderProvider>
+        <ProviderVerificationGuard allowPending={true}>
+          <SubscriptionProvider>
+            <PageMetadataProvider>
+              <DashboardLayoutContent>{children}</DashboardLayoutContent>
+            </PageMetadataProvider>
+          </SubscriptionProvider>
+        </ProviderVerificationGuard>
+      </ProviderProvider>
+    </EmailVerificationGuard>
   );
 
   if (!isProviderOwner) {

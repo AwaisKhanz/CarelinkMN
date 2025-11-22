@@ -2,7 +2,8 @@
  * Shared subscription constants
  */
 
-import { SubscriptionTier, SubscriptionLimits } from "@/types/subscription";
+import { SubscriptionTier } from "@carelink/types";
+import type { SubscriptionLimits } from "@/types/subscription";
 
 export const PLAN_HIERARCHY: Record<SubscriptionTier, number> = {
   FREE: 0,

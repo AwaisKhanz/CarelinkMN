@@ -1020,7 +1020,8 @@ export interface CreateDischargeCaseData {
   transportType?: string;
 }
 
-export interface UpdateDischargeCaseData extends Partial<CreateDischargeCaseData> {
+export interface UpdateDischargeCaseData
+  extends Partial<CreateDischargeCaseData> {
   status?: DischargeStatus;
   actualDischargeDate?: string | Date;
 }
@@ -1041,8 +1042,8 @@ export interface PaginatedDischargeCases {
   pagination: {
     total: number;
     pages: number;
-  page: number;
-  limit: number;
+    page: number;
+    limit: number;
   };
 }
 
@@ -1521,4 +1522,151 @@ export interface VendorAnalytics {
   }[];
   leadsThisMonth: number;
   bookingsThisMonth: number;
+}
+
+// ============================================
+// PUBLIC SEARCH TYPES (Family Member Dashboard)
+// ============================================
+
+export interface PublicSearchLocation {
+  type: "county" | "city" | "zip";
+  value: string;
+  radius?: number; // in miles
+}
+
+export interface PublicSearchAccessibility {
+  wheelchairAccessible?: boolean;
+  singleLevel?: boolean;
+  hasElevator?: boolean;
+  hasRollInShower?: boolean;
+}
+
+export interface PublicSearchFilters {
+  search?: string;
+  location?: PublicSearchLocation;
+  licenseTypes?: string[];
+  serviceTypes?: string[];
+  payers?: Payer[];
+  accessibility?: PublicSearchAccessibility;
+  availability?: "open-only" | "all";
+  verified?: boolean;
+}
+
+export interface PublicSearchParams extends PublicSearchFilters {
+  page?: number;
+  limit?: number;
+  sortBy?: "relevance" | "distance" | "rating" | "newest";
+  viewMode?: "grid" | "list" | "map";
+}
+
+export interface PublicSearchResponse {
+  providers: ProviderPublicProfile[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface HomePhoto {
+  url: string;
+  caption?: string;
+  isPrimary: boolean;
+}
+
+export interface HomePublicProfile {
+  id: string;
+  name: string;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    county: string;
+  };
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  photos: HomePhoto[];
+  capacity: number;
+  currentOccupancy: number;
+  accessibility: {
+    wheelchairAccessible: boolean;
+    singleLevel: boolean;
+    hasElevator: boolean;
+    hasRollInShower: boolean;
+  };
+  services: Array<{
+    id: string;
+    code: string;
+    name: string;
+    category: string;
+  }>;
+  openings: Array<{
+    id: string;
+    spotsAvailable: number;
+    availableFrom: string | Date;
+    acceptedPayers: Payer[];
+    careLevels: string[];
+    supportedNeeds: string[];
+  }>;
+}
+
+export interface ProviderPublicProfile {
+  id: string;
+  organizationName: string;
+  description?: string;
+  logo?: string;
+  verified: boolean;
+  subscriptionTier: SubscriptionTier;
+  homes: HomePublicProfile[];
+  primaryLicenseType: string;
+  licenses: Array<{
+    licenseType: string;
+    licenseNumber: string;
+    expirationDate: string | Date;
+  }>;
+  averageRating?: number;
+  reviewCount: number;
+  distance?: number; // in miles, if location provided
+}
+
+export interface Favorite {
+  id: string;
+  userId: string;
+  providerId: string;
+  provider: ProviderPublicProfile;
+  createdAt: string | Date;
+}
+
+export interface GetFavoritesResponse {
+  favorites: Favorite[];
+  total: number;
+}
+
+export interface CreateFavoriteData {
+  providerId: string;
+}
+
+export interface CareBotQueryRequest {
+  query: string;
+  userId?: string; // Optional for rate limiting
+}
+
+export interface CareBotQueryResponse {
+  filters: Partial<PublicSearchFilters>;
+  explanation?: string;
+  confidence?: number;
+}
+
+// API Request/Response Types for Public Search
+export interface GetPublicProvidersParams extends PublicSearchParams {}
+
+export interface GetPublicProviderParams {
+  providerId: string;
+  userLocation?: {
+    lat: number;
+    lon: number;
+  };
 }

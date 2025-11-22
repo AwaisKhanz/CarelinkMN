@@ -11,11 +11,8 @@ import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-  VRSDetailHeader,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
+import { VRSDetailHeader } from "@/components/vrs";
 import {
   Card,
   CardContent,
@@ -90,16 +87,18 @@ function JobDetailPageContent() {
   }, [jobId, setTitle, setDescription]);
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading job details..." />;
+    return <LoadingState message="Loading job details..." />;
   }
 
   if (error || !job) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Job"
         message={error || "Job not found"}
         action={{
           label: "Back to Jobs",
           onClick: () => router.push("/vrs/jobs"),
+          variant: "healthcare",
         }}
       />
     );

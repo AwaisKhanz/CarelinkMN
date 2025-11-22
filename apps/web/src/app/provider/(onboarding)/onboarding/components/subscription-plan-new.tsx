@@ -14,6 +14,7 @@ import { CheckCircle, Star, Crown, Zap, Check } from "lucide-react";
 import { billingService } from "@/lib/services/billing.service";
 import { toast } from "sonner";
 import { SUBSCRIPTION_PLANS as BASE_PLANS } from "@/lib/constants";
+import { SubscriptionTier } from "@carelink/types";
 
 // Map icons to plans
 const PLAN_ICONS: Record<string, typeof Star> = {
@@ -41,7 +42,7 @@ export function SubscriptionPlan({
   onValidate,
 }: SubscriptionPlanProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>(
-    data?.subscriptionTier || "FREE"
+    data?.subscriptionTier || SubscriptionTier.FREE
   );
   const isInitialMount = useRef(true);
   const isSyncingFromProps = useRef(false);
@@ -66,7 +67,10 @@ export function SubscriptionPlan({
     if (onValidate) {
       const validateAndComplete = async () => {
         // Free and Enterprise do not require checkout
-        if (selectedPlan === "FREE" || selectedPlan === "ENTERPRISE") {
+        if (
+          selectedPlan === SubscriptionTier.FREE ||
+          selectedPlan === SubscriptionTier.ENTERPRISE
+        ) {
           await onComplete({ subscriptionTier: selectedPlan });
           toast.success("Subscription selection saved");
           return true;
@@ -74,12 +78,17 @@ export function SubscriptionPlan({
 
         // Paid tiers go to Stripe Checkout
         try {
-          const tier = selectedPlan as "PRO" | "PREMIUM";
+          const tier = selectedPlan as
+            | SubscriptionTier.PRO
+            | SubscriptionTier.PREMIUM;
           // Persist the selection locally so we can complete the step after redirect
           if (typeof window !== "undefined") {
             localStorage.setItem("onboarding_selected_plan", tier);
           }
-          const url = await billingService.createCheckoutSession(tier, "onboarding");
+          const url = await billingService.createCheckoutSession(
+            tier,
+            "onboarding"
+          );
           if (url) {
             window.location.href = url;
             return true; // Return true even though we're redirecting
@@ -249,7 +258,7 @@ export function SubscriptionPlan({
               </div>
             </div>
 
-            {selectedPlanDetails.id === "FREE" && (
+            {selectedPlanDetails.id === SubscriptionTier.FREE && (
               <div className="mt-4 p-3 bg-info/10 border border-info/20 rounded-lg">
                 <p className="text-sm text-info">
                   <strong>Note:</strong> You can upgrade to a paid plan at any
@@ -258,7 +267,7 @@ export function SubscriptionPlan({
               </div>
             )}
 
-            {selectedPlanDetails.id === "ENTERPRISE" && (
+            {selectedPlanDetails.id === SubscriptionTier.ENTERPRISE && (
               <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
                 <p className="text-sm text-warning">
                   <strong>Enterprise Plan:</strong> Our team will contact you

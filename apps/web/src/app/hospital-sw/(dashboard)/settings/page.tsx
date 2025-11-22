@@ -28,17 +28,14 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../use-page-metadata";
-import {
-  HospitalSWLoadingState,
-  HospitalSWErrorState,
-} from "@/components/hospital-sw";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { Switch } from "@/components/ui/switch";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { apiService, hospitalStaffService } from "@/lib/api";
-import { NotificationPreferences } from "@carelink/types";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { format } from "date-fns";
+import { OrganizationStatus } from "@carelink/types";
 
 const profileSchema = z.object({
   firstName: z
@@ -81,13 +78,13 @@ type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
 const getStatusVariant = (status?: string | null): BadgeVariant => {
   switch (status) {
-    case "ACTIVE":
+    case OrganizationStatus.VERIFIED:
       return "healthcareSuccess";
-    case "PENDING_VERIFICATION":
+    case OrganizationStatus.PENDING:
       return "healthcareWarning";
-    case "SUSPENDED":
+    case OrganizationStatus.SUSPENDED:
       return "destructive";
-    case "DEACTIVATED":
+    case OrganizationStatus.DEACTIVATED:
       return "healthcareError";
     default:
       return "outline";
@@ -105,22 +102,6 @@ function HospitalSWSettingsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Notification preferences state
-  const [notificationPrefs, setNotificationPrefs] =
-    useState<NotificationPreferences>({
-      emailNotifications: true,
-      emailNewReferrals: true,
-      emailProviderResponses: true,
-      emailPlacementUpdates: true,
-      emailUrgentCases: true,
-      inAppNotifications: true,
-      inAppNewReferrals: true,
-      inAppProviderResponses: true,
-      inAppPlacementUpdates: true,
-      inAppUrgentCases: true,
-    });
-
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -164,19 +145,6 @@ function HospitalSWSettingsPageContent() {
       } catch (err) {
         // Hospital staff may not exist for all users, that's okay
         console.log("No hospital staff profile found:", err);
-      }
-
-      // Load notification preferences from user settings
-      try {
-        const response = await apiService.get<{
-          notificationPreferences: NotificationPreferences;
-        }>("/api/users/notification-preferences");
-        if (response.success && response.data?.notificationPreferences) {
-          setNotificationPrefs(response.data.notificationPreferences);
-        }
-      } catch (err) {
-        console.error("Error loading notification preferences:", err);
-        // Use defaults if loading fails
       }
     } catch (err) {
       console.error("Error loading user data:", err);
@@ -246,45 +214,19 @@ function HospitalSWSettingsPageContent() {
     [user, updateProfile]
   );
 
-  const handleNotificationPrefChange = useCallback(
-    async (key: keyof NotificationPreferences, value: boolean) => {
-      const previousValue = notificationPrefs[key];
-      setNotificationPrefs((prev) => ({ ...prev, [key]: value }));
-
-      try {
-        // Save notification preferences to backend
-        const updatedPrefs = { ...notificationPrefs, [key]: value };
-        const response = await apiService.put<{
-          notificationPreferences: NotificationPreferences;
-        }>("/api/users/notification-preferences", updatedPrefs);
-
-        if (response.success && response.data?.notificationPreferences) {
-          setNotificationPrefs(response.data.notificationPreferences);
-          toast.success("Notification preferences updated");
-        } else {
-          throw new Error("Failed to update preferences");
-        }
-      } catch (err) {
-        console.error("Error updating notification preferences:", err);
-        toast.error("Failed to update notification preferences");
-        // Revert the change on error
-        setNotificationPrefs((prev) => ({ ...prev, [key]: previousValue }));
-      }
-    },
-    [notificationPrefs]
-  );
-
   if (isLoading) {
-    return <HospitalSWLoadingState message="Loading settings..." fullHeight />;
+    return <LoadingState message="Loading settings..." fullHeight />;
   }
 
   if (error && !user) {
     return (
-      <HospitalSWErrorState
+      <ErrorState
+        title="Error Loading Settings"
         message={error}
         action={{
           label: "Retry",
           onClick: loadUserData,
+          variant: "healthcare",
         }}
       />
     );
@@ -427,203 +369,6 @@ function HospitalSWSettingsPageContent() {
           </CardContent>
         </Card>
       </form>
-
-      {/* Notification Preferences */}
-      <Card variant="healthcare">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            <CardTitle>Notification Preferences</CardTitle>
-          </div>
-          <CardDescription>
-            Manage how you receive notifications about discharge cases and
-            placements
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Email Notifications */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-semibold">
-                  Email Notifications
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive notifications via email
-                </p>
-              </div>
-              <Switch
-                checked={notificationPrefs.emailNotifications}
-                onCheckedChange={(checked) =>
-                  handleNotificationPrefChange("emailNotifications", checked)
-                }
-              />
-            </div>
-
-            {notificationPrefs.emailNotifications && (
-              <div className="ml-6 space-y-3 border-l-2 border-border pl-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>New Discharge Cases</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when new discharge cases are assigned
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.emailNewReferrals}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange("emailNewReferrals", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Provider Responses</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when providers respond to invitations
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.emailProviderResponses}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange(
-                        "emailProviderResponses",
-                        checked
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Placement Updates</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about placement status changes
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.emailPlacementUpdates}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange(
-                        "emailPlacementUpdates",
-                        checked
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Urgent Cases</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about urgent discharge cases
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.emailUrgentCases}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange("emailUrgentCases", checked)
-                    }
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* In-App Notifications */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-semibold">
-                  In-App Notifications
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive notifications within the application
-                </p>
-              </div>
-              <Switch
-                checked={notificationPrefs.inAppNotifications}
-                onCheckedChange={(checked) =>
-                  handleNotificationPrefChange("inAppNotifications", checked)
-                }
-              />
-            </div>
-
-            {notificationPrefs.inAppNotifications && (
-              <div className="ml-6 space-y-3 border-l-2 border-border pl-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>New Discharge Cases</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when new discharge cases are assigned
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.inAppNewReferrals}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange("inAppNewReferrals", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Provider Responses</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when providers respond to invitations
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.inAppProviderResponses}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange(
-                        "inAppProviderResponses",
-                        checked
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Placement Updates</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about placement status changes
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.inAppPlacementUpdates}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange(
-                        "inAppPlacementUpdates",
-                        checked
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Urgent Cases</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about urgent discharge cases
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.inAppUrgentCases}
-                    onCheckedChange={(checked) =>
-                      handleNotificationPrefChange("inAppUrgentCases", checked)
-                    }
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Account Information */}
       <Card variant="healthcare">

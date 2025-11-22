@@ -37,15 +37,46 @@ export class MessagingService {
 
     const where: Prisma.MessageThreadWhereInput = {};
 
+    // Get user's role to determine access logic
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isCaseManager = user?.role === "CASE_MANAGER";
+    const isHospitalSW = user?.role === "HOSPITAL_SW";
+
     // If providerId is provided, verify access
     if (providerId) {
+      // Verify the provider exists
+      const providerExists = await db.provider.findUnique({
+        where: { id: providerId },
+        select: { id: true },
+      });
+      if (!providerExists) {
+        throw new Error("Provider not found");
+      }
+
+      // Case managers and hospital SW can message any provider
+      // They see threads with that provider where they are the initiator
+      if (isCaseManager || isHospitalSW) {
+        where.providerId = providerId;
+        where.initiatorId = userId; // Only threads they initiated
+      } else {
+        // Providers can only access threads for their own provider
       const hasAccess = await this.verifyProviderAccess(userId, providerId);
       if (!hasAccess) {
         throw new Error("Access denied");
       }
       where.providerId = providerId;
+      }
     } else {
-      // If no providerId, ensure user can only see their own provider's threads
+      // If no providerId specified
+      if (isCaseManager || isHospitalSW) {
+        // Case managers and hospital SW see all threads where they are the initiator
+        where.initiatorId = userId;
+      } else {
+        // Providers see threads for their own provider organization
       const userProvider = await db.provider.findFirst({
         where: {
           organization: {
@@ -60,6 +91,7 @@ export class MessagingService {
         throw new Error("User is not associated with a provider");
       }
       where.providerId = userProvider.id;
+      }
     }
 
     if (referralId) where.referralId = referralId;
@@ -410,9 +442,30 @@ export class MessagingService {
   ): Promise<MessageThread> {
     const { providerId, referralId, dischargeCaseId, initialMessage, attachments } = data;
 
-    // Verify access to provider
+    // Get user's role to determine access
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isCaseManager = user?.role === "CASE_MANAGER";
+    const isHospitalSW = user?.role === "HOSPITAL_SW";
+
+    // Case managers and hospital SW can message any provider
+    // Providers can only create threads for their own provider organization
+    if (!isCaseManager && !isHospitalSW) {
     if (!(await this.verifyProviderAccess(userId, providerId))) {
       throw new Error("Access denied to provider");
+      }
+    }
+
+    // Verify the provider exists
+    const providerExists = await db.provider.findUnique({
+      where: { id: providerId },
+      select: { id: true },
+    });
+    if (!providerExists) {
+      throw new Error("Provider not found");
     }
 
     // Create thread and first message in a transaction
@@ -769,21 +822,54 @@ export class MessagingService {
     threadId: string
   ): Promise<boolean> {
     try {
-      const thread = await db.messageThread.findFirst({
-        where: {
-          id: threadId,
+      // Get user's role to determine access logic
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      const isCaseManager = user?.role === "CASE_MANAGER";
+      const isHospitalSW = user?.role === "HOSPITAL_SW";
+
+      // Find the thread
+      const thread = await db.messageThread.findUnique({
+        where: { id: threadId },
+        select: {
+          id: true,
+          initiatorId: true,
+          providerId: true,
           provider: {
+            select: {
             organization: {
+                select: {
               users: {
-                some: {
-                  id: userId,
+                    select: { id: true },
+                  },
                 },
               },
             },
           },
         },
       });
-      return !!thread;
+
+      if (!thread) {
+        return false;
+      }
+
+      // Case managers and hospital SW can access threads they initiated
+      if ((isCaseManager || isHospitalSW) && thread.initiatorId === userId) {
+        return true;
+      }
+
+      // Providers can access threads for their own provider organization
+      const providerUserIds = new Set(
+        thread.provider?.organization?.users?.map((u) => u.id) || []
+      );
+      if (providerUserIds.has(userId)) {
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error("Verify thread access error:", error);
       return false;

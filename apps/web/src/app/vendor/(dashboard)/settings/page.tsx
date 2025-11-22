@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { UserStatus } from "@carelink/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,10 +28,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../use-page-metadata";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { format } from "date-fns";
@@ -115,7 +113,7 @@ export default function VendorSettingsPage() {
   };
 
   if (isLoading) {
-    return <VendorLoadingState message="Loading settings..." />;
+    return <LoadingState message="Loading settings..." />;
   }
 
   return (
@@ -218,9 +216,9 @@ export default function VendorSettingsPage() {
               <div className="mt-1">
                 <Badge
                   variant={
-                    user?.status === "ACTIVE"
+                    user?.status === UserStatus.ACTIVE
                       ? "healthcareSuccess"
-                      : user?.status === "PENDING_VERIFICATION"
+                      : user?.status === UserStatus.PENDING_VERIFICATION
                       ? "healthcareWarning"
                       : "destructive"
                   }

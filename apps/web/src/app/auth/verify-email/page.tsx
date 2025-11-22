@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { authToasts } from "@/lib/toast";
+import { authService } from "@/lib/api";
 
 function VerifyEmailForm() {
   const [verificationStatus, setVerificationStatus] = useState<'verifying' | 'success' | 'error' | 'expired'>('verifying');
@@ -36,21 +37,14 @@ function VerifyEmailForm() {
     try {
       setVerificationStatus('verifying');
 
-      const response = await fetch(`/api/auth/verify-email?token=${verificationToken}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authService.verifyEmail(verificationToken);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 400 && result.message?.includes('expired')) {
+      if (!response.success) {
+        if (response.message?.includes('expired')) {
           setVerificationStatus('expired');
         } else {
           setVerificationStatus('error');
-          authToasts.emailVerificationError(result.message || 'Email verification failed');
+          authToasts.emailVerificationError(response.message || 'Email verification failed');
         }
         return;
       }
@@ -64,8 +58,14 @@ function VerifyEmailForm() {
       }, 3000);
 
     } catch (err) {
-      setVerificationStatus('error');
-      authToasts.emailVerificationError('An error occurred during verification');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during verification';
+      
+      if (errorMessage.includes('expired')) {
+        setVerificationStatus('expired');
+      } else {
+        setVerificationStatus('error');
+        authToasts.emailVerificationError(errorMessage);
+      }
     }
   };
 
@@ -79,25 +79,18 @@ function VerifyEmailForm() {
     try {
       setIsResending(true);
 
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
+      const response = await authService.resendVerificationEmail(email);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        authToasts.emailVerificationError(result.message || 'Failed to resend verification email');
+      if (!response.success) {
+        authToasts.emailVerificationError(response.message || 'Failed to resend verification email');
         return;
       }
 
       authToasts.emailVerificationSent(email);
 
     } catch (err) {
-      authToasts.emailVerificationError('An error occurred while resending verification email');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while resending verification email';
+      authToasts.emailVerificationError(errorMessage);
     } finally {
       setIsResending(false);
     }

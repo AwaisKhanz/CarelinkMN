@@ -16,26 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import {
-  Save,
-  Loader2,
-  User,
-  Bell,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Save, Loader2, User, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../use-page-metadata";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-} from "@/components/vrs";
-import { Switch } from "@/components/ui/switch";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { apiService } from "@/lib/api";
-import { NotificationPreferences, UserStatus } from "@carelink/types";
+import { UserStatus } from "@carelink/types";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { format } from "date-fns";
 import { getUserStatusBadgeConfig } from "@/lib/utils/admin";
@@ -67,8 +56,6 @@ function VRSSettingsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [notificationPreferences, setNotificationPreferences] =
-    useState<NotificationPreferences | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -97,20 +84,6 @@ function VRSSettingsPageContent() {
         lastName: user.lastName || "",
         phone: user.phone || "",
       });
-
-      // Load notification preferences
-      try {
-        const response = await apiService.get<{
-          notificationPreferences: NotificationPreferences;
-        }>("/api/users/notification-preferences");
-
-        if (response.success && response.data?.notificationPreferences) {
-          setNotificationPreferences(response.data.notificationPreferences);
-        }
-      } catch (err) {
-        console.error("Error loading notification preferences:", err);
-        // Not critical, continue
-      }
     } catch (err) {
       console.error("Error loading user data:", err);
       setError(err instanceof Error ? err.message : "Failed to load settings");
@@ -144,47 +117,19 @@ function VRSSettingsPageContent() {
     }
   };
 
-  const handleNotificationToggle = async (
-    key: keyof NotificationPreferences,
-    value: boolean
-  ) => {
-    if (!notificationPreferences) return;
-
-    const updated = {
-      ...notificationPreferences,
-      [key]: value,
-    };
-
-    try {
-      const response = await apiService.put<{
-        notificationPreferences: NotificationPreferences;
-      }>("/api/users/notification-preferences", {
-        notificationPreferences: updated,
-      });
-
-      if (response.success) {
-        setNotificationPreferences(updated);
-        toast.success("Notification preferences updated");
-      } else {
-        toast.error(response.message || "Failed to update preferences");
-      }
-    } catch (err) {
-      console.error("Error updating notification preferences:", err);
-      toast.error("Failed to update notification preferences");
-    }
-  };
-
   if (isLoading) {
-    return <VRSLoadingState message="Loading settings..." />;
+    return <LoadingState message="Loading settings..." />;
   }
 
   if (error) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Settings"
         message={error}
         action={{
           label: "Retry",
           onClick: loadUserData,
+          variant: "healthcare",
         }}
       />
     );
@@ -192,7 +137,10 @@ function VRSSettingsPageContent() {
 
   if (!user) {
     return (
-      <VRSErrorState message="User data not available" />
+      <ErrorState
+        title="User Data Unavailable"
+        message="User data not available"
+      />
     );
   }
 
@@ -211,9 +159,7 @@ function VRSSettingsPageContent() {
         <Card variant="healthcare">
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
-            <CardDescription>
-              Update your personal information
-            </CardDescription>
+            <CardDescription>Update your personal information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -221,19 +167,13 @@ function VRSSettingsPageContent() {
                 <Label htmlFor="firstName">
                   First Name <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="firstName"
-                  {...form.register("firstName")}
-                />
+                <Input id="firstName" {...form.register("firstName")} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">
                   Last Name <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="lastName"
-                  {...form.register("lastName")}
-                />
+                <Input id="lastName" {...form.register("lastName")} />
               </div>
             </div>
 
@@ -296,76 +236,6 @@ function VRSSettingsPageContent() {
           </div>
         </CardContent>
       </Card>
-
-      <Card variant="healthcare">
-        <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
-          <CardDescription>
-            Manage how you receive notifications
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {notificationPreferences ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="emailNotifications">Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications via email
-                  </p>
-                </div>
-                <Switch
-                  id="emailNotifications"
-                  checked={notificationPreferences.emailNotifications ?? true}
-                  onCheckedChange={(checked) =>
-                    handleNotificationToggle("emailNotifications", checked)
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications via SMS
-                  </p>
-                </div>
-                <Switch
-                  id="smsNotifications"
-                  checked={notificationPreferences.emailNotifications ?? false}
-                  onCheckedChange={(checked) =>
-                    handleNotificationToggle("emailNotifications", checked)
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="pushNotifications">Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive push notifications in browser
-                  </p>
-                </div>
-                <Switch
-                  id="pushNotifications"
-                  checked={notificationPreferences.emailNotifications ?? true}
-                  onCheckedChange={(checked) =>
-                    handleNotificationToggle("emailNotifications", checked)
-                  }
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              Loading notification preferences...
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -381,4 +251,3 @@ export default function VRSSettingsPage() {
     </RequirePermission>
   );
 }
-

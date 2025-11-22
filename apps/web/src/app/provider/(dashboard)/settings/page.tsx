@@ -48,6 +48,7 @@ import {
   getSubscriptionStatusInfo,
   isSubscriptionInWarningState,
 } from "@/lib/utils/subscription";
+import { SubscriptionTier, LicenseStatus } from "@carelink/types";
 import { format } from "date-fns";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
@@ -254,7 +255,7 @@ function ProviderSettingsPageContent() {
     }
   }, [contextProvider, form]);
 
-  const handleUpgrade = async (tier: "PRO" | "PREMIUM") => {
+  const handleUpgrade = async (tier: SubscriptionTier.PRO | SubscriptionTier.PREMIUM) => {
     setIsUpgrading(true);
     try {
       const url = await billingService.createCheckoutSession(tier);
@@ -360,7 +361,7 @@ function ProviderSettingsPageContent() {
       description: !!provider.description && provider.description.trim().length > 0,
       logo: !!provider.logo,
       coverImage: !!provider.coverImage,
-      activeLicense: licenses.some((l) => l.status === "ACTIVE"),
+      activeLicense: licenses.some((l) => l.status === LicenseStatus.ACTIVE),
       hasHomes: homes.length > 0,
       responseTime: !!provider.responseTimeHours,
     };
@@ -574,7 +575,7 @@ function ProviderSettingsPageContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-lg capitalize">
-                      {provider.subscriptionTier || "FREE"} Plan
+                      {provider.subscriptionTier || SubscriptionTier.FREE} Plan
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Current subscription tier
@@ -585,7 +586,7 @@ function ProviderSettingsPageContent() {
                       variant="healthcarePrimary"
                       className="capitalize text-sm px-3 py-1"
                     >
-                      {provider.subscriptionTier || "FREE"}
+                      {provider.subscriptionTier || SubscriptionTier.FREE}
                     </Badge>
                     {subscription && (
                       <Badge
@@ -693,7 +694,7 @@ function ProviderSettingsPageContent() {
                         </div>
                       )}
                     {subscription.status === "ACTIVE" &&
-                      provider.subscriptionTier !== "FREE" &&
+                      provider.subscriptionTier !== SubscriptionTier.FREE &&
                       !subscription.cancelAt && (
                         <div className="pt-3 flex flex-wrap gap-2">
                           <Button
@@ -742,7 +743,7 @@ function ProviderSettingsPageContent() {
                     <Button
                       onClick={() =>
                         handleUpgrade(
-                          provider.subscriptionTier as "PRO" | "PREMIUM"
+                          provider.subscriptionTier as SubscriptionTier.PRO | SubscriptionTier.PREMIUM
                         )
                       }
                       disabled={isUpgrading}
@@ -766,25 +767,25 @@ function ProviderSettingsPageContent() {
                 <h4 className="font-medium text-sm text-muted-foreground">
                   {subscription?.status === "CANCELLED"
                     ? "Other Plans"
-                    : provider.subscriptionTier === "FREE"
+                    : provider.subscriptionTier === SubscriptionTier.FREE
                       ? "Available Plans"
                       : "Upgrade or Change Plan"}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {SUBSCRIPTION_PLANS.filter(
                     (plan) =>
-                      plan.id === "PRO" ||
-                      plan.id === "PREMIUM" ||
-                      plan.id === "FREE"
+                      plan.id === SubscriptionTier.PRO ||
+                      plan.id === SubscriptionTier.PREMIUM ||
+                      plan.id === SubscriptionTier.FREE
                   ).map((plan) => {
-                    const isFreePlan = plan.id === "FREE";
-                    const currentTier = provider.subscriptionTier || "FREE";
+                    const isFreePlan = plan.id === SubscriptionTier.FREE;
+                    const currentTier = provider.subscriptionTier || SubscriptionTier.FREE;
                     const isCurrentPlan = plan.id === currentTier;
                     const downgradeScheduled = !!subscription?.cancelAt;
                     const canDowngrade =
                       isFreePlan &&
                       provider.subscriptionTier &&
-                      provider.subscriptionTier !== "FREE" &&
+                      provider.subscriptionTier !== SubscriptionTier.FREE &&
                       subscription?.status === "ACTIVE" &&
                       !downgradeScheduled;
 
@@ -865,7 +866,7 @@ function ProviderSettingsPageContent() {
                                 handleDowngrade();
                               }
                             } else {
-                              handleUpgrade(plan.id as "PRO" | "PREMIUM");
+                              handleUpgrade(plan.id as SubscriptionTier.PRO | SubscriptionTier.PREMIUM);
                             }
                           }}
                           disabled={buttonDisabled}
@@ -880,7 +881,7 @@ function ProviderSettingsPageContent() {
                           }
                         >
                           {isFreePlan ? (
-                            provider.subscriptionTier === "FREE" ? (
+                            provider.subscriptionTier === SubscriptionTier.FREE ? (
                               "Current Plan"
                             ) : downgradeScheduled ? (
                               isCancellingDowngrade ? (
@@ -933,8 +934,8 @@ function ProviderSettingsPageContent() {
               </div>
 
               {/* Manage Billing Button */}
-              {(provider.subscriptionTier === "PRO" ||
-                provider.subscriptionTier === "PREMIUM") && (
+              {(provider.subscriptionTier === SubscriptionTier.PRO ||
+                provider.subscriptionTier === SubscriptionTier.PREMIUM) && (
                 <>
                   <Separator />
                   <div className="space-y-3">

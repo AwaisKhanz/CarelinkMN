@@ -7,11 +7,7 @@ import { adminService } from "@/lib/api";
 import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminStatsGrid,
-} from "@/components/admin";
+import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
 import {
   Card,
   CardContent,
@@ -152,12 +148,12 @@ function AdminAnalyticsPageContent() {
   }, [analytics]);
 
   if (isLoading) {
-    return <AdminLoadingState message="Loading analytics..." fullHeight />;
+    return <LoadingState message="Loading analytics..." fullHeight />;
   }
 
   if (error) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Analytics"
         message={error}
         action={{
@@ -207,7 +203,7 @@ function AdminAnalyticsPageContent() {
       </Card>
 
       {/* Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} variant="card" />
 
       {/* Additional Analytics Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

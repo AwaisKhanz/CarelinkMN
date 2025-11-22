@@ -9,11 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminEmptyState,
-} from "@/components/admin";
+import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -222,12 +218,12 @@ function AdminAuditLogsPageContent() {
   );
 
   if (isLoading && logs.length === 0) {
-    return <AdminLoadingState message="Loading audit logs..." fullHeight />;
+    return <LoadingState message="Loading audit logs..." fullHeight />;
   }
 
   if (error && logs.length === 0) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Audit Logs"
         message={error}
         action={{
@@ -304,7 +300,7 @@ function AdminAuditLogsPageContent() {
           </div>
 
           {logs.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={FileText}
               title="No audit logs found"
               description="No audit logs match your current filters"

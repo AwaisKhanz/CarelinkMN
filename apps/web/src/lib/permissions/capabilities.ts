@@ -83,6 +83,10 @@ export const VRS_CAPABILITIES = {
   CLIENTS_VIEW: "vrs:clients:view",
   CLIENTS_UPDATE: "vrs:clients:update",
   CLIENTS_DELETE: "vrs:clients:delete",
+  JOBS_CREATE: "vrs:jobs:create",
+  JOBS_VIEW: "vrs:jobs:view",
+  JOBS_UPDATE: "vrs:jobs:update",
+  JOBS_DELETE: "vrs:jobs:delete",
   JOB_MATCHING_USE: "vrs:job_matching:use",
   EMPLOYERS_VIEW: "vrs:employers:view",
   EMPLOYERS_MANAGE: "vrs:employers:manage",
@@ -158,9 +162,7 @@ export type Capability =
 // ROLE CAPABILITY MAPPING
 // ============================================
 export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
-  [UserRole.PROVIDER_OWNER]: [
-    ...Object.values(PROVIDER_CAPABILITIES),
-  ],
+  [UserRole.PROVIDER_OWNER]: [...Object.values(PROVIDER_CAPABILITIES)],
 
   [UserRole.PROVIDER_STAFF]: [
     // Day-to-day operations only, no billing/staff management
@@ -179,21 +181,13 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
     // Explicitly excluded: STAFF_MANAGE, BILLING_MANAGE, SETTINGS_MANAGE
   ],
 
-  [UserRole.CASE_MANAGER]: [
-    ...Object.values(CASE_MANAGER_CAPABILITIES),
-  ],
+  [UserRole.CASE_MANAGER]: [...Object.values(CASE_MANAGER_CAPABILITIES)],
 
-  [UserRole.HOSPITAL_SW]: [
-    ...Object.values(HOSPITAL_SW_CAPABILITIES),
-  ],
+  [UserRole.HOSPITAL_SW]: [...Object.values(HOSPITAL_SW_CAPABILITIES)],
 
-  [UserRole.VRS_SPECIALIST]: [
-    ...Object.values(VRS_CAPABILITIES),
-  ],
+  [UserRole.VRS_SPECIALIST]: [...Object.values(VRS_CAPABILITIES)],
 
-  [UserRole.VENDOR]: [
-    ...Object.values(VENDOR_CAPABILITIES),
-  ],
+  [UserRole.VENDOR]: [...Object.values(VENDOR_CAPABILITIES)],
 
   [UserRole.SUPER_ADMIN]: [
     ...Object.values(PROVIDER_CAPABILITIES),
@@ -266,4 +260,3 @@ export function hasAllCapabilities(
   const roleCapabilities = getRoleCapabilities(role);
   return capabilities.every((cap) => roleCapabilities.includes(cap));
 }
-

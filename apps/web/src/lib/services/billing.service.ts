@@ -1,9 +1,10 @@
 import { apiService } from "@/lib/api/config";
+import { SubscriptionTier } from "@carelink/types";
 import { Subscription } from "@/types/subscription";
 
 export class BillingService {
   async createCheckoutSession(
-    tier: "PRO" | "PREMIUM",
+    tier: SubscriptionTier.PRO | SubscriptionTier.PREMIUM,
     context: "onboarding" | "settings" = "settings"
   ) {
     const response = await apiService.post<{ url: string }>(

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserRole } from "@carelink/types";
 import { authToasts } from "@/lib/toast";
-import { apiService } from "@/lib/api";
+import { apiService } from "@/lib/api/config";
 
 export interface User {
   id: string;
@@ -13,6 +13,7 @@ export interface User {
   phone?: string;
   role: UserRole;
   status?: string;
+  emailVerified: boolean;
   organizationId?: string;
   organization?: {
     id: string;
@@ -71,27 +72,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedToken = localStorage.getItem("auth_token");
         if (storedToken) {
           setToken(storedToken);
+          apiService.setAuthToken(storedToken);
 
-          // Verify token and get user profile
-          const response = await fetch("/api/auth/profile", {
-            headers: {
-              Authorization: `Bearer ${storedToken}`,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.data.user);
-          } else {
-            // Token is invalid, clear storage
+          // Verify token and get user profile using authService
+          try {
+            const { authService } = await import("@/lib/api");
+            const user = await authService.getCurrentUser();
+            // Ensure emailVerified is always a boolean (fallback to false if undefined/null)
+            setUser({
+              ...user,
+              emailVerified: user.emailVerified ?? false,
+            });
+          } catch (error) {
+            // Token is invalid or expired, clear storage
+            console.error("Auth initialization error:", error);
             localStorage.removeItem("auth_token");
             setToken(null);
+            apiService.setAuthToken(null);
+            setUser(null);
           }
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
         localStorage.removeItem("auth_token");
         setToken(null);
+        apiService.setAuthToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -103,26 +108,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const { authService } = await import("@/lib/api");
+      const authData = await authService.login({ email, password });
 
-      const data = await response.json();
+      // Ensure emailVerified is always a boolean
+      const user = {
+        ...authData.user,
+        emailVerified: authData.user.emailVerified ?? false,
+      };
 
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed");
-      }
-
-      setUser(data.data.user);
-      setToken(data.data.token);
-      localStorage.setItem("auth_token", data.data.token);
+      setUser(user);
+      setToken(authData.token);
+      localStorage.setItem("auth_token", authData.token);
+      apiService.setAuthToken(authData.token);
 
       // Return the user data for immediate use
-      return data.data.user;
+      return user;
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -134,23 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: RegisterData) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const { authService } = await import("@/lib/api");
+      const authData = await authService.register(data);
 
-      const result = await response.json();
+      // Ensure emailVerified is always a boolean (should be false for new registrations)
+      const user = {
+        ...authData.user,
+        emailVerified: authData.user.emailVerified ?? false,
+      };
 
-      if (!response.ok) {
-        throw new Error(result.message || "Registration failed");
-      }
-
-      setUser(result.data.user);
-      setToken(result.data.token);
-      localStorage.setItem("auth_token", result.data.token);
+      setUser(user);
+      setToken(authData.token);
+      localStorage.setItem("auth_token", authData.token);
+      apiService.setAuthToken(authData.token);
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
@@ -162,12 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const { authService } = await import("@/lib/api");
+      await authService.logout();
       authToasts.logoutSuccess();
     } catch (error) {
       console.error("Logout error:", error);
@@ -175,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setToken(null);
       localStorage.removeItem("auth_token");
+      apiService.setAuthToken(null);
       setIsLoading(false);
     }
   };
@@ -190,7 +184,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(response.message || "Profile update failed");
       }
 
-      setUser(response.data.user);
+      // Ensure emailVerified is always a boolean
+      const user = {
+        ...response.data.user,
+        emailVerified: response.data.user.emailVerified ?? false,
+      };
+
+      setUser(user);
     } catch (error) {
       console.error("Profile update error:", error);
       throw error;
@@ -204,20 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
 
     try {
-      const response = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Password change failed");
-      }
+      const { authService } = await import("@/lib/api");
+      await authService.changePassword({ currentPassword, newPassword });
     } catch (error) {
       console.error("Password change error:", error);
       throw error;

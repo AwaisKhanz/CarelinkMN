@@ -1,9 +1,8 @@
 "use client";
 
 import { DataTable } from "@/components/ui/data-table";
-import { Loader2 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/shared";
 import type { VRSPlacement } from "@/lib/api";
-import { VRSEmptyState } from "@/components/vrs";
 import { Users } from "lucide-react";
 import { usePlacementsColumns } from "../hooks/use-placements-columns";
 
@@ -28,16 +27,12 @@ export function PlacementsTable({
   const columns = usePlacementsColumns();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingState message="Loading placements..." />;
   }
 
   if (placements.length === 0) {
     return (
-      <VRSEmptyState
+      <EmptyState
         icon={Users}
         title="No placements found"
         description="Placements will appear here once clients are matched with jobs"

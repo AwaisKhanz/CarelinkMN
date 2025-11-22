@@ -8,6 +8,7 @@ import {
   DischargeInvitation,
   DischargeChecklist,
   HospitalSWAnalytics,
+  UserRole,
 } from '@carelink/types';
 
 /**
@@ -18,7 +19,7 @@ export function useHospitalSWId(): string | null {
   const { user } = useAuth();
   // TODO: Implement hospital staff profile lookup
   // For now, return user ID if user is HOSPITAL_SW
-  if (user?.role === 'HOSPITAL_SW') {
+  if (user?.role === UserRole.HOSPITAL_SW) {
     return user.id;
   }
   return null;

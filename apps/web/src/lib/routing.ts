@@ -26,8 +26,9 @@ export function getDashboardPath(role: UserRole): string {
       return "/vendor/dashboard";
 
     case UserRole.PUBLIC:
+      return "/public/dashboard";
     default:
-      return "/search"; // Public users go to search page
+      return "/public/search"; // Default fallback
   }
 }
 
@@ -57,6 +58,7 @@ export function getAppPath(role: UserRole): string {
       return "/vendor";
 
     case UserRole.PUBLIC:
+      return "/public";
     default:
       return "/app";
   }

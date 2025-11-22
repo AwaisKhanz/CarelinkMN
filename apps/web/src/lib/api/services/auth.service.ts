@@ -1,5 +1,5 @@
 import { apiService } from "../config";
-import { UserRole } from "@carelink/types";
+import { ApiResponse, UserRole } from "@carelink/types";
 
 export interface User {
   id: string;
@@ -121,13 +121,17 @@ export class AuthService {
   }
 
   // Verify email
-  async verifyEmail(token: string): Promise<void> {
-    await apiService.post("/api/auth/verify-email", { token });
+  async verifyEmail(token: string): Promise<ApiResponse<void>> {
+    return await apiService.get<void>(
+      `/api/auth/verify-email?token=${encodeURIComponent(token)}`
+    );
   }
 
   // Resend verification email
-  async resendVerificationEmail(): Promise<void> {
-    await apiService.post("/api/auth/resend-verification");
+  async resendVerificationEmail(email: string): Promise<ApiResponse<void>> {
+    return await apiService.post<void>("/api/auth/resend-verification", {
+      email,
+    });
   }
 
   // Refresh token

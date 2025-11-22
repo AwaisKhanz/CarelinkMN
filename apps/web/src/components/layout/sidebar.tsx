@@ -29,9 +29,10 @@ import {
   MessageSquare,
   ShieldCheck,
   Briefcase,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { UserRole } from "@carelink/types";
+import { UserRole, SubscriptionTier } from "@carelink/types";
 import { getDashboardPath } from "@/lib/routing";
 import { useProviderSafe } from "@/contexts/provider-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,7 +56,7 @@ interface NavItem {
     | "healthcareWarning"
     | "healthcareError"
     | "healthcareInfo";
-  requiresPlan?: "PRO" | "PREMIUM" | "ENTERPRISE";
+  requiresPlan?: SubscriptionTier;
 }
 
 interface ProviderNavPermissions {
@@ -340,12 +341,30 @@ const getNavItems = (
       ];
 
     case UserRole.PUBLIC:
+      return [
+        ...baseItems,
+        {
+          title: "Search Providers",
+          href: "/public/search",
+          icon: Search,
+        },
+        {
+          title: "My Favorites",
+          href: "/public/favorites",
+          icon: Heart,
+        },
+        {
+          title: "Settings",
+          href: "/public/settings",
+          icon: Settings,
+        },
+      ];
     default:
       return [
         ...baseItems,
         {
           title: "Search Providers",
-          href: "/search",
+          href: "/public/search",
           icon: Search,
         },
         {

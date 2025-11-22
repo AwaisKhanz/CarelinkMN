@@ -9,10 +9,7 @@ import { VRSClientStatus } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  VRSLoadingState,
-  VRSErrorState,
-} from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 import {
   ClientsHeader,
   ClientsStats,
@@ -108,16 +105,18 @@ function VRSClientsPageContent() {
   });
 
   if (isLoading && clients.length === 0) {
-    return <VRSLoadingState message="Loading clients..." />;
+    return <LoadingState message="Loading clients..." />;
   }
 
   if (error && clients.length === 0) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Clients"
         message={error}
         action={{
           label: "Retry",
           onClick: handleRefresh,
+          variant: "healthcare",
         }}
       />
     );

@@ -12,11 +12,7 @@ import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
-import {
-  VendorLoadingState,
-  VendorErrorState,
-  VendorEmptyState,
-} from "@/components/vendor";
+import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { ColumnDef } from "@tanstack/react-table";
 import { TransportBooking, BookingStatus } from "@carelink/types";
 import { getBookingStatusBadgeConfig } from "@/lib/utils/vendor";
@@ -183,16 +179,18 @@ export default function VendorBookingsPage() {
   );
 
   if (isLoading && !vendorId) {
-    return <VendorLoadingState message="Loading bookings..." />;
+    return <LoadingState message="Loading bookings..." />;
   }
 
   if (error && !vendorId) {
     return (
-      <VendorErrorState
+      <ErrorState
+        title="Error Loading Bookings"
         message={error}
         action={{
           label: "Retry",
           onClick: fetchVendor,
+          variant: "healthcare",
         }}
       />
     );
@@ -255,17 +253,20 @@ export default function VendorBookingsPage() {
         </div>
 
         {isLoading ? (
-          <VendorLoadingState message="Loading bookings..." />
+          <LoadingState message="Loading bookings..." />
         ) : error ? (
-          <VendorErrorState
+          <ErrorState
+            title="Error Loading Bookings"
             message={error}
             action={{
               label: "Retry",
               onClick: fetchBookings,
+              variant: "healthcare",
             }}
           />
         ) : bookings.length === 0 ? (
-          <VendorEmptyState
+          <EmptyState
+            icon={Calendar}
             title="No bookings found"
             description="You don't have any bookings yet. Bookings will appear here when transport requests are assigned to you."
           />

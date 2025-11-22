@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Controller } from "react-hook-form";
-import { VRSLoadingState, VRSErrorState } from "@/components/vrs";
+import { LoadingState, ErrorState } from "@/components/shared";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,16 +151,18 @@ function UpdateRetentionPageContent() {
   };
 
   if (isLoading) {
-    return <VRSLoadingState message="Loading placement..." />;
+    return <LoadingState message="Loading placement..." />;
   }
 
   if (error || !placement) {
     return (
-      <VRSErrorState
+      <ErrorState
+        title="Error Loading Placement"
         message={error || "Placement not found"}
         action={{
           label: "Back to Jobs",
           onClick: () => router.push("/vrs/jobs"),
+          variant: "healthcare",
         }}
       />
     );
@@ -239,16 +241,16 @@ function UpdateRetentionPageContent() {
                   control={form.control}
                   render={({ field }) => (
                     <Select
-                      value={field.value || ""}
+                      value={field.value || "__UNSET__"}
                       onValueChange={(value) =>
-                        field.onChange(value === "" ? null : value)
+                        field.onChange(value === "__UNSET__" ? null : value)
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Not set" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not set</SelectItem>
+                        <SelectItem value="__UNSET__">Not set</SelectItem>
                         {Object.values(RetentionStatus).map((status) => (
                           <SelectItem key={status} value={status}>
                             {status.replace(/_/g, " ")}
@@ -267,16 +269,16 @@ function UpdateRetentionPageContent() {
                   control={form.control}
                   render={({ field }) => (
                     <Select
-                      value={field.value || ""}
+                      value={field.value || "__UNSET__"}
                       onValueChange={(value) =>
-                        field.onChange(value === "" ? null : value)
+                        field.onChange(value === "__UNSET__" ? null : value)
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Not set" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not set</SelectItem>
+                        <SelectItem value="__UNSET__">Not set</SelectItem>
                         {Object.values(RetentionStatus).map((status) => (
                           <SelectItem key={status} value={status}>
                             {status.replace(/_/g, " ")}
@@ -295,16 +297,16 @@ function UpdateRetentionPageContent() {
                   control={form.control}
                   render={({ field }) => (
                     <Select
-                      value={field.value || ""}
+                      value={field.value || "__UNSET__"}
                       onValueChange={(value) =>
-                        field.onChange(value === "" ? null : value)
+                        field.onChange(value === "__UNSET__" ? null : value)
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Not set" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not set</SelectItem>
+                        <SelectItem value="__UNSET__">Not set</SelectItem>
                         {Object.values(RetentionStatus).map((status) => (
                           <SelectItem key={status} value={status}>
                             {status.replace(/_/g, " ")}

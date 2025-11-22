@@ -14,12 +14,7 @@ import { format } from "date-fns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import {
-  AdminLoadingState,
-  AdminErrorState,
-  AdminEmptyState,
-  AdminStatsGrid,
-} from "@/components/admin";
+import { LoadingState, ErrorState, EmptyState, StatsGrid } from "@/components/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -287,13 +282,13 @@ function AdminCompliancePageContent() {
 
   if (isLoading && issues.length === 0) {
     return (
-      <AdminLoadingState message="Loading compliance issues..." fullHeight />
+      <LoadingState message="Loading compliance issues..." fullHeight />
     );
   }
 
   if (error && issues.length === 0) {
     return (
-      <AdminErrorState
+      <ErrorState
         title="Error Loading Compliance Issues"
         message={error}
         action={{
@@ -308,7 +303,7 @@ function AdminCompliancePageContent() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <AdminStatsGrid stats={stats} columns={4} />
+      <StatsGrid stats={stats} columns={4} variant="card" />
 
       {/* Filters and Search */}
       <Card variant="healthcare">
@@ -358,7 +353,7 @@ function AdminCompliancePageContent() {
           </div>
 
           {issues.length === 0 ? (
-            <AdminEmptyState
+            <EmptyState
               icon={ShieldCheck}
               title="No compliance issues found"
               description="No compliance issues match your current filters"
