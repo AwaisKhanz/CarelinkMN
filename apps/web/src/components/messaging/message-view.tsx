@@ -41,6 +41,9 @@ interface MessageViewProps {
   referralId?: string;
   dischargeCaseId?: string;
   canCreateThread?: boolean;
+  // Real-time features
+  typingUsers?: string[];
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
 export function MessageView({
@@ -64,6 +67,8 @@ export function MessageView({
   referralId,
   dischargeCaseId,
   canCreateThread = false,
+  typingUsers = [],
+  onTypingChange,
 }: MessageViewProps) {
   // If providerId is provided but no thread, show "Start Conversation" UI
   if (!thread && canCreateThread && providerId) {
@@ -96,6 +101,7 @@ export function MessageView({
             onFileSelect={onFileSelect}
             fileInputRef={fileInputRef}
             isThreadClosed={false}
+            onTypingChange={onTypingChange}
           />
         </CardContent>
       </Card>
@@ -133,6 +139,7 @@ export function MessageView({
           messages={messages}
           currentUserId={currentUserId}
           messagesEndRef={messagesEndRef}
+          typingUsers={typingUsers}
         />
 
         {/* Message Input */}
@@ -147,6 +154,7 @@ export function MessageView({
           onFileSelect={onFileSelect}
           fileInputRef={fileInputRef}
           isThreadClosed={thread.status === ThreadStatusEnum.CLOSED}
+          onTypingChange={onTypingChange}
         />
       </CardContent>
     </Card>

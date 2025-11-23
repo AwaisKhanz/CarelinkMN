@@ -100,6 +100,7 @@ router.post(
 );
 
 router.get("/profile", authMiddleware.requireAuth, authController.getProfile);
+router.get("/me", authMiddleware.requireAuth, authController.me);
 
 // Phone verification routes
 router.post(

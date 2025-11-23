@@ -191,6 +191,7 @@ export interface SessionUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  emailVerified: boolean;
   organizationId?: string;
   organization?: {
     id: string;

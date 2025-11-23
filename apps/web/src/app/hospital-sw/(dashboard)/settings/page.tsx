@@ -144,7 +144,6 @@ function HospitalSWSettingsPageContent() {
         }
       } catch (err) {
         // Hospital staff may not exist for all users, that's okay
-        console.log("No hospital staff profile found:", err);
       }
     } catch (err) {
       console.error("Error loading user data:", err);
@@ -197,7 +196,6 @@ function HospitalSWSettingsPageContent() {
           });
         } catch (err) {
           // Hospital staff may not exist, that's okay - just log it
-          console.log("Could not update hospital staff profile:", err);
         }
 
         toast.success("Profile updated successfully");

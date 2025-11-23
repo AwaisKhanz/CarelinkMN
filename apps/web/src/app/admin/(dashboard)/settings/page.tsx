@@ -32,8 +32,12 @@ function AdminSettingsPageContent() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // TODO: Implement settings save
-      toast.success("Settings saved successfully");
+      // Placeholder for future implementation
+      // Settings are currently read-only and managed via environment variables
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      toast.info("Settings are currently read-only", {
+        description: "System settings are managed via environment variables",
+      });
     } catch (error) {
       toast.error("Failed to save settings");
     } finally {

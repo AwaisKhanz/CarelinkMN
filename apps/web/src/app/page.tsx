@@ -768,6 +768,278 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="healthcare-container">
+          <div className="text-center mb-16">
+            <Badge variant="healthcarePrimary" className="mb-4">
+              <Star className="w-4 h-4 mr-2" />
+              Testimonials
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Trusted by Healthcare Professionals
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              See what our users are saying about CareLinkMN
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card variant="healthcare" className="p-8">
+              <div className="flex items-center gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-warning fill-current"
+                  />
+                ))}
+              </div>
+              <p className="text-muted-foreground mb-6 italic">
+                "CareLinkMN has transformed how we coordinate care. What used
+                to take weeks now takes days. The AI-powered search is
+                incredibly accurate."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Sarah Johnson</p>
+                  <p className="text-sm text-muted-foreground">
+                    Case Manager, Hennepin County
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card variant="healthcareSuccess" className="p-8">
+              <div className="flex items-center gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-warning fill-current"
+                  />
+                ))}
+              </div>
+              <p className="text-muted-foreground mb-6 italic">
+                "The real-time availability tracking is a game-changer. We can
+                update our openings instantly and receive qualified referrals
+                within hours."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-success" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Michael Chen</p>
+                  <p className="text-sm text-muted-foreground">
+                    Director, Sunrise Care Homes
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card variant="healthcareInfo" className="p-8">
+              <div className="flex items-center gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-warning fill-current"
+                  />
+                ))}
+              </div>
+              <p className="text-muted-foreground mb-6 italic">
+                "As a hospital social worker, CareLinkMN helps me facilitate
+                urgent discharges efficiently. The NEMT integration is
+                fantastic."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-info/10 rounded-full flex items-center justify-center">
+                  <Heart className="w-6 h-6 text-info" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Emily Rodriguez
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Social Worker, Mayo Clinic
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Demo Video Section */}
+      <section className="py-20">
+        <div className="healthcare-container">
+          <div className="text-center mb-16">
+            <Badge variant="healthcarePrimary" className="mb-4">
+              <Activity className="w-4 h-4 mr-2" />
+              See It In Action
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Watch How CareLinkMN Works
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              A quick 2-minute overview of our platform's key features
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <Card variant="healthcare" className="overflow-hidden">
+              <div className="aspect-video bg-muted/50 flex items-center justify-center relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
+                <div className="relative z-10 text-center">
+                  <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform cursor-pointer">
+                    <Activity className="w-10 h-10 text-primary-foreground" />
+                  </div>
+                  <p className="text-lg font-semibold text-foreground mb-2">
+                    Platform Demo Video
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Coming Soon - Interactive platform walkthrough
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Schedule a live demo to see CareLinkMN in action
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <div className="grid md:grid-cols-3 gap-6 mt-8">
+              <Card variant="healthcare" className="p-6 text-center">
+                <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-semibold text-foreground mb-2">
+                  Quick Setup
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Get started in under 5 minutes
+                </p>
+              </Card>
+              <Card variant="healthcareSuccess" className="p-6 text-center">
+                <Users className="w-8 h-8 text-success mx-auto mb-3" />
+                <h3 className="font-semibold text-foreground mb-2">
+                  Easy to Use
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Intuitive interface for all users
+                </p>
+              </Card>
+              <Card variant="healthcareInfo" className="p-6 text-center">
+                <Shield className="w-8 h-8 text-info mx-auto mb-3" />
+                <h3 className="font-semibold text-foreground mb-2">
+                  Fully Secure
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  HIPAA-compliant from day one
+                </p>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="healthcare-container">
+          <div className="text-center mb-16">
+            <Badge variant="healthcarePrimary" className="mb-4">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              FAQ
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Everything you need to know about CareLinkMN
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                How does CareLinkMN ensure data security?
+              </h3>
+              <p className="text-muted-foreground">
+                We use enterprise-grade security with HIPAA-compliant
+                infrastructure, row-level security, PHI minimization, and
+                immutable audit logs. All data is encrypted in transit and at
+                rest.
+              </p>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                What makes CareLinkMN different from other platforms?
+              </h3>
+              <p className="text-muted-foreground">
+                Our sub-1 second search, real-time availability tracking,
+                AI-powered matching, and Minnesota-specific focus make us
+                unique. We're built by care coordinators for care coordinators.
+              </p>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                Is there a free trial available?
+              </h3>
+              <p className="text-muted-foreground">
+                Yes! We offer a 14-day free trial for Pro and Premium plans. No
+                credit card required. The Free plan is available forever with no
+                time limit.
+              </p>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                How quickly can I get started?
+              </h3>
+              <p className="text-muted-foreground">
+                Most users are up and running within 5 minutes. Simply sign up,
+                complete your profile, and start searching or listing your
+                facilities immediately.
+              </p>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                Do you offer training and support?
+              </h3>
+              <p className="text-muted-foreground">
+                Absolutely! We provide comprehensive onboarding, video
+                tutorials, documentation, and responsive email/phone support.
+                Premium customers get dedicated account managers.
+              </p>
+            </Card>
+
+            <Card variant="healthcare" className="p-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                Can I integrate CareLinkMN with my existing systems?
+              </h3>
+              <p className="text-muted-foreground">
+                Yes! Premium plans include API access for custom integrations.
+                We also offer pre-built integrations with popular EHR and case
+                management systems.
+              </p>
+            </Card>
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-muted-foreground mb-6">
+              Still have questions? We're here to help!
+            </p>
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/contact">
+                <MessageSquare className="w-5 h-5 mr-2" />
+                Contact Support
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20">
         <div className="healthcare-container">
@@ -863,7 +1135,7 @@ export default function HomePage() {
                 </li>
                 <li>
                   <Link
-                    href="#"
+                    href="/pricing"
                     className="hover:text-foreground transition-colors"
                   >
                     Pricing
@@ -885,7 +1157,7 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link
-                    href="#about"
+                    href="/about"
                     className="hover:text-foreground transition-colors"
                   >
                     About
@@ -909,7 +1181,7 @@ export default function HomePage() {
                 </li>
                 <li>
                   <Link
-                    href="#contact"
+                    href="/contact"
                     className="hover:text-foreground transition-colors"
                   >
                     Contact

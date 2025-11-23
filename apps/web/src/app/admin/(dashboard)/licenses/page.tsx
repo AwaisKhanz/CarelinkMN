@@ -248,8 +248,12 @@ function AdminLicensesPageContent() {
         accessorKey: "providerId",
         header: "Provider",
         cell: ({ row }: { row: { original: License } }) => {
-          // TODO: Fetch provider name if needed
-          return `Provider ${row.original.providerId.slice(0, 8)}...`;
+          const providerId = row.original.providerId;
+          return (
+            <div className="font-mono text-sm">
+              {providerId.slice(0, 8)}...
+            </div>
+          );
         },
       },
       {

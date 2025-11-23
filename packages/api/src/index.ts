@@ -2,6 +2,7 @@ import app from "./app";
 import { db } from "@carelink/database";
 import * as cron from "node-cron";
 import { ScheduledJobService } from "./services/scheduled-job.service";
+import { initializeSocketServer } from "./websocket/socket.server";
 
 const PORT = process.env.PORT || 3001;
 const scheduledJobService = new ScheduledJobService();
@@ -34,13 +35,16 @@ const startServer = async () => {
     console.log("✅ Database connected successfully");
 
     // Start HTTP server
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 API server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth`);
       console.log(`📋 Audit endpoints: http://localhost:${PORT}/api/audit`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
     });
+
+    // Initialize Socket.IO
+    initializeSocketServer(server);
 
     // Schedule background jobs
     // Run every hour: enforce opening freshness and check license expiry

@@ -425,6 +425,7 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role as SharedUserRole,
+      emailVerified: !!user.emailVerified,
       organizationId: user.organizationId || undefined,
       organization: (user as any).organization
         ? {
@@ -453,6 +454,20 @@ export class AuthService {
       return this.formatUserResponse(user);
     } catch (error) {
       return null;
+    }
+  }
+
+  // Get user by ID
+  async getUserById(userId: string): Promise<SessionUser | null> {
+    try {
+      const user = await this.authRepository.findUserById(userId);
+      if (!user) {
+        return null;
+      }
+      return this.formatUserResponse(user);
+    } catch (error) {
+      console.error("Get user by ID error:", error);
+      throw new Error("Failed to get user");
     }
   }
 

@@ -10,12 +10,14 @@ interface MessageListProps {
   messages: Message[];
   currentUserId?: string;
   messagesEndRef: RefObject<HTMLDivElement>;
+  typingUsers?: string[]; // New prop for typing indicators
 }
 
 export function MessageList({
   messages,
   currentUserId,
   messagesEndRef,
+  typingUsers = [],
 }: MessageListProps) {
   return (
     <ScrollArea className="flex-1 mb-4">
@@ -34,6 +36,23 @@ export function MessageList({
                 isOwnMessage={message.senderId === currentUserId}
               />
             ))}
+            
+            {/* Typing Indicator */}
+            {typingUsers.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span>
+                  {typingUsers.length === 1
+                    ? "Someone is typing..."
+                    : `${typingUsers.length} people are typing...`}
+                </span>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </>
         )}
@@ -41,4 +60,3 @@ export function MessageList({
     </ScrollArea>
   );
 }
-

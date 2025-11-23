@@ -22,6 +22,7 @@ import { notificationService, Notification } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
 
 interface HeaderProps {
   title: string;
@@ -50,41 +51,50 @@ export function Header({
   const providerContext = useProviderSafe();
   const providerLogo = providerContext?.provider?.logo;
 
-  // Fetch notifications
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      setIsLoadingNotifications(true);
-      const response = await notificationService.getNotifications({
-        limit: 10,
-        isRead: false,
-      });
-      
-      if (response.success && response.data) {
-        setNotifications(response.data.notifications);
-        setUnreadCount(response.data.unreadCount);
-      }
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
-  }, [user]);
+  // Real-time notifications hook (replaces polling)
+  useRealTimeNotifications({
+    onNewNotification: (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    },
+    onNotificationRead: (notificationId) => {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    },
+    onAllNotificationsRead: () => {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    },
+    showToast: true, // Show toast notifications for new items
+  });
 
-  // Fetch notifications on mount and set up polling
+  // Fetch initial notifications on mount
   useEffect(() => {
     if (!user) return;
     
-    fetchNotifications();
+    const fetchInitialNotifications = async () => {
+      try {
+        setIsLoadingNotifications(true);
+        const response = await notificationService.getNotifications({
+          limit: 10,
+          isRead: false,
+        });
+        
+        if (response.success && response.data) {
+          setNotifications(response.data.notifications);
+          setUnreadCount(response.data.unreadCount);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setIsLoadingNotifications(false);
+      }
+    };
     
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [user, fetchNotifications]);
+    fetchInitialNotifications();
+  }, [user]);
 
   // Handle notification click
   const handleNotificationClick = async (notification: Notification) => {

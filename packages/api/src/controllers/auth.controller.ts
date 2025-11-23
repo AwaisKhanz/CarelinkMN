@@ -39,6 +39,7 @@ export class AuthController {
     this.verifyEmail = this.verifyEmail.bind(this);
     this.resendVerification = this.resendVerification.bind(this);
     this.getProfile = this.getProfile.bind(this);
+    this.me = this.me.bind(this);
   }
 
   // Register new user (handles all roles intelligently)
@@ -351,6 +352,46 @@ export class AuthController {
         success: false,
         error: "Profile retrieval failed",
         message: "An error occurred while retrieving profile",
+      } as ApiResponse);
+    }
+  }
+
+  // Get current user (me)
+  async me(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as unknown as AuthenticatedRequest).user?.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const user = await this.authService.getUserById(userId);
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error: "Not Found",
+          message: "User not found",
+        } as ApiResponse);
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: user,
+        message: "User retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get me error:", error);
+      res.status(500).json({
+        success: false,
+        error: "User retrieval failed",
+        message: "An error occurred while retrieving user",
       } as ApiResponse);
     }
   }

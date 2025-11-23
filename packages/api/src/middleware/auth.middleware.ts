@@ -55,6 +55,7 @@ export class AuthMiddleware {
         firstName: '', // Will be populated from database if needed
         lastName: '',  // Will be populated from database if needed
         role: payload.role,
+        emailVerified: false, // Default to false for token-based auth until refreshed
         organizationId: payload.organizationId,
       };
 

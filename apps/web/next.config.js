@@ -51,7 +51,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self'",
-              "connect-src 'self' http://localhost:3001 https://api.mapbox.com",
+              "connect-src 'self' http://localhost:3001 ws://localhost:3001 https://api.mapbox.com",
               "frame-src 'self'",
             ].join("; "),
           },

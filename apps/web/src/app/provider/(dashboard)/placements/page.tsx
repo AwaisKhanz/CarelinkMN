@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +73,7 @@ const STATUS_CONFIG = PLACEMENT_STATUS_CONFIG;
 
 function PlacementsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -85,7 +86,11 @@ function PlacementsPageContent() {
   // State for server-side filtering and pagination
   const [searchQuery, setSearchQuery] = useState<string>("");
   const debouncedSearch = useDebounce(searchQuery, 500);
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>(() => {
+    const statusParam = searchParams.get("status");
+    if (statusParam === "ACTIVE") return PlacementStatus.IN_PROGRESS;
+    return statusParam || "all";
+  });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,

@@ -67,14 +67,10 @@ export function OrganizationSetup({ data, onComplete, onValidate }: Organization
   useEffect(() => {
     if (onValidate) {
       const validateAndComplete = async () => {
-        console.log("🔍 OrganizationSetup: validateAndComplete called", { formData });
         const isValid = validateForm();
-        console.log("🔍 OrganizationSetup: validation result", isValid);
         if (isValid) {
-          console.log("✅ OrganizationSetup: calling onComplete with formData", formData);
           // Call onComplete and wait for it to complete
           await onComplete(formData);
-          console.log("✅ OrganizationSetup: onComplete finished");
         }
         return isValid;
       };

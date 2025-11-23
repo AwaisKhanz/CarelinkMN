@@ -13,15 +13,17 @@ import {
 
 /**
  * Hook to get hospital SW user ID
- * This would fetch the hospital staff profile associated with the user
+ * Returns the user ID for hospital social workers
  */
 export function useHospitalSWId(): string | null {
   const { user } = useAuth();
-  // TODO: Implement hospital staff profile lookup
-  // For now, return user ID if user is HOSPITAL_SW
+  
+  // Return user ID if user is HOSPITAL_SW
+  // The user ID serves as the hospital staff profile ID
   if (user?.role === UserRole.HOSPITAL_SW) {
     return user.id;
   }
+  
   return null;
 }
 

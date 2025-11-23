@@ -38,6 +38,7 @@ import notificationRoutes from "./routes/notification.routes";
 import messageTemplateRoutes from "./routes/message-template.routes";
 import dischargeCaseRoutes from "./routes/discharge-case.routes";
 import publicRoutes from "./routes/public.routes";
+import contactRoutes from "./routes/contact.routes";
 
 // Import middleware
 import {
@@ -178,6 +179,7 @@ app.use("/api", aiSearchRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api", messageTemplateRoutes);
 app.use("/api", dischargeCaseRoutes);
+app.use("/api/contact", contactRoutes); // Public contact form
 
 // 404 handler
 app.use(notFoundHandler);

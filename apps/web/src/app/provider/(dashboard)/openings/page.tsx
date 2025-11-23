@@ -33,6 +33,8 @@ import {
   Loader2,
   XCircle,
   CheckCircle,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -68,6 +70,7 @@ import { ProviderDeleteDialog } from "@/components/provider";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { usePermissions } from "@/hooks/use-permissions";
+import { OpeningsKanban } from "./openings-kanban";
 
 function OpeningsPageContent() {
   const router = useRouter();
@@ -111,6 +114,7 @@ function OpeningsPageContent() {
     total: 0,
     pages: 0,
   });
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
 
   // Debounce search query
   const debouncedSearch = useDebounce(searchQuery, 500);
@@ -734,6 +738,24 @@ function OpeningsPageContent() {
         </div>
         {canManageOpenings && (
           <div className="flex items-center gap-2">
+            <div className="flex items-center border rounded-md bg-background mr-2">
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-2 rounded-none rounded-l-md"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "kanban" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-2 rounded-none rounded-r-md"
+                onClick={() => setViewMode("kanban")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               variant="outline"
               onClick={handleRefresh}
@@ -794,10 +816,24 @@ function OpeningsPageContent() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Bulk Actions Toolbar */}
-            {canManageOpenings && selectedOpenings.length > 0 && (
-              <BulkActionsToolbar
-                selectedCount={selectedOpenings.length}
+            {viewMode === "kanban" ? (
+              <div className="h-[calc(100vh-400px)] min-h-[500px]">
+                <OpeningsKanban
+                  openings={openings}
+                  onStatusChange={handleStatusChange}
+                  onRefresh={handleRefreshOpening}
+                  onDelete={handleDeleteOpening}
+                  onView={(id) => router.push(`/provider/openings/${id}`)}
+                  onEdit={(id) => router.push(`/provider/openings/${id}/edit`)}
+                  canManageOpenings={canManageOpenings}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Bulk Actions Toolbar */}
+                {canManageOpenings && selectedOpenings.length > 0 && (
+                  <BulkActionsToolbar
+                    selectedCount={selectedOpenings.length}
                 totalCount={openings.length}
                 onSelectAll={handleSelectAll}
                 onDeselectAll={handleDeselectAll}
@@ -909,7 +945,10 @@ function OpeningsPageContent() {
               }
               emptyMessage="No openings found. Create a new opening to get started."
             />
+              </>
+            )}
           </div>
+          
         </CardContent>
       </Card>
 

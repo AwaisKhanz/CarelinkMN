@@ -1,6 +1,6 @@
 "use client";
 
-import { RefObject } from "react";
+import { RefObject, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,7 @@ interface MessageInputProps {
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: RefObject<HTMLInputElement>;
   isThreadClosed?: boolean;
+  onTypingChange?: (isTyping: boolean) => void; // New prop for typing indicator
 }
 
 export function MessageInput({
@@ -31,7 +32,39 @@ export function MessageInput({
   onFileSelect,
   fileInputRef,
   isThreadClosed = false,
+  onTypingChange,
 }: MessageInputProps) {
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle typing indicator
+  useEffect(() => {
+    if (!onTypingChange || isThreadClosed) return;
+
+    // User is typing
+    if (messageContent.length > 0) {
+      onTypingChange(true);
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set timeout to stop typing indicator after 3 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        onTypingChange(false);
+      }, 3000);
+    } else {
+      // No content, stop typing indicator
+      onTypingChange(false);
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [messageContent, onTypingChange, isThreadClosed]);
+
   return (
     <>
       <Separator className="mb-4" />
