@@ -510,7 +510,100 @@ export class MessagingService {
     });
 
     // Fetch the complete thread with relations
-    return await this.getThreadById(result.id, userId);
+    const thread = await this.getThreadById(result.id, userId);
+
+    // Create notification for the recipient
+    try {
+      const threadWithContext = await db.messageThread.findUnique({
+        where: { id: result.id },
+        include: {
+          referral: {
+            select: {
+              id: true,
+              referralNumber: true,
+            },
+          },
+          dischargeCase: {
+            select: {
+              id: true,
+              caseNumber: true,
+            },
+          },
+          provider: {
+            include: {
+              organization: {
+                select: {
+                  users: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (threadWithContext) {
+        // Determine recipient IDs (opposite of sender)
+        const recipientIds: string[] = [];
+        
+        // If case manager created thread, notify provider users
+        if (isCaseManager || isHospitalSW) {
+          if (threadWithContext.provider?.organization?.users) {
+            recipientIds.push(
+              ...threadWithContext.provider.organization.users
+                .filter((u) => u.id !== userId)
+                .map((u) => u.id)
+            );
+          }
+        } else {
+          // If provider created thread (unlikely for now as providers can't initiate usually, but for future proofing)
+          // Notify initiator (which would be the provider user themselves in this case, so maybe notify case manager if we had one linked? 
+          // But threads are usually initiated by CMs. If provider initiates, it's usually a general inquiry or response to something else.
+          // For now, let's assume CM initiates. If provider initiates, we might need to find who to notify.
+          // But wait, createThread logic says: "Case managers and hospital SW can message any provider".
+          // "Providers can only create threads for their own provider organization" -> this implies internal messaging? 
+          // Or messaging a CM? The schema links thread to referral/dischargeCase.
+          // If linked to referral, we can notify the referral's case manager.
+          
+          if (referralId) {
+            const referral = await db.referral.findUnique({
+              where: { id: referralId },
+              select: { caseManagerId: true }
+            });
+            if (referral?.caseManagerId) {
+              recipientIds.push(referral.caseManagerId);
+            }
+          }
+        }
+
+        if (recipientIds.length > 0) {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+
+          const contextInfo = threadWithContext.referral
+            ? `Referral ${threadWithContext.referral.referralNumber}`
+            : threadWithContext.dischargeCase
+              ? `Discharge Case ${threadWithContext.dischargeCase.caseNumber}`
+              : "General inquiry";
+
+          for (const recipientId of recipientIds) {
+            await notificationService.createNotification({
+              userId: recipientId,
+              type: NotificationType.MESSAGE_NEW,
+              title: "New Message Thread",
+              message: `New conversation started regarding ${contextInfo}.`,
+              channels: ["IN_APP", "EMAIL"],
+              actionUrl: `/messages?threadId=${result.id}`,
+            });
+          }
+        }
+      }
+    } catch (notifError) {
+      console.error("Failed to create thread notification:", notifError);
+    }
+
+    return thread;
   }
 
   /**

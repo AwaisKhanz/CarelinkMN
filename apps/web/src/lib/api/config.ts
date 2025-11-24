@@ -45,10 +45,19 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Token expired or invalid
+      // Only redirect if we're not already on an auth page and we had a token
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token");
-        window.location.href = "/auth/signin";
+        const currentPath = window.location.pathname;
+        const isAuthPage = currentPath.startsWith("/auth/");
+        const hadToken = localStorage.getItem("auth_token");
+        
+        // Only redirect if:
+        // 1. We're not already on an auth page (to prevent redirect loops)
+        // 2. We had a token that became invalid (not a failed login attempt)
+        if (!isAuthPage && hadToken) {
+          localStorage.removeItem("auth_token");
+          window.location.href = "/auth/signin";
+        }
       }
     }
 

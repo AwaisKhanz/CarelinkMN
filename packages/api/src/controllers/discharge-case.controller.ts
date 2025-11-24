@@ -1,14 +1,17 @@
 import { Request, Response } from "express";
 import { DischargeCaseService } from "../services/discharge-case.service";
+import { DischargeMatchingService } from "../services/discharge-matching.service";
 import { ApiResponse, AuthenticatedRequest } from "../types";
 import { validationResult } from "express-validator";
 import { DischargeStatus } from "@carelink/types";
 
 export class DischargeCaseController {
   private dischargeCaseService: DischargeCaseService;
+  private matchingService: DischargeMatchingService;
 
   constructor() {
     this.dischargeCaseService = new DischargeCaseService();
+    this.matchingService = new DischargeMatchingService();
 
     // Bind methods to preserve 'this' context
     this.createDischargeCase = this.createDischargeCase.bind(this);
@@ -21,6 +24,8 @@ export class DischargeCaseController {
     this.getDischargeChecklist = this.getDischargeChecklist.bind(this);
     this.updateDischargeChecklist = this.updateDischargeChecklist.bind(this);
     this.triggerAIMatching = this.triggerAIMatching.bind(this);
+    this.getProviderMatchScore = this.getProviderMatchScore.bind(this);
+    this.getTopMatchedProviders = this.getTopMatchedProviders.bind(this);
   }
 
   /**
@@ -550,6 +555,105 @@ export class DischargeCaseController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving analytics",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get match score for a specific provider
+   * GET /api/discharge-cases/:id/match/:providerId
+   */
+  async getProviderMatchScore(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: caseId, providerId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const score = await this.matchingService.calculateMatchScore(
+        caseId,
+        providerId
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          caseId,
+          providerId,
+          score,
+        },
+        message: "Match score calculated successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get provider match score error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to calculate match score",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while calculating the match score",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get top-matched providers for a discharge case
+   * GET /api/discharge-cases/:id/top-providers
+   */
+  async getTopMatchedProviders(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: caseId } = req.params;
+      const { limit = "10" } = req.query;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const topProviders = await this.matchingService.getTopProvidersForCase(
+        caseId,
+        parseInt(limit as string, 10)
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          caseId,
+          providers: topProviders,
+          count: topProviders.length,
+        },
+        message: "Top providers retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get top matched providers error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to retrieve top providers",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving top providers",
       } as ApiResponse);
     }
   }

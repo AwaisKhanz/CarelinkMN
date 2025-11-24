@@ -557,5 +557,33 @@ router.get(
   dischargeCaseController.getHospitalSWAnalytics.bind(dischargeCaseController)
 );
 
+// Discharge case matching endpoints
+// Get match score for a specific provider - Hospital SW can view scores
+router.get(
+  "/discharge-cases/:id/match/:providerId",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW),
+  [
+    param("id").isUUID().withMessage("Discharge case ID must be a valid UUID"),
+    param("providerId").isUUID().withMessage("Provider ID must be a valid UUID"),
+  ],
+  validate([]),
+  dischargeCaseController.getProviderMatchScore.bind(dischargeCaseController)
+);
+
+// Get top-matched providers for a discharge case - Hospital SW can view
+router.get(
+  "/discharge-cases/:id/top-providers",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW),
+  [
+    param("id").isUUID().withMessage("Discharge case ID must be a valid UUID"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 50 })
+      .withMessage("Limit must be between 1 and 50"),
+  ],
+  validate([]),
+  dischargeCaseController.getTopMatchedProviders.bind(dischargeCaseController)
+);
+
 export default router;
 

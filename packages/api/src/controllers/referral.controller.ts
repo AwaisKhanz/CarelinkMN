@@ -1,14 +1,17 @@
 import { Request, Response } from "express";
 import { ReferralService } from "../services/referral.service";
+import { ReferralScoringService } from "../services/referral-scoring.service";
 import { ApiResponse, AuthenticatedRequest } from "../types";
 import { validationResult } from "express-validator";
 import { ReferralStatus, Urgency, Payer } from "@carelink/types";
 
 export class ReferralController {
   private referralService: ReferralService;
+  private scoringService: ReferralScoringService;
 
   constructor() {
     this.referralService = new ReferralService();
+    this.scoringService = new ReferralScoringService();
 
     // Bind methods to preserve 'this' context
     this.createReferral = this.createReferral.bind(this);
@@ -24,6 +27,8 @@ export class ReferralController {
     this.batchMessageProviders = this.batchMessageProviders.bind(this);
     this.assignReferral = this.assignReferral.bind(this);
     this.getReferralTimeline = this.getReferralTimeline.bind(this);
+    this.getProviderScore = this.getProviderScore.bind(this);
+    this.getTopProviders = this.getTopProviders.bind(this);
   }
 
   /**
@@ -680,6 +685,105 @@ export class ReferralController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving the referral timeline",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get referral score for a specific provider
+   * GET /api/referrals/:id/score/:providerId
+   */
+  async getProviderScore(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: referralId, providerId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const score = await this.scoringService.calculateScore(
+        referralId,
+        providerId
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          referralId,
+          providerId,
+          score,
+        },
+        message: "Referral score calculated successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get provider score error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to calculate referral score",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while calculating the referral score",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get top-ranked providers for a referral
+   * GET /api/referrals/:id/top-providers
+   */
+  async getTopProviders(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: referralId } = req.params;
+      const { limit = "10" } = req.query;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const topProviders = await this.scoringService.getTopProvidersForReferral(
+        referralId,
+        parseInt(limit as string, 10)
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          referralId,
+          providers: topProviders,
+          count: topProviders.length,
+        },
+        message: "Top providers retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get top providers error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to retrieve top providers",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving top providers",
       } as ApiResponse);
     }
   }

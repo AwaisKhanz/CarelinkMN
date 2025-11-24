@@ -28,6 +28,7 @@ const protectedRoutes = {
 // Public routes that don't require authentication
 const publicRoutes = [
   "/",
+  "/contact",
   "/auth/signin",
   "/auth/signup",
   "/auth/verify-email",

@@ -265,7 +265,106 @@ export interface GetThreadsParams {
 }
 
 // ============================================
-// LICENSE TYPES
+// NOTIFICATION TYPES
+// ============================================
+
+export enum NotificationType {
+  // PUBLIC (Family Member)
+  REQUEST_ASSIGNED = "REQUEST_ASSIGNED",
+  REQUEST_STATUS_UPDATE = "REQUEST_STATUS_UPDATE",
+  REQUEST_CONVERTED = "REQUEST_CONVERTED",
+
+  // CASE_MANAGER
+  NEW_REFERRAL_REQUEST = "NEW_REFERRAL_REQUEST",
+  PROVIDER_RESPONSE = "PROVIDER_RESPONSE",
+  PLACEMENT_UPDATE = "PLACEMENT_UPDATE",
+  URGENT_CASE_ALERT = "URGENT_CASE_ALERT",
+
+  // PROVIDER
+  NEW_REFERRAL = "NEW_REFERRAL",
+  MESSAGE_RECEIVED = "MESSAGE_RECEIVED",
+  OPENING_EXPIRING = "OPENING_EXPIRING",
+  PLACEMENT_CONFIRMED = "PLACEMENT_CONFIRMED",
+
+  // HOSPITAL_SW
+  DISCHARGE_INVITE_RESPONSE = "DISCHARGE_INVITE_RESPONSE",
+  DISCHARGE_PLACEMENT = "DISCHARGE_PLACEMENT",
+
+  // VENDOR
+  NEW_LEAD = "NEW_LEAD",
+  BOOKING_CONFIRMED = "BOOKING_CONFIRMED",
+  BOOKING_COMPLETED = "BOOKING_COMPLETED",
+
+  // VRS_SPECIALIST
+  CLIENT_UPDATE = "CLIENT_UPDATE",
+  JOB_MATCH = "JOB_MATCH",
+  RETENTION_ALERT = "RETENTION_ALERT",
+  PLACEMENT_SUCCESS = "PLACEMENT_SUCCESS",
+
+  // SYSTEM
+  SYSTEM_ANNOUNCEMENT = "SYSTEM_ANNOUNCEMENT",
+  ACCOUNT_UPDATE = "ACCOUNT_UPDATE",
+  LICENSE_EXPIRING = "LICENSE_EXPIRING",
+
+  // Legacy
+  REFERRAL_NEW = "REFERRAL_NEW",
+  REFERRAL_UPDATE = "REFERRAL_UPDATE",
+  MESSAGE_NEW = "MESSAGE_NEW",
+  INVITE_RECEIVED = "INVITE_RECEIVED",
+  INVITE_EXPIRING = "INVITE_EXPIRING",
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  metadata?: Record<string, any>;
+  actionUrl?: string;
+  actionLabel?: string;
+  channels: string[];
+  isRead: boolean;
+  readAt?: string;
+  emailSentAt?: string;
+  smsSentAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export interface NotificationResponse {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  channels: string[];
+  isRead: boolean;
+  readAt?: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  emailSentAt?: string;
+  smsSentAt?: string;
+}
+
+export interface GetNotificationsParams {
+  page?: number;
+  limit?: number;
+  isRead?: boolean;
+  type?: NotificationType;
+}
+
+export interface PaginatedNotifications {
+  notifications: NotificationResponse[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    limit: number;
+  };
+  unreadCount: number;
+}
 // ============================================
 
 export enum LicenseStatus {
@@ -1670,3 +1769,105 @@ export interface GetPublicProviderParams {
     lon: number;
   };
 }
+
+// ============================================
+// PUBLIC REFERRAL REQUEST TYPES (Family Member Requests)
+// ============================================
+
+export enum RequestStatus {
+  PENDING = "PENDING",
+  ASSIGNED = "ASSIGNED",
+  IN_PROGRESS = "IN_PROGRESS",
+  CONVERTED = "CONVERTED",
+  CLOSED = "CLOSED",
+  CANCELLED = "CANCELLED",
+}
+
+export interface CreateReferralRequestData {
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  recipientAge: number;
+  recipientGender: string;
+  recipientInitials: string;
+  careNeeds: string;
+  urgency: string;
+  preferredCounties?: string[];
+  primaryPayer?: string;
+  secondaryPayer?: string;
+  interestedProviderIds?: string[];
+}
+
+export interface UpdateReferralRequestData {
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  careNeeds?: string;
+  urgency?: string;
+  preferredCounties?: string[];
+  primaryPayer?: string;
+  secondaryPayer?: string;
+  interestedProviderIds?: string[];
+}
+
+export interface ReferralRequest {
+  id: string;
+  requestNumber: string;
+  userId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  recipientAge: number;
+  recipientGender: string;
+  recipientInitials: string;
+  careNeeds: string;
+  urgency: string;
+  preferredCounties: string[];
+  primaryPayer?: string;
+  secondaryPayer?: string;
+  interestedProviderIds: string[];
+  status: string;
+  assignedCaseManagerId?: string;
+  assignedCaseManager?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+  };
+  assignedAt?: string;
+  convertedToReferralId?: string;
+  convertedToReferral?: {
+    id: string;
+    referralNumber: string;
+    status: string;
+  };
+  convertedAt?: string;
+  internalNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+}
+
+export interface ReferralRequestStats {
+  total: number;
+  pending: number;
+  assigned: number;
+  inProgress: number;
+  converted: number;
+}
+
+export interface GetRequestsParams {
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetRequestsResponse {
+  requests: ReferralRequest[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+

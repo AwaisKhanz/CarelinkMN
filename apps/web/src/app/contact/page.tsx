@@ -329,14 +329,7 @@ export default function ContactPage() {
               Join hundreds of organizations already using CareLinkMN to
               streamline care coordination.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="healthcare" asChild>
-                <Link href="/auth/signup">Start Free Trial</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/pricing">View Pricing</Link>
-              </Button>
-            </div>
+      
           </Card>
         </div>
       </section>

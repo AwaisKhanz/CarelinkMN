@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { notificationService, Notification } from "@/lib/api";
+import { notificationService } from "@/lib/api";
+import { NotificationResponse } from "@carelink/types";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -17,7 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 export default function NotificationsPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
@@ -36,15 +37,13 @@ export default function NotificationsPage() {
         page,
         limit: 20,
         isRead: filter === "all" ? undefined : filter === "unread" ? false : true,
-        type: typeFilter === "all" ? undefined : typeFilter,
+        type: typeFilter === "all" ? undefined : (typeFilter as any),
       });
 
-      if (response.success && response.data) {
-        setNotifications(response.data.notifications);
-        setUnreadCount(response.data.unreadCount);
-        setTotalPages(response.data.pagination.pages);
-        setTotal(response.data.pagination.total);
-      }
+      setNotifications(response.notifications);
+      setUnreadCount(response.unreadCount);
+      setTotalPages(response.pagination.pages);
+      setTotal(response.pagination.total);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
       toast.error("Failed to load notifications");
@@ -57,7 +56,7 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const handleNotificationClick = async (notification: Notification) => {
+  const handleNotificationClick = async (notification: NotificationResponse) => {
     if (!notification.isRead) {
       try {
         await notificationService.markAsRead(notification.id);
@@ -80,15 +79,13 @@ export default function NotificationsPage() {
   const handleMarkAllAsRead = async () => {
     try {
       setIsMarkingAllRead(true);
-      const response = await notificationService.markAllAsRead();
-      if (response.success) {
-        setNotifications((prev) =>
-          prev.map((n) => ({ ...n, isRead: true }))
-        );
-        setUnreadCount(0);
-        toast.success("All notifications marked as read");
-        fetchNotifications();
-      }
+      await notificationService.markAllAsRead();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, isRead: true }))
+      );
+      setUnreadCount(0);
+      toast.success("All notifications marked as read");
+      fetchNotifications();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
       toast.error("Failed to mark all notifications as read");

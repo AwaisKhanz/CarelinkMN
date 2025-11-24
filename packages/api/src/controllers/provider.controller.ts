@@ -1245,6 +1245,8 @@ export class ProviderController {
         verified,
         subscriptionTier,
         organizationType,
+        county,
+        status,
         page = 1,
         limit = 20,
       } = req.query;
@@ -1266,6 +1268,8 @@ export class ProviderController {
                 : undefined,
         subscriptionTier: subscriptionTier as string | undefined,
         organizationType: organizationType as string | undefined,
+        county: county as string | undefined,
+        status: status as string | undefined,
         page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
         limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20,
       });

@@ -4,133 +4,134 @@
 
 @layer base {
   :root {
-    /* CareLinkMN Professional Healthcare Theme */
+    /* CareLinkMN Modern Professional Theme - Rich Blue & Slate */
 
-    /* Primary Colors - Trust & Professionalism */
-    --background: 0 0% 100%; /* Pure white for cleanliness */
-    --foreground: 220 13% 18%; /* Dark blue-gray for text */
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 220 13% 18%; /* Dark blue-gray text */
-    --popover: 0 0% 100%; /* White popovers */
-    --popover-foreground: 220 13% 18%; /* Dark blue-gray text */
+    /* Primary Colors - Trust & Vitality */
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 215 28% 17%; /* Slate 800 (#1E293B) - High contrast, softer than black */
+    
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 215 28% 17%; /* Slate 800 */
+    
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 215 28% 17%; /* Slate 800 */
 
-    /* Primary - Deep Healthcare Blue */
-    --primary: 217 91% 60%; /* Professional blue */
-    --primary-foreground: 0 0% 100%; /* White text on primary */
+    /* Primary - Rich Blue */
+    --primary: 221 83% 48%; /* #1D4ED8 - Vibrant, Trustworthy */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    /* Secondary - Soft Healthcare Green */
-    --secondary: 142 76% 36%; /* Healthcare green */
-    --secondary-foreground: 0 0% 100%; /* White text on secondary */
+    /* Secondary - Crisp Slate */
+    --secondary: 210 40% 96.1%; /* #F1F5F9 - Slate 100 */
+    --secondary-foreground: 222 47% 11%; /* Deep Navy */
 
-    /* Muted - Light Gray-Blue */
-    --muted: 220 13% 96%; /* Very light blue-gray */
-    --muted-foreground: 220 9% 46%; /* Medium blue-gray */
+    /* Muted - Professional Gray */
+    --muted: 210 40% 96.1%; /* Slate 100 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Slate 500 */
 
-    /* Accent - Warm Healthcare Orange */
-    --accent: 25 95% 53%; /* Healthcare orange */
-    --accent-foreground: 0 0% 100%; /* White text on accent */
+    /* Accent - Soft Blue-Gray */
+    --accent: 215 20% 55%; /* Slate 500 - Harmonious with blue theme */
+    --accent-foreground: 0 0% 100%; /* White */
 
     /* Status Colors */
-    --destructive: 0 84% 60%; /* Red for errors */
-    --destructive-foreground: 0 0% 100%; /* White text on destructive */
+    --destructive: 0 84.2% 60.2%; /* Red 500 */
+    --destructive-foreground: 0 0% 100%; /* White */
 
-    /* Success - Healthcare Green */
-    --success: 142 76% 36%; /* Healthcare green */
-    --success-foreground: 0 0% 100%; /* White text on success */
+    --success: 215 20% 45%; /* Slate 600 - Softer, professional blue-gray */
+    --success-foreground: 0 0% 100%; /* White */
 
-    /* Warning - Healthcare Yellow */
-    --warning: 45 93% 58%; /* Healthcare yellow */
-    --warning-foreground: 220 13% 18%; /* Dark text on warning */
+    --warning: 38 92% 50%; /* Amber 500 */
+    --warning-foreground: 0 0% 100%; /* White */
 
-    /* Info - Healthcare Blue */
-    --info: 217 91% 60%; /* Healthcare blue */
-    --info-foreground: 0 0% 100%; /* White text on info */
+    --info: 221 83% 48%; /* Matches Primary Blue */
+    --info-foreground: 0 0% 100%; /* White */
 
     /* UI Elements */
-    --border: 220 13% 88%; /* Light blue-gray borders */
-    --input: 220 13% 88%; /* Light blue-gray inputs */
-    --ring: 217 91% 60%; /* Blue focus rings */
-    --radius: 0.5rem; /* Consistent border radius */
+    --border: 214.3 31.8% 91.4%; /* #E2E8F0 - Slate 200 */
+    --input: 214.3 31.8% 91.4%; /* Slate 200 */
+    --ring: 221 83% 48%; /* Rich Blue Focus Ring */
+    --radius: 0.5rem;
 
-    /* Chart Colors - Healthcare Palette */
-    --chart-1: 217 91% 60%; /* Primary blue */
-    --chart-2: 142 76% 36%; /* Healthcare green */
-    --chart-3: 25 95% 53%; /* Healthcare orange */
-    --chart-4: 280 65% 60%; /* Purple for variety */
-    --chart-5: 45 93% 58%; /* Yellow for highlights */
+    /* Chart Colors - Professional Palette */
+    --chart-1: 221 83% 48%; /* Rich Blue */
+    --chart-2: 215 25% 50%; /* Blue-Gray - Harmonious palette */
+    --chart-3: 215 20% 45%; /* Slate 600 - Professional blue-gray */
+    --chart-4: 38 92% 50%; /* Amber */
+    --chart-5: 215.4 16.3% 46.9%; /* Slate Gray */
 
     /* Sidebar Colors */
-    --sidebar-background: 220 13% 98%; /* Very light blue-gray */
-    --sidebar-foreground: 220 13% 18%; /* Dark blue-gray */
-    --sidebar-primary: 217 91% 60%; /* Primary blue */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text */
-    --sidebar-accent: 220 13% 94%; /* Light blue-gray */
-    --sidebar-accent-foreground: 220 13% 18%; /* Dark blue-gray */
-    --sidebar-border: 220 13% 88%; /* Light blue-gray border */
-    --sidebar-ring: 217 91% 60%; /* Blue focus ring */
+    --sidebar-background: 215 28% 17%; /* Slate 800 */
+    --sidebar-foreground: 210 40% 98%; /* Slate 50 */
+    --sidebar-primary: 221 83% 48%; /* Rich Blue */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Slate 800 (Darker) */
+    --sidebar-accent-foreground: 210 40% 98%; /* Slate 50 */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Slate 800 */
+    --sidebar-ring: 221 83% 48%; /* Rich Blue */
   }
 
   .dark {
-    /* Dark Mode - Professional Healthcare Dark Theme */
+    /* Dark Mode - Modern Professional Dark */
 
     /* Background Colors */
-    --background: 220 13% 9%; /* Very dark blue-gray */
-    --foreground: 220 13% 95%; /* Light blue-gray text */
-    --card: 220 13% 12%; /* Dark blue-gray cards */
-    --card-foreground: 220 13% 95%; /* Light blue-gray text */
-    --popover: 220 13% 12%; /* Dark blue-gray popovers */
-    --popover-foreground: 220 13% 95%; /* Light blue-gray text */
+    --background: 222.2 84% 4.9%; /* Slate 950 */
+    --foreground: 210 40% 98%; /* Slate 50 */
+    
+    --card: 222.2 84% 4.9%; /* Slate 950 */
+    --card-foreground: 210 40% 98%; /* Slate 50 */
+    
+    --popover: 222.2 84% 4.9%; /* Slate 950 */
+    --popover-foreground: 210 40% 98%; /* Slate 50 */
 
-    /* Primary - Brighter Blue for Dark Mode */
-    --primary: 217 91% 70%; /* Brighter blue */
-    --primary-foreground: 220 13% 9%; /* Dark text on primary */
+    /* Primary - Lighter Blue for Dark Mode */
+    --primary: 217 91% 60%; /* Brighter Blue */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    /* Secondary - Brighter Green for Dark Mode */
-    --secondary: 142 76% 46%; /* Brighter green */
-    --secondary-foreground: 220 13% 9%; /* Dark text on secondary */
+    /* Secondary - Dark Slate */
+    --secondary: 217.2 32.6% 17.5%; /* Slate 800 */
+    --secondary-foreground: 210 40% 98%; /* Slate 50 */
 
-    /* Muted - Dark Blue-Gray */
-    --muted: 220 13% 15%; /* Dark blue-gray */
-    --muted-foreground: 220 9% 65%; /* Medium light blue-gray */
+    /* Muted */
+    --muted: 217.2 32.6% 17.5%; /* Slate 800 */
+    --muted-foreground: 215 20.2% 65.1%; /* Slate 400 */
 
-    /* Accent - Brighter Orange for Dark Mode */
-    --accent: 25 95% 63%; /* Brighter orange */
-    --accent-foreground: 220 13% 9%; /* Dark text on accent */
+    /* Accent - Blue-Gray for dark mode */
+    --accent: 215 20% 60%; /* Slate 400 - Lighter for dark mode */
+    --accent-foreground: 0 0% 100%; /* White */
 
-    /* Status Colors - Dark Mode */
-    --destructive: 0 84% 70%; /* Brighter red */
-    --destructive-foreground: 220 13% 9%; /* Dark text on destructive */
+    /* Status Colors */
+    --destructive: 0 62.8% 30.6%; /* Red 900 */
+    --destructive-foreground: 210 40% 98%; /* Slate 50 */
 
-    --success: 142 76% 46%; /* Brighter green */
-    --success-foreground: 220 13% 9%; /* Dark text on success */
+    --success: 215 20% 65%; /* Slate 400 - Lighter blue-gray for dark mode */
+    --success-foreground: 210 40% 98%; /* Slate 50 */
 
-    --warning: 45 93% 68%; /* Brighter yellow */
-    --warning-foreground: 220 13% 9%; /* Dark text on warning */
+    --warning: 48 96% 53%; /* Yellow 500 */
+    --warning-foreground: 222.2 47.4% 11.2%; /* Slate 900 */
 
-    --info: 217 91% 70%; /* Brighter blue */
-    --info-foreground: 220 13% 9%; /* Dark text on info */
+    --info: 217.2 91.2% 59.8%; /* Blue 400 */
+    --info-foreground: 222.2 47.4% 11.2%; /* Slate 900 */
 
-    /* UI Elements - Dark Mode */
-    --border: 220 13% 20%; /* Dark blue-gray borders */
-    --input: 220 13% 20%; /* Dark blue-gray inputs */
-    --ring: 217 91% 70%; /* Brighter blue focus rings */
+    /* UI Elements */
+    --border: 217.2 32.6% 17.5%; /* Slate 800 */
+    --input: 217.2 32.6% 17.5%; /* Slate 800 */
+    --ring: 217 91% 60%; /* Brighter Blue */
 
     /* Chart Colors - Dark Mode */
-    --chart-1: 217 91% 70%; /* Brighter blue */
-    --chart-2: 142 76% 46%; /* Brighter green */
-    --chart-3: 25 95% 63%; /* Brighter orange */
-    --chart-4: 280 65% 70%; /* Brighter purple */
-    --chart-5: 45 93% 68%; /* Brighter yellow */
+    --chart-1: 217 91% 60%; /* Blue */
+    --chart-2: 215 25% 55%; /* Blue-Gray (Lighter for dark) */
+    --chart-3: 215 20% 65%; /* Slate 400 - Lighter for dark mode */
+    --chart-4: 48 96% 53%; /* Yellow */
+    --chart-5: 215 20.2% 65.1%; /* Slate */
 
     /* Sidebar Colors - Dark Mode */
-    --sidebar-background: 220 13% 6%; /* Very dark blue-gray */
-    --sidebar-foreground: 220 13% 95%; /* Light blue-gray */
-    --sidebar-primary: 217 91% 70%; /* Brighter blue */
-    --sidebar-primary-foreground: 220 13% 9%; /* Dark text */
-    --sidebar-accent: 220 13% 15%; /* Dark blue-gray */
-    --sidebar-accent-foreground: 220 13% 95%; /* Light blue-gray */
-    --sidebar-border: 220 13% 20%; /* Dark blue-gray border */
-    --sidebar-ring: 217 91% 70%; /* Brighter blue focus ring */
+    --sidebar-background: 222.2 84% 4.9%; /* Slate 950 */
+    --sidebar-foreground: 210 40% 98%; /* Slate 50 */
+    --sidebar-primary: 217 91% 60%; /* Blue */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Slate 800 */
+    --sidebar-accent-foreground: 210 40% 98%; /* Slate 50 */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Slate 800 */
+    --sidebar-ring: 217 91% 60%; /* Blue */
   }
 }
 
@@ -174,7 +175,7 @@
   }
 
   .healthcare-container {
-    @apply max-w-7xl mx-auto;
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   /* Professional shadows */

@@ -394,5 +394,40 @@ router.get(
   referralController.getReferralTimeline.bind(referralController)
 );
 
+// Referral scoring endpoints
+// Get score for a specific provider - Case Managers can view scores
+router.get(
+  "/referrals/:id/score/:providerId",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    "referrals:read", // Legacy permission
+  ]),
+  [
+    param("id").isUUID().withMessage("Invalid referral ID"),
+    param("providerId").isUUID().withMessage("Invalid provider ID"),
+  ],
+  validate([]),
+  referralController.getProviderScore.bind(referralController)
+);
+
+// Get top-ranked providers for a referral - Case Managers can view
+router.get(
+  "/referrals/:id/top-providers",
+  authMiddleware.requireAnyPermission([
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    CASE_MANAGER_PERMISSIONS.SHORTLIST_MANAGE,
+    "referrals:read", // Legacy permission
+  ]),
+  [
+    param("id").isUUID().withMessage("Invalid referral ID"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 50 })
+      .withMessage("Limit must be between 1 and 50"),
+  ],
+  validate([]),
+  referralController.getTopProviders.bind(referralController)
+);
+
 export default router;
 

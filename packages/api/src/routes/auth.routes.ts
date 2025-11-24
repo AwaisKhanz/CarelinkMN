@@ -4,6 +4,12 @@ import { AuthController } from "../controllers/auth.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
 import {
+  loginLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
+  emailVerificationLimiter,
+} from "../middleware/rate-limit.middleware";
+import {
   LoginSchema,
   RegisterSchema,
   ChangePasswordSchema,
@@ -48,6 +54,7 @@ router.post(
 
 router.post(
   "/login",
+  loginLimiter, // Rate limit login attempts
   validate([
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 1 }),
@@ -57,12 +64,14 @@ router.post(
 
 router.post(
   "/forgot-password",
+  forgotPasswordLimiter, // Rate limit password reset requests
   validate([body("email").isEmail().normalizeEmail()]),
   authController.forgotPassword
 );
 
 router.post(
   "/reset-password",
+  resetPasswordLimiter, // Rate limit reset attempts
   validate([
     body("token").isLength({ min: 1 }),
     body("newPassword")
@@ -78,6 +87,7 @@ router.get("/verify-email", authController.verifyEmail);
 
 router.post(
   "/resend-verification",
+  emailVerificationLimiter, // Rate limit verification email requests
   validate([body("email").isEmail().normalizeEmail()]),
   authController.resendVerification
 );

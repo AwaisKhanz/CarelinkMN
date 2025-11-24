@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Building,
   Calendar,
+  HeartHandshake,
 } from "lucide-react";
 import {
   Card,
@@ -508,14 +509,27 @@ export default function ProviderDetailPage() {
       {/* Action Buttons */}
       <Card variant="healthcare">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Need help finding the right care? Contact this provider or work
-              with a case manager.
-            </p>
-            <div className="flex items-center gap-2">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-lg mb-2">Need Assistance?</h3>
+              <p className="text-sm text-muted-foreground">
+                Our case managers can help you find the right care and navigate the placement process.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
               <Button
                 variant="healthcare"
+                size="lg"
+                onClick={() =>
+                  router.push(`/public/requests/new?providerId=${provider.id}`)
+                }
+              >
+                <HeartHandshake className="w-4 h-4 mr-2" />
+                Request Case Manager Help
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => router.push("/public/search")}
               >
                 Search More Providers

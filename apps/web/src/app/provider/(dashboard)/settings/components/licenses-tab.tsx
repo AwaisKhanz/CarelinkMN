@@ -127,17 +127,20 @@ export function LicensesTab() {
 
     setIsSaving(true);
     try {
+      const licenseData = {
+        licenseType: data.type,
+        licenseNumber: data.licenseNumber,
+        issuingState: data.issuingAuthority, // Mapping authority to state for now as per UI
+        issueDate: new Date().toISOString(), // Defaulting as form doesn't have this field
+        expirationDate: new Date(data.expirationDate).toISOString(),
+        documentUrl: "", // Defaulting as form doesn't have file upload
+      };
+
       if (editingLicense) {
-        await providerService.updateLicense(editingLicense.id, {
-          ...data,
-          expirationDate: new Date(data.expirationDate).toISOString(),
-        });
+        await providerService.updateProviderLicense(providerId, editingLicense.id, licenseData);
         toast.success("License updated successfully");
       } else {
-        await providerService.addLicense(providerId, {
-          ...data,
-          expirationDate: new Date(data.expirationDate).toISOString(),
-        });
+        await providerService.createProviderLicense(providerId, licenseData);
         toast.success("License added successfully");
       }
       setIsDialogOpen(false);
@@ -154,7 +157,7 @@ export function LicensesTab() {
     if (!confirm("Are you sure you want to delete this license?")) return;
 
     try {
-      await providerService.deleteLicense(id);
+      await providerService.deleteProviderLicense(providerId!, id);
       toast.success("License deleted successfully");
       fetchLicenses();
     } catch (err) {

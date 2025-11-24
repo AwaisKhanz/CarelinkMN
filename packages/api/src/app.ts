@@ -39,6 +39,7 @@ import messageTemplateRoutes from "./routes/message-template.routes";
 import dischargeCaseRoutes from "./routes/discharge-case.routes";
 import publicRoutes from "./routes/public.routes";
 import contactRoutes from "./routes/contact.routes";
+import publicReferralRequestRoutes from "./routes/public-referral-request.routes";
 
 // Import middleware
 import {
@@ -180,6 +181,7 @@ app.use("/api", notificationRoutes);
 app.use("/api", messageTemplateRoutes);
 app.use("/api", dischargeCaseRoutes);
 app.use("/api/contact", contactRoutes); // Public contact form
+app.use("/api/public-requests", publicReferralRequestRoutes); // Public referral requests
 
 // 404 handler
 app.use(notFoundHandler);

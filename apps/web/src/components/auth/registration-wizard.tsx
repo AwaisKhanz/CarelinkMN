@@ -77,11 +77,6 @@ const roleOptions: RoleOption[] = [
     description: "Manage care facilities and staff",
   },
   {
-    value: UserRole.PROVIDER_STAFF,
-    label: "Provider Staff",
-    description: "Manage openings and referrals",
-  },
-  {
     value: UserRole.CASE_MANAGER,
     label: "Case Manager",
     description: "Create and manage referrals",
@@ -302,9 +297,9 @@ export function RegistrationWizard() {
                 <SelectContent>
                   {roleOptions.map((role) => (
                     <SelectItem key={role.value} value={role.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{role.label}</span>
-                        <span className="text-sm text-muted-foreground">{role.description}</span>
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-medium text-foreground">{role.label}</span>
+                        <span className="text-sm text-foreground/70">{role.description}</span>
                       </div>
                     </SelectItem>
                   ))}

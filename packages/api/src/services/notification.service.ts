@@ -1,6 +1,7 @@
 import { db } from "@carelink/database";
 import { Prisma, NotificationType } from "@prisma/client";
 import { EmailService } from "./email.service";
+import { getSocketServer } from "../websocket/socket.server";
 
 export interface GetNotificationsParams {
   page?: number;
@@ -134,6 +135,17 @@ export class NotificationService {
             readAt: new Date(),
           },
         });
+
+        // Emit read event via Socket.IO
+        try {
+          const socketServer = getSocketServer();
+          socketServer.getIO().to(`user:${userId}`).emit("notification:read", {
+            notificationId,
+            readAt: new Date().toISOString(),
+          });
+        } catch (socketError) {
+          console.warn("Socket.IO not available:", socketError);
+        }
       }
     } catch (error) {
       console.error("Mark notification as read error:", error);
@@ -156,6 +168,16 @@ export class NotificationService {
           readAt: new Date(),
         },
       });
+
+      // Emit read-all event via Socket.IO
+      try {
+        const socketServer = getSocketServer();
+        socketServer.getIO().to(`user:${userId}`).emit("notification:read-all", {
+          readAt: new Date().toISOString(),
+        });
+      } catch (socketError) {
+        console.warn("Socket.IO not available:", socketError);
+      }
     } catch (error) {
       console.error("Mark all notifications as read error:", error);
       throw new Error("Failed to mark all notifications as read");
@@ -170,8 +192,11 @@ export class NotificationService {
     type: NotificationType;
     title: string;
     message: string;
-    channels: string[];
+    channels?: string[];
     actionUrl?: string;
+    actionLabel?: string;
+    metadata?: Record<string, any>;
+    expiresAt?: Date;
   }): Promise<void> {
     try {
       // Get user to send email if needed
@@ -190,14 +215,26 @@ export class NotificationService {
           type: data.type,
           title: data.title,
           message: data.message,
-          channels: data.channels,
+          channels: data.channels || ["IN_APP"],
           actionUrl: data.actionUrl,
+          actionLabel: data.actionLabel,
+          metadata: data.metadata || Prisma.JsonNull,
+          expiresAt: data.expiresAt,
         },
       });
 
+      // Emit real-time notification via Socket.IO
+      try {
+        const socketServer = getSocketServer();
+        socketServer.emitNewNotification(data.userId, notification);
+      } catch (socketError) {
+        console.warn("Socket.IO not available, notification created but not emitted:", socketError);
+      }
+
       // Send via configured channels
-      const emailSent = data.channels.includes("EMAIL");
-      const smsSent = data.channels.includes("SMS");
+      const channels = data.channels || ["IN_APP"];
+      const emailSent = channels.includes("EMAIL");
+      const smsSent = channels.includes("SMS");
 
       if (emailSent) {
         try {
@@ -231,5 +268,107 @@ export class NotificationService {
       throw new Error("Failed to create notification");
     }
   }
-}
 
+  /**
+   * Create multiple notifications in batch
+   */
+  async createBatchNotifications(notifications: Array<{
+    userId: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    channels?: string[];
+    actionUrl?: string;
+    actionLabel?: string;
+    metadata?: Record<string, any>;
+  }>): Promise<void> {
+    try {
+      await Promise.all(
+        notifications.map((data) => this.createNotification(data))
+      );
+    } catch (error) {
+      console.error("Batch create notifications error:", error);
+      throw new Error("Failed to create batch notifications");
+    }
+  }
+
+  /**
+   * Get unread notification count
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    try {
+      return await db.notification.count({
+        where: {
+          userId,
+          isRead: false,
+        },
+      });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      throw new Error("Failed to get unread count");
+    }
+  }
+
+  /**
+   * Delete a notification
+   */
+  async deleteNotification(notificationId: string, userId: string): Promise<void> {
+    try {
+      const notification = await db.notification.findFirst({
+        where: {
+          id: notificationId,
+          userId,
+        },
+      });
+
+      if (!notification) {
+        throw new Error("Notification not found or access denied");
+      }
+
+      await db.notification.delete({
+        where: { id: notificationId },
+      });
+    } catch (error) {
+      console.error("Delete notification error:", error);
+      throw new Error("Failed to delete notification");
+    }
+  }
+
+  /**
+   * Delete all read notifications for a user
+   */
+  async deleteAllRead(userId: string): Promise<void> {
+    try {
+      await db.notification.deleteMany({
+        where: {
+          userId,
+          isRead: true,
+        },
+      });
+    } catch (error) {
+      console.error("Delete all read notifications error:", error);
+      throw new Error("Failed to delete all read notifications");
+    }
+  }
+
+  /**
+   * Clean up expired notifications (for cron job)
+   */
+  async cleanupExpired(): Promise<number> {
+    try {
+      const result = await db.notification.deleteMany({
+        where: {
+          expiresAt: {
+            lt: new Date(),
+          },
+        },
+      });
+
+      console.log(`Cleaned up ${result.count} expired notifications`);
+      return result.count;
+    } catch (error) {
+      console.error("Cleanup expired notifications error:", error);
+      throw new Error("Failed to cleanup expired notifications");
+    }
+  }
+}

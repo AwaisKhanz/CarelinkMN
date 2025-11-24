@@ -193,6 +193,7 @@ export class PlacementService {
               select: {
                 id: true,
                 referralNumber: true,
+                caseManagerId: true,
                 clientAge: true,
                 clientGender: true,
                 clientInitials: true,
@@ -208,6 +209,7 @@ export class PlacementService {
               select: {
                 id: true,
                 caseNumber: true,
+                socialWorkerId: true,
                 patientAge: true,
                 patientGender: true,
                 patientInitials: true,
@@ -279,6 +281,68 @@ export class PlacementService {
 
         return placement;
       });
+
+      // Notify relevant parties about new placement
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+
+        // Determine who to notify
+        // If user is Case Manager, notify Provider
+        // If user is Provider, notify Case Manager (if referral exists)
+        
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { role: true }
+        });
+
+        const isCaseManager = user?.role === "CASE_MANAGER" || user?.role === "HOSPITAL_SW";
+        
+        if (isCaseManager) {
+          // Notify provider users
+          const provider = await db.provider.findUnique({
+            where: { id: opening.providerId },
+            include: {
+              organization: {
+                include: {
+                  users: true
+                }
+              }
+            }
+          });
+
+          if (provider?.organization?.users) {
+            await notificationService.createBatchNotifications(
+              provider.organization.users.map(u => ({
+                userId: u.id,
+                type: NotificationType.PLACEMENT_UPDATE, // Using generic update or specific NEW type if available
+                title: "New Placement Request",
+                message: `New placement request for ${result.referral?.clientInitials || result.dischargeCase?.patientInitials || "client"}`,
+                actionUrl: `/provider/placements/${result.id}`,
+                actionLabel: "View Placement",
+                metadata: { placementId: result.id }
+              }))
+            );
+          }
+        } else {
+          // Notify Case Manager
+          const recipientId = result.referral?.caseManagerId || result.dischargeCase?.socialWorkerId;
+          if (recipientId) {
+             await notificationService.createNotification({
+              userId: recipientId,
+              type: NotificationType.PLACEMENT_UPDATE,
+              title: "New Placement Created",
+              message: `New placement created for ${result.referral?.clientInitials || result.dischargeCase?.patientInitials || "client"}`,
+              channels: ["IN_APP", "EMAIL"],
+              actionUrl: result.referral 
+                ? `/case-manager/referrals/${result.referral.id}`
+                : `/placements/${result.id}`,
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error("Failed to create placement notification:", notifError);
+      }
 
       return result;
     } catch (error) {

@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Calendar } from "lucide-react";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";

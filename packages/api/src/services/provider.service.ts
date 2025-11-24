@@ -485,6 +485,8 @@ export class ProviderService {
     verified?: boolean;
     subscriptionTier?: string;
     organizationType?: string;
+    county?: string;
+    status?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -499,6 +501,8 @@ export class ProviderService {
         verified,
         subscriptionTier,
         organizationType,
+        county,
+        status,
         page = 1,
         limit = 20,
       } = filters;
@@ -532,10 +536,27 @@ export class ProviderService {
         where.subscriptionTier = subscriptionTier as any;
       }
 
+      // Build organization filter conditionally
+      const orgFilter: any = {};
+      
       if (organizationType) {
-        where.organization = {
-          type: organizationType as any,
-        };
+        orgFilter.type = organizationType;
+      }
+
+      if (county) {
+        const counties = county.split(",").map((c) => c.trim());
+        if (counties.length > 0) {
+          orgFilter.county = { in: counties };
+        }
+      }
+
+      if (status) {
+        orgFilter.status = status;
+      }
+
+      // Only add organization filter if there are conditions
+      if (Object.keys(orgFilter).length > 0) {
+        where.organization = orgFilter;
       }
 
       const [providers, total] = await Promise.all([

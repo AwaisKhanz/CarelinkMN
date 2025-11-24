@@ -49,5 +49,24 @@ router.patch(
   notificationController.markAllAsRead.bind(notificationController)
 );
 
-export default router;
+// Get unread notification count
+router.get(
+  "/notifications/unread-count",
+  notificationController.getUnreadCount.bind(notificationController)
+);
 
+// Delete notification
+router.delete(
+  "/notifications/:id",
+  [param("id").isUUID().withMessage("Invalid notification ID")],
+  validate([]),
+  notificationController.deleteNotification.bind(notificationController)
+);
+
+// Delete all read notifications
+router.delete(
+  "/notifications/read",
+  notificationController.deleteAllRead.bind(notificationController)
+);
+
+export default router;

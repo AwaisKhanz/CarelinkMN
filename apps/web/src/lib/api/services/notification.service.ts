@@ -1,73 +1,69 @@
 import { apiService } from "../config";
-import { ApiResponse } from "@carelink/types";
+import { 
+  ApiResponse, 
+  GetNotificationsParams, 
+  PaginatedNotifications,
+  NotificationType
+} from "@carelink/types";
 
-export interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  channels: string[];
-  isRead: boolean;
-  readAt?: string;
-  actionUrl?: string;
-  createdAt: string;
-  emailSentAt?: string;
-  smsSentAt?: string;
-}
-
-export interface GetNotificationsParams {
-  page?: number;
-  limit?: number;
-  isRead?: boolean;
-  type?: string;
-}
-
-export interface GetNotificationsResponse {
-  notifications: Notification[];
-  pagination: {
-    total: number;
-    pages: number;
-    page: number;
-    limit: number;
-  };
-  unreadCount: number;
-}
-
-class NotificationServiceClass {
+export const notificationService = {
   /**
    * Get notifications for the authenticated user
    */
-  async getNotifications(
-    params: GetNotificationsParams = {}
-  ): Promise<ApiResponse<GetNotificationsResponse>> {
+  getNotifications: async (params: GetNotificationsParams = {}): Promise<PaginatedNotifications> => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append("page", params.page.toString());
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.isRead !== undefined) queryParams.append("isRead", params.isRead.toString());
     if (params.type) queryParams.append("type", params.type);
 
-    const response = await apiService.get<GetNotificationsResponse>(
-      `/api/notifications?${queryParams.toString()}`
+    const response = await apiService.get<PaginatedNotifications>(
+      `/notifications?${queryParams.toString()}`
     );
-    return response;
-  }
+    
+    if (!response.data) {
+      throw new Error("No data received from notification service");
+    }
+    
+    return response.data;
+  },
+
+  /**
+   * Get unread notification count
+   */
+  getUnreadCount: async (): Promise<number> => {
+    const response = await apiService.get<{ count: number }>(
+      "/notifications/unread-count"
+    );
+    return response.data?.count || 0;
+  },
 
   /**
    * Mark a notification as read
    */
-  async markAsRead(notificationId: string): Promise<ApiResponse<void>> {
-    const response = await apiService.patch<void>(`/api/notifications/${notificationId}/read`);
-    return response;
-  }
+  markAsRead: async (id: string): Promise<void> => {
+    await apiService.patch<void>(`/notifications/${id}/read`);
+  },
 
   /**
    * Mark all notifications as read
    */
-  async markAllAsRead(): Promise<ApiResponse<void>> {
-    const response = await apiService.patch<void>("/api/notifications/read-all");
-    return response;
-  }
-}
+  markAllAsRead: async (): Promise<void> => {
+    await apiService.patch<void>("/notifications/read-all");
+  },
 
-export const notificationService = new NotificationServiceClass();
+  /**
+   * Delete a notification
+   */
+  deleteNotification: async (id: string): Promise<void> => {
+    await apiService.delete<void>(`/notifications/${id}`);
+  },
+
+  /**
+   * Delete all read notifications
+   */
+  deleteAllRead: async (): Promise<void> => {
+    await apiService.delete<void>("/notifications/read");
+  }
+};
 

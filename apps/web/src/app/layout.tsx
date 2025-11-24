@@ -26,12 +26,19 @@ export const metadata: Metadata = {
     description:
       "Connect families, case managers, and care providers through intelligent, payer-aware search with real-time availability tracking.",
     siteName: "CareLinkMN",
+    images: ["/logo.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "CareLinkMN - Minnesota Care Coordination Platform",
     description:
       "Connect families, case managers, and care providers through intelligent, payer-aware search with real-time availability tracking.",
+    images: ["/logo.png"],
+  },
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 

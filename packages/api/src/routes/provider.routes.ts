@@ -21,10 +21,7 @@ router.get(
   providerController.getProviderProfile
 );
 
-// Protected routes (authentication required)
-router.use(authMiddleware.requireAuth);
-
-// Provider list & search
+// Public provider list (for search page)
 router.get(
   "/providers",
   [
@@ -34,21 +31,14 @@ router.get(
       .isLength({ max: 200 })
       .withMessage("Search must be a string up to 200 characters")
       .trim(),
-    query("verified")
-      .optional()
-      .isBoolean()
-      .withMessage("Verified must be a boolean")
-      .toBoolean(),
-    query("subscriptionTier")
+    query("status")
       .optional()
       .isString()
-      .isLength({ max: 50 })
-      .withMessage("Subscription tier must be a string"),
-    query("organizationType")
+      .withMessage("Status must be a string"),
+    query("county")
       .optional()
       .isString()
-      .isLength({ max: 50 })
-      .withMessage("Organization type must be a string"),
+      .withMessage("County must be a string"),
     query("page")
       .optional()
       .isInt({ min: 1 })
@@ -61,17 +51,11 @@ router.get(
       .toInt(),
   ],
   validate([]),
-  authMiddleware.requireAnyPermission([
-    PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
-    CASE_MANAGER_PERMISSIONS.PROVIDERS_VIEW,
-    HOSPITAL_SW_PERMISSIONS.PROVIDERS_VIEW,
-    "providers:read",
-    "providers:manage",
-    "system:manage",
-    "system:view",
-  ]),
   providerController.searchProviders
 );
+
+// Protected routes (authentication required)
+router.use(authMiddleware.requireAuth);
 
 // Provider CRUD operations
 router.post(

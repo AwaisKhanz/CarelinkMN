@@ -349,6 +349,11 @@ const getNavItems = (
           icon: Search,
         },
         {
+          title: "My Requests",
+          href: "/public/requests",
+          icon: FileText,
+        },
+        {
           title: "My Favorites",
           href: "/public/favorites",
           icon: Heart,

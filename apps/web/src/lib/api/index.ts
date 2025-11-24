@@ -213,8 +213,8 @@ export type {
 export type {
   Notification,
   GetNotificationsParams,
-  GetNotificationsResponse,
-} from "./services/notification.service";
+  PaginatedNotifications as GetNotificationsResponse,
+} from "@carelink/types";
 export type {
   HospitalStaff,
   UpdateHospitalStaffData,
@@ -264,3 +264,17 @@ export type {
   CareBotQueryResponse,
   GetPublicProviderParams,
 } from "./services/public.service";
+
+// Export public referral request service (Family Member Requests)
+export { publicReferralRequestService } from "./services/public-referral-request.service";
+export type {
+  RequestStatus,
+  CreateReferralRequestData,
+  UpdateReferralRequestData,
+  ReferralRequest,
+  ReferralRequestStats,
+  GetRequestsParams,
+  GetRequestsResponse,
+} from "@carelink/types";
+
+

@@ -738,7 +738,50 @@ export class ReferralService {
       }
 
       // Fetch full shortlist with relations
-      return this.getShortlist(referralId, userId);
+      const result = await this.getShortlist(referralId, userId);
+
+      // Notify providers
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+        
+        // Get provider users to notify
+        // This assumes providers have users associated with them via Organization
+        // Since we don't have direct Provider -> User relation, we'll notify Organization admins/members
+        // For each provider in the shortlist
+        for (const providerId of data.providerIds) {
+          const provider = await db.provider.findUnique({
+            where: { id: providerId },
+            include: {
+              organization: {
+                include: {
+                  users: true
+                }
+              }
+            }
+          });
+
+          if (provider && provider.organization) {
+            // Notify all users in the provider's organization
+            // In a real app, we might want to filter by role or preferences
+            await notificationService.createBatchNotifications(
+              provider.organization.users.map(user => ({
+                userId: user.id,
+                type: NotificationType.NEW_REFERRAL,
+                title: "New Referral Opportunity",
+                message: `You have been shortlisted for a new referral: ${referral.clientInitials}`,
+                actionUrl: `/provider/referrals/${referralId}`,
+                actionLabel: "View Referral",
+                metadata: { referralId, providerId }
+              }))
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("Failed to create shortlist notifications:", notifError);
+      }
+
+      return result;
     } catch (error) {
       console.error("Add to shortlist error:", error);
       throw new Error("Failed to add providers to shortlist");

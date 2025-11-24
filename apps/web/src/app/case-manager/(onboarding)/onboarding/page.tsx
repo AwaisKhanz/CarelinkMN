@@ -226,6 +226,7 @@ export default function CaseManagerOnboardingPage() {
         | CaseManagerOnboardingLicenseData,
       isComplete: boolean = false
     ) => {
+      console.log("💾 saveStepData called", {
         step,
         data,
         isComplete,
@@ -262,6 +263,7 @@ export default function CaseManagerOnboardingPage() {
             );
             if (cmResponse?.success && cmResponse.data?.organizationId) {
               orgId = cmResponse.data.organizationId;
+              console.log(
                 "📥 Fetched organizationId from case manager:",
                 orgId
               );
@@ -276,6 +278,7 @@ export default function CaseManagerOnboardingPage() {
           // Update organization
           const orgData = data as CaseManagerOnboardingOrganizationData;
           if (orgId) {
+            console.log("📤 Updating organization via API", {
               orgId,
               data: orgData,
             });
@@ -294,6 +297,7 @@ export default function CaseManagerOnboardingPage() {
                 ein: orgData.ein?.trim() || undefined, // Convert empty string to undefined
                 fax: orgData.fax?.trim() || undefined, // Convert empty string to undefined
               });
+              console.log("✅ Organization updated successfully");
             } catch (orgError: unknown) {
               console.error("❌ Error updating organization:", orgError);
               throw orgError; // Re-throw to show error to user
@@ -309,6 +313,7 @@ export default function CaseManagerOnboardingPage() {
           const licenseData = data as CaseManagerOnboardingLicenseData;
           // Update case manager license
           if (user?.id && licenseData.license) {
+            console.log("📤 Updating case manager license via API", {
               userId: user.id,
               data: licenseData,
             });
@@ -319,6 +324,7 @@ export default function CaseManagerOnboardingPage() {
                 licenseDocumentUrl: licenseData.license.documentUrl,
                 licenseFileName: licenseData.license.fileName,
               });
+              console.log("✅ License updated successfully");
             } catch (licenseError: unknown) {
               console.error("❌ Error updating license:", licenseError);
               throw licenseError; // Re-throw to show error to user
@@ -375,6 +381,7 @@ export default function CaseManagerOnboardingPage() {
         | CaseManagerOnboardingOrganizationData
         | CaseManagerOnboardingLicenseData
     ) => {
+      console.log("🔄 handleStepComplete called", { currentStep, stepData });
       // Save step data when step is completed
       await saveStepData(currentStep, stepData, true);
     },
@@ -382,16 +389,20 @@ export default function CaseManagerOnboardingPage() {
   );
 
   const handleNext = async () => {
+    console.log("➡️ handleNext called", { currentStep });
     if (currentStep < STEPS.length - 1) {
       // Validate and save current step before moving forward
       if (validateStepRef.current) {
+        console.log("✅ Validating step...");
         // validateStepRef.current() is now async and calls onComplete, which saves the data
         const isValid = await validateStepRef.current();
+        console.log("✅ Validation result:", isValid);
         if (!isValid) {
           toast.error("Please complete all required fields before continuing");
           return;
         }
         // Save is already complete at this point since validateStepRef.current() awaited onComplete
+        console.log("✅ Step validated and saved, moving to next step");
       } else {
         console.warn("⚠️ validateStepRef.current is null");
       }
