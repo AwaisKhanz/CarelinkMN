@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Plus,
   Sparkles,
+  X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -78,6 +79,7 @@ import { ProviderWithAvailability } from "@carelink/types";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 function CaseManagerSearchPageContent() {
   const router = useRouter();
@@ -458,36 +460,6 @@ function CaseManagerSearchPageContent() {
     }
   };
 
-  const toggleCounty = (county: string) => {
-    setSelectedCounties((prev) =>
-      prev.includes(county)
-        ? prev.filter((c) => c !== county)
-        : [...prev, county]
-    );
-  };
-
-  const toggleLicenseType = (licenseType: string) => {
-    setSelectedLicenseTypes((prev) =>
-      prev.includes(licenseType)
-        ? prev.filter((l) => l !== licenseType)
-        : [...prev, licenseType]
-    );
-  };
-
-  const toggleService = (service: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(service)
-        ? prev.filter((s) => s !== service)
-        : [...prev, service]
-    );
-  };
-
-  const togglePayer = (payer: Payer) => {
-    setSelectedPayers((prev) =>
-      prev.includes(payer) ? prev.filter((p) => p !== payer) : [...prev, payer]
-    );
-  };
-
   const handleClearFilters = () => {
     setSearchQuery("");
     setSelectedCounties([]);
@@ -498,20 +470,41 @@ function CaseManagerSearchPageContent() {
     setAiExplanation(null);
   };
 
+  // Option mapping for MultiSelect
+  const countyOptions = MINNESOTA_COUNTIES.map((county) => ({
+    label: county,
+    value: county,
+  }));
+
+  const licenseOptions = LICENSE_TYPES.map((type) => ({
+    label: type.label,
+    value: type.value,
+  }));
+
+  const serviceOptions = SUPPORTED_NEEDS.map((service) => ({
+    label: service.label,
+    value: service.value,
+  }));
+
+  const payerOptions = PAYER_OPTIONS.map((payer) => ({
+    label: payer.label,
+    value: payer.value,
+  }));
+
   if (isLoading && providers.length === 0) {
     return <LoadingState message="Searching providers..." fullHeight />;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Search Providers</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Search Providers</h1>
           <p className="text-muted-foreground mt-1">
             {referralId
               ? `Find providers for referral ${referralNumber || referralId}`
-              : "Find providers for your referrals"}
+              : "Find and filter providers across Minnesota"}
           </p>
         </div>
         {referralId && (
@@ -528,7 +521,7 @@ function CaseManagerSearchPageContent() {
       {referralId && (
         <Card variant="healthcare" className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="font-medium text-foreground">
                   Searching for: Referral {referralNumber || referralId}
@@ -550,339 +543,242 @@ function CaseManagerSearchPageContent() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters Sidebar */}
-        <div className="lg:col-span-1">
-          <Card variant="healthcare">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <Filter className="w-5 h-5 mr-2" />
-                  Filters
-                </CardTitle>
-                {(selectedCounties.length > 0 ||
-                  selectedLicenseTypes.length > 0 ||
-                  selectedServices.length > 0 ||
-                  selectedPayers.length > 0 ||
-                  searchQuery ||
-                  availabilityFilter !== "all") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearFilters}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Search */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="search">Search</Label>
-                  <div className="flex items-center gap-2">
-                    {canUseAISearch && (
-                      <>
-                        <Label
-                          htmlFor="ai-search"
-                          className="text-xs text-muted-foreground cursor-pointer"
-                        >
-                          CareBot AI
-                        </Label>
-                        <input
-                          type="checkbox"
-                          id="ai-search"
-                          checked={useAISearch}
-                          onChange={(e) => setUseAISearch(e.target.checked)}
-                          className="h-4 w-4 rounded border-border"
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="relative mt-2">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  {useAISearch && (
-                    <Sparkles className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary w-4 h-4" />
-                  )}
-                  <Input
-                    id="search"
-                    placeholder={
-                      useAISearch
-                        ? "Try: '144D homes in Hennepin County accepting MA'"
-                        : "Provider name, service..."
-                    }
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={useAISearch ? "pl-10 pr-10" : "pl-10"}
-                    disabled={isParsingQuery}
-                  />
-                  {isParsingQuery && (
-                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-primary" />
-                  )}
-                </div>
-                {useAISearch && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use natural language to search. AI will parse your query and
-                    apply filters automatically.
-                  </p>
-                )}
-                {aiExplanation && (
-                  <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-foreground mb-1">
-                          CareBot Explanation
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {aiExplanation}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Location Filter */}
-              <div>
-                <Label>Location (Counties)</Label>
-                <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 mt-2 space-y-2">
-                  {MINNESOTA_COUNTIES.slice(0, 20).map((county) => (
-                    <div key={county} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`county-${county}`}
-                        checked={selectedCounties.includes(county)}
-                        onCheckedChange={() => toggleCounty(county)}
-                      />
-                      <Label
-                        htmlFor={`county-${county}`}
-                        className="font-normal cursor-pointer text-sm"
-                      >
-                        {county}
-                      </Label>
-                    </div>
-                  ))}
-                  {MINNESOTA_COUNTIES.length > 20 && (
-                    <p className="text-xs text-muted-foreground pt-2">
-                      + {MINNESOTA_COUNTIES.length - 20} more counties
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* License Types Filter */}
-              <div>
-                <Label>License Types</Label>
-                <div className="space-y-2 mt-2">
-                  {LICENSE_TYPES.map((license) => (
-                    <div
-                      key={license.value}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`license-${license.value}`}
-                        checked={selectedLicenseTypes.includes(license.value)}
-                        onCheckedChange={() => toggleLicenseType(license.value)}
-                      />
-                      <Label
-                        htmlFor={`license-${license.value}`}
-                        className="font-normal cursor-pointer text-sm"
-                      >
-                        {license.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Services Filter */}
-              <div>
-                <Label>Services</Label>
-                <div className="max-h-48 overflow-y-auto border border-border rounded-lg p-3 mt-2 space-y-2">
-                  {SUPPORTED_NEEDS.map((service) => (
-                    <div
-                      key={service.value}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`service-${service.value}`}
-                        checked={selectedServices.includes(service.value)}
-                        onCheckedChange={() => toggleService(service.value)}
-                      />
-                      <Label
-                        htmlFor={`service-${service.value}`}
-                        className="font-normal cursor-pointer text-sm"
-                      >
-                        {service.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payer Filter */}
-              <div>
-                <Label>Accepted Payers</Label>
-                <div className="space-y-2 mt-2">
-                  {PAYER_OPTIONS.map((payer) => (
-                    <div
-                      key={payer.value}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`payer-${payer.value}`}
-                        checked={selectedPayers.includes(payer.value)}
-                        onCheckedChange={() => togglePayer(payer.value)}
-                      />
-                      <Label
-                        htmlFor={`payer-${payer.value}`}
-                        className="font-normal cursor-pointer text-sm"
-                      >
-                        {payer.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Availability Filter */}
-              <div>
-                <Label htmlFor="availability">Availability</Label>
-                <Select
-                  value={availabilityFilter}
-                  onValueChange={setAvailabilityFilter}
-                >
-                  <SelectTrigger id="availability" className="mt-2">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="available">Available Now</SelectItem>
-                    <SelectItem value="waitlist">Waitlist Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Results */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* Results Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {pagination.total} provider{pagination.total !== 1 ? "s" : ""}{" "}
-                found
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {referralId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAddToShortlistDialogOpen(true)}
-                  disabled={selectedProviders.length === 0}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Selected ({selectedProviders.length})
-                </Button>
+      {/* Search & Filters Area */}
+      <Card className="border-border/50 shadow-sm">
+        <CardContent className="p-4 space-y-4">
+          {/* Top Row: Search Input */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              {useAISearch && (
+                <Sparkles className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary w-4 h-4" />
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={
-                  selectedProviders.length === providers.length
-                    ? handleClearSelection
-                    : handleSelectAll
+              <Input
+                placeholder={
+                  useAISearch
+                    ? "Try: '144D homes in Hennepin County accepting MA'"
+                    : "Search by provider name, city, or keywords..."
                 }
-              >
-                {selectedProviders.length === providers.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </Button>
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={useAISearch ? "pl-10 pr-10" : "pl-10"}
+                disabled={isParsingQuery}
+              />
+              {isParsingQuery && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-primary" />
+              )}
             </div>
+            
+            {/* AI Toggle */}
+            {canUseAISearch && (
+              <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/30 min-w-fit">
+                <input
+                  type="checkbox"
+                  id="ai-search"
+                  checked={useAISearch}
+                  onChange={(e) => setUseAISearch(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                <Label
+                  htmlFor="ai-search"
+                  className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  CareBot AI
+                </Label>
+              </div>
+            )}
           </div>
 
-          {/* Error State */}
-          {error && (
-            <ErrorState
-              title="Error Loading Providers"
-              message={error}
-              action={{
-                label: "Retry",
-                onClick: fetchProviders,
-                variant: "healthcare",
-              }}
+          {/* AI Explanation */}
+          {aiExplanation && (
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-2">
+              <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-foreground mb-1">
+                  CareBot Explanation
+                </p>
+                <p className="text-xs text-muted-foreground">{aiExplanation}</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5 -mt-1 -mr-1"
+                onClick={() => setAiExplanation(null)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
+          {/* Filters Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <MultiSelect
+              options={countyOptions}
+              selected={selectedCounties}
+              onChange={setSelectedCounties}
+              placeholder="Counties"
+              searchPlaceholder="Search counties..."
+              variant="healthcare"
+              badgeDisplayLimit={1}
             />
-          )}
+            
+            <MultiSelect
+              options={licenseOptions}
+              selected={selectedLicenseTypes}
+              onChange={setSelectedLicenseTypes}
+              placeholder="License Types"
+              searchPlaceholder="Search licenses..."
+              variant="healthcare"
+              badgeDisplayLimit={1}
+            />
 
-          {/* Results List */}
-          {providers.length === 0 ? (
-            <Card variant="healthcare">
-              <CardContent className="pt-12 pb-12">
-                <div className="text-center">
-                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground mb-2">
-                    No providers found
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Try adjusting your filters or search query
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {providers.map((provider) => (
-                <ProviderSearchResultCard
-                  key={provider.id}
-                  provider={provider}
-                  isSelected={selectedProviders.includes(provider.id)}
-                  onSelect={() => handleSelectProvider(provider.id)}
-                  onView={() => {
-                    const url = referralId
-                      ? `/case-manager/providers/${provider.id}?referralId=${referralId}`
-                      : `/case-manager/providers/${provider.id}`;
-                    router.push(url);
-                  }}
-                  referralId={referralId || undefined}
-                />
-              ))}
+            <MultiSelect
+              options={serviceOptions}
+              selected={selectedServices}
+              onChange={setSelectedServices}
+              placeholder="Services"
+              searchPlaceholder="Search services..."
+              variant="healthcare"
+              badgeDisplayLimit={1}
+            />
+
+            <MultiSelect
+              options={payerOptions}
+              selected={selectedPayers}
+              onChange={(values) => setSelectedPayers(values)}
+              placeholder="Payers"
+              searchPlaceholder="Search payers..."
+              variant="healthcare"
+              badgeDisplayLimit={1}
+            />
+
+            <Select
+              value={availabilityFilter}
+              onValueChange={setAvailabilityFilter}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Availability" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any Availability</SelectItem>
+                <SelectItem value="available">Available Now</SelectItem>
+                <SelectItem value="waitlist">Waitlist Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Active Filters Summary & Clear */}
+          {(selectedCounties.length > 0 ||
+            selectedLicenseTypes.length > 0 ||
+            selectedServices.length > 0 ||
+            selectedPayers.length > 0 ||
+            availabilityFilter !== "all") && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-wrap gap-2">
+                {selectedCounties.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedCounties.length} Counties
+                  </Badge>
+                )}
+                {selectedLicenseTypes.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedLicenseTypes.length} Licenses
+                  </Badge>
+                )}
+                {selectedServices.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedServices.length} Services
+                  </Badge>
+                )}
+                {selectedPayers.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedPayers.length} Payers
+                  </Badge>
+                )}
+                {availabilityFilter !== "all" && (
+                  <Badge variant="secondary" className="text-xs">
+                    {availabilityFilter === "available" ? "Available Now" : "Waitlist Only"}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="text-xs h-7"
+              >
+                Clear All
+              </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                }
-                disabled={pagination.page === 1}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                }
-                disabled={pagination.page >= pagination.pages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+      {/* Results Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            Results ({pagination.total})
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={
+                selectedProviders.length === providers.length
+                  ? handleClearSelection
+                  : handleSelectAll
+              }
+            >
+              {selectedProviders.length === providers.length
+                ? "Deselect All"
+                : "Select All"}
+            </Button>
+          </div>
         </div>
+
+        {providers.length === 0 ? (
+          <div className="text-center py-12 bg-muted/10 rounded-lg border border-dashed border-muted-foreground/20">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-4">
+              <Search className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium">No providers found</h3>
+            <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
+              Try adjusting your filters or search query to find more results.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {providers.map((provider) => (
+              <ProviderSearchResultCard
+                key={provider.id}
+                provider={provider}
+                isSelected={selectedProviders.includes(provider.id)}
+                onSelect={() => handleSelectProvider(provider.id)}
+                onView={() =>
+                  router.push(
+                    `/case-manager/providers/${provider.id}${
+                      referralId ? `?referralId=${referralId}` : ""
+                    }`
+                  )
+                }
+                onAddToShortlist={() => {
+                  setSelectedProviders([provider.id]);
+                  setAddToShortlistDialogOpen(true);
+                }}
+                referralId={referralId || undefined}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Add to Shortlist Dialog */}
@@ -896,14 +792,14 @@ function CaseManagerSearchPageContent() {
             <DialogDescription>
               Add {selectedProviders.length} provider
               {selectedProviders.length !== 1 ? "s" : ""} to the shortlist for
-              this referral
+              Referral {referralNumber}.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="shortlist-notes">Notes (Optional)</Label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
               <Textarea
-                id="shortlist-notes"
+                id="notes"
                 placeholder="Add any notes about these providers..."
                 value={shortlistNotes}
                 onChange={(e) => setShortlistNotes(e.target.value)}

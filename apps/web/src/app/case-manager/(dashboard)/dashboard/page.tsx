@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { useCaseManager } from "@/contexts/case-manager-context";
 import { usePageMetadata } from "../use-page-metadata";
 import { caseManagerService, Referral } from "@/lib/api";
 import type { CaseManagerDashboard } from "@/lib/api";
+import { NotificationType } from "@carelink/types";
 import { getUrgencyBadgeConfig } from "@/lib/utils/case-manager";
 import {
   Card,
@@ -52,33 +54,57 @@ function CaseManagerDashboardContent() {
     );
   }, [user, caseManager, setTitle, setDescription]);
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      // The dashboard endpoint expects the user's ID, not the case manager's ID
-      if (!user?.id) return;
+  const fetchDashboard = useCallback(async () => {
+    // The dashboard endpoint expects the user's ID, not the case manager's ID
+    if (!user?.id) return;
 
-      try {
-        setIsLoading(true);
-        setError(null);
-        // Always use user.id - the API endpoint expects the user's ID, not the case manager's ID
-        const response = await caseManagerService.getDashboard(user.id);
-        if (response.success && response.data) {
-          setDashboard(response.data);
-        } else {
-          setError(response.message || "Failed to load dashboard");
-        }
-      } catch (err) {
-        console.error("Error fetching dashboard:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load dashboard"
-        );
-      } finally {
-        setIsLoading(false);
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Always use user.id - the API endpoint expects the user's ID, not the case manager's ID
+      const response = await caseManagerService.getDashboard(user.id);
+      if (response.success && response.data) {
+        setDashboard(response.data);
+      } else {
+        setError(response.message || "Failed to load dashboard");
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load dashboard"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh dashboard on relevant notifications
+      if (
+        notification.type === NotificationType.NEW_REFERRAL_REQUEST ||
+        notification.type === NotificationType.PROVIDER_RESPONSE ||
+        notification.type === NotificationType.PLACEMENT_UPDATE ||
+        notification.type === NotificationType.URGENT_CASE_ALERT
+      ) {
+        fetchDashboard();
       }
     };
 
-    fetchDashboard();
-  }, [user?.id]);
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchDashboard]);
 
   if (isLoading) {
     return <LoadingState message="Loading dashboard..." fullHeight />;

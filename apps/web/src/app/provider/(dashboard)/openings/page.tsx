@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { toast } from "sonner";
 import {
   openingService,
@@ -51,6 +52,7 @@ import {
   Gender,
   Payer,
 } from "@/lib/api";
+import { NotificationType } from "@carelink/types";
 import { usePageMetadata } from "../use-page-metadata";
 import { cn } from "@/lib/utils";
 import { useProviderId } from "@/hooks/use-provider-data";
@@ -128,20 +130,7 @@ function OpeningsPageContent() {
   // Use shared status config from constants
   const STATUS_CONFIG = OPENING_STATUS_CONFIG;
 
-  // Fetch openings with filters and search
-  useEffect(() => {
-    if (providerId) {
-      fetchOpenings();
-    }
-  }, [
-    providerId,
-    selectedHomeId,
-    selectedStatus,
-    debouncedSearch,
-    pagination.page,
-  ]);
-
-  const fetchOpenings = async () => {
+  const fetchOpenings = useCallback(async () => {
     if (!providerId) return;
 
     setIsLoading(true);
@@ -184,7 +173,33 @@ function OpeningsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [providerId, pagination.page, pagination.limit, selectedHomeId, selectedStatus, debouncedSearch]);
+
+  // Fetch openings with filters and search
+  useEffect(() => {
+    if (providerId) {
+      fetchOpenings();
+    }
+  }, [fetchOpenings]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (notification.type === NotificationType.OPENING_EXPIRING) {
+        fetchOpenings();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchOpenings]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

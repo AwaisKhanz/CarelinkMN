@@ -82,13 +82,7 @@ export function TimelineCard({ referral }: TimelineCardProps) {
     eventType?: string;
   }> = [];
 
-  // Add basic referral events
-  allEvents.push({
-    id: "created",
-    title: "Referral Created",
-    description: `Referral ${referral.referralNumber} was created`,
-    timestamp: referral.createdAt,
-  });
+  // Note: "Referral Created" event comes from analytics, no need to add it manually
 
   if (referral.placedAt) {
     allEvents.push({

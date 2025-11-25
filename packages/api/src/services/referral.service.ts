@@ -124,38 +124,8 @@ export class ReferralService {
         });
       }
 
-      // Create notification for new referral (respect user preferences)
-      try {
-        const channels: string[] = [];
-        const prefs = caseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
-        if (prefs) {
-          if (prefs.inAppNotifications && prefs.inAppNewReferrals) {
-            channels.push("IN_APP");
-          }
-          if (prefs.emailNotifications && prefs.emailNewReferrals) {
-            channels.push("EMAIL");
-          }
-        } else {
-          // Default to both if preferences not set
-          channels.push("IN_APP", "EMAIL");
-        }
-
-        if (channels.length > 0) {
-          const { NotificationService } = await import("./notification.service");
-          const notificationService = new NotificationService();
-          await notificationService.createNotification({
-            userId: userId,
-            type: NotificationType.REFERRAL_NEW,
-            title: "New Referral Created",
-            message: `Referral ${referral.referralNumber} has been created successfully.`,
-            channels: channels,
-            actionUrl: `/case-manager/referrals/${referral.id}`,
-          });
-        }
-      } catch (notifError) {
-        console.error("Failed to create referral notification:", notifError);
-        // Don't throw - notification failure shouldn't break referral creation
-      }
+      // Note: We don't send a notification to the creator - they just created it!
+      // Notifications will be sent to providers when they're added to shortlist
 
       // Track analytics event
       try {
@@ -397,51 +367,7 @@ export class ReferralService {
         data: updateData,
       });
 
-      // Create notification for referral update (respect user preferences)
-      try {
-        // Get case manager profile for preferences
-        const caseManagerProfile = await db.caseManager.findFirst({
-          where: {
-            organization: {
-              users: {
-                some: { id: userId },
-              },
-            },
-          },
-        });
-
-        const channels: string[] = [];
-        const prefs = caseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
-        if (prefs) {
-          // For referral updates, check if user wants notifications for provider responses or placement updates
-          // Since there's no specific "referral update" preference, we'll use provider responses as the closest match
-          if (prefs.inAppNotifications && (prefs.inAppProviderResponses || prefs.inAppPlacementUpdates)) {
-            channels.push("IN_APP");
-          }
-          if (prefs.emailNotifications && (prefs.emailProviderResponses || prefs.emailPlacementUpdates)) {
-            channels.push("EMAIL");
-          }
-        } else {
-          // Default to both if preferences not set
-          channels.push("IN_APP", "EMAIL");
-        }
-
-        if (channels.length > 0) {
-          const { NotificationService } = await import("./notification.service");
-          const notificationService = new NotificationService();
-          await notificationService.createNotification({
-            userId: userId,
-            type: NotificationType.REFERRAL_UPDATE,
-            title: "Referral Updated",
-            message: `Referral ${updatedReferral.referralNumber} has been updated.`,
-            channels: channels,
-            actionUrl: `/case-manager/referrals/${referralId}`,
-          });
-        }
-      } catch (notifError) {
-        console.error("Failed to create referral update notification:", notifError);
-        // Don't throw - notification failure shouldn't break referral update
-      }
+      // Note: No notification needed for self-update
 
       // Track analytics event
       try {
@@ -607,6 +533,7 @@ export class ReferralService {
       }
 
       // Send notification to assigned case manager
+    if (assignedToUserId !== currentUserId) {
       try {
         const channels: string[] = [];
         const prefs = assignedToCaseManagerProfile?.notificationPreferences as NotificationPreferences | null | undefined;
@@ -635,9 +562,9 @@ export class ReferralService {
           });
         }
       } catch (notifError) {
-        console.error("Failed to create assignment notification:", notifError);
+        console.error("Failed to create referral assignment notification:", notifError);
       }
-
+    }
       return this.getReferralById(referralId, assignedToUserId);
     } catch (error) {
       console.error("Assign referral error:", error);
@@ -700,8 +627,8 @@ export class ReferralService {
         notes: data.notes,
       }));
 
-      // Use transaction to handle duplicates
-      const created = await db.$transaction(
+      // Use transaction to handle duplicates and track which are new
+      const results = await db.$transaction(
         shortlistEntries.map((entry) =>
           db.referralShortlist.upsert({
             where: {
@@ -719,22 +646,32 @@ export class ReferralService {
         )
       );
 
-      // Track analytics event
-      try {
-        await db.analyticsEvent.create({
-          data: {
-            eventType: EventType.REFERRAL_SHORTLIST_ADDED,
-            userId: userId,
-            referralId: referralId,
-            eventData: {
-              providerCount: data.providerIds.length,
-              providerIds: data.providerIds,
+      // Determine which providers were newly created (not just updated)
+      // by checking if addedAt is very recent (within last second)
+      const now = new Date();
+      const newlyAddedProviders = results.filter(result => {
+        const timeDiff = now.getTime() - result.addedAt.getTime();
+        return timeDiff < 1000; // Added within last second = newly created
+      });
+
+      // Only track analytics event if new providers were actually added
+      if (newlyAddedProviders.length > 0) {
+        try {
+          await db.analyticsEvent.create({
+            data: {
+              eventType: EventType.REFERRAL_SHORTLIST_ADDED,
+              userId: userId,
+              referralId: referralId,
+              eventData: {
+                providerCount: newlyAddedProviders.length,
+                providerIds: newlyAddedProviders.map(p => p.providerId),
+              },
             },
-          },
-        });
-      } catch (analyticsError) {
-        console.error("Failed to track shortlist analytics:", analyticsError);
-        // Don't throw - analytics failure shouldn't break shortlist addition
+          });
+        } catch (analyticsError) {
+          console.error("Failed to track shortlist analytics:", analyticsError);
+          // Don't throw - analytics failure shouldn't break shortlist addition
+        }
       }
 
       // Fetch full shortlist with relations
@@ -1320,43 +1257,47 @@ export class ReferralService {
             organizationId: referral.caseManagerProfile.organizationId,
           }
         : undefined,
-      shortlist: await Promise.all(
-        referral.shortlist.map(async (s) => {
-          const provider = await db.provider.findUnique({
-            where: { id: s.providerId },
-            include: {
-              organization: {
-                select: {
-                  id: true,
-                  name: true,
+      shortlist: referral.shortlist
+        ? await Promise.all(
+            referral.shortlist.map(async (s) => {
+              const provider = await db.provider.findUnique({
+                where: { id: s.providerId },
+                include: {
+                  organization: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                  homes: {
+                    where: { isActive: true },
+                    select: {
+                      id: true,
+                      name: true,
+                      city: true,
+                      state: true,
+                    },
+                  },
                 },
-              },
-              homes: {
-                where: { isActive: true },
-                select: {
-                  id: true,
-                  name: true,
-                  city: true,
-                  state: true,
-                },
-              },
-            },
-          });
-          return await this.mapShortlistToType(s as ShortlistPayload, provider ?? undefined);
-        })
-      ),
+              });
+              return await this.mapShortlistToType(s as ShortlistPayload, provider ?? undefined);
+            })
+          )
+        : [],
       messages: undefined, // Messages are MessageThreads, not included in Referral type
-      placements: referral.placements.map((p) => ({
-        id: p.id,
-        referralId: p.referralId ?? undefined,
-        providerId: p.providerId,
-        openingId: p.openingId,
-        placementDate: p.placementDate.toISOString(),
-        moveInDate: p.moveInDate?.toISOString(),
-        status: p.status as PlacementStatus,
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-      })),
+      placements: referral.placements
+        ? referral.placements.map((p) => ({
+            id: p.id,
+            referralId: p.referralId ?? undefined,
+            providerId: p.providerId,
+            openingId: p.openingId,
+            placementDate: p.placementDate.toISOString(),
+            moveInDate: p.moveInDate?.toISOString(),
+            status: p.status as PlacementStatus,
+            createdAt: p.createdAt.toISOString(),
+            updatedAt: p.updatedAt.toISOString(),
+          }))
+        : [],
     };
   }
 

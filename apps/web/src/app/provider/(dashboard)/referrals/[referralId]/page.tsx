@@ -94,11 +94,14 @@ function ReferralDetailContent() {
   }, [referralId]);
 
   const fetchReferral = async () => {
-    if (!referralId) return;
+    if (!referralId || !providerId) return;
 
     try {
       setIsLoading(true);
-      const response = await referralService.getReferralById(referralId);
+      const response = await providerService.getProviderReferralById(
+        providerId,
+        referralId
+      );
       if (response.success && response.data) {
         setReferral(response.data);
       } else {
@@ -414,13 +417,13 @@ function ReferralDetailContent() {
                     Contacted
                   </SelectItem>
                   <SelectItem value={ShortlistStatus.RESPONDED}>
-                    Responded
+                    Interested / Responded
                   </SelectItem>
                   <SelectItem value={ShortlistStatus.TOURING}>
-                    Touring
+                    Touring Scheduled
                   </SelectItem>
                   <SelectItem value={ShortlistStatus.DECLINED}>
-                    Declined
+                    Not Interested / Declined
                   </SelectItem>
                 </SelectContent>
               </Select>

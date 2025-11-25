@@ -380,6 +380,26 @@ export class BillingService {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        
+        // Check if this is a boost purchase
+        const boostLevel = session.metadata?.boostLevel;
+        const providerId = session.metadata?.providerId;
+        const isRecurring = session.metadata?.isRecurring === "true";
+
+        if (boostLevel && providerId) {
+          // Handle Boost Purchase
+          const { boostService } = await import("./boost.service");
+          await boostService.activateBoost({
+            providerId,
+            boostLevel: parseInt(boostLevel),
+            stripePaymentId: session.payment_intent as string,
+            stripeSubId: session.subscription as string,
+            durationDays: 30, // Default duration
+          });
+          break;
+        }
+
+        // ... existing subscription logic ...
         // subscription id might be in session.subscription
         const subscriptionId = session.subscription as string | undefined;
         const customerId = session.customer as string | undefined;
@@ -417,9 +437,38 @@ export class BillingService {
         }
         break;
       }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const { id } = sub;
+
+        // Check if this is a boost subscription
+        const boostLevel = sub.metadata?.boostLevel;
+        const providerId = sub.metadata?.providerId;
+
+        if (boostLevel && providerId) {
+          const { boostService } = await import("./boost.service");
+          await boostService.cancelBoost(providerId);
+          break;
+        }
+
+        await db.subscription.updateMany({
+          where: { stripeSubscriptionId: id },
+          data: {
+            status: SubscriptionStatus.CANCELLED,
+            canceledAt: new Date(),
+          },
+        });
+        break;
+      }
       case "customer.subscription.updated":
       case "customer.subscription.created": {
         const sub = event.data.object as Stripe.Subscription;
+        
+        // Skip boost subscriptions for regular billing logic
+        if (sub.metadata?.boostLevel) {
+          break;
+        }
+
         const {
           id,
           customer,
@@ -477,18 +526,6 @@ export class BillingService {
             metadata,
           });
         }
-        break;
-      }
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const { id } = sub;
-        await db.subscription.updateMany({
-          where: { stripeSubscriptionId: id },
-          data: {
-            status: SubscriptionStatus.CANCELLED,
-            canceledAt: new Date(),
-          },
-        });
         break;
       }
       default:

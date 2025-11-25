@@ -34,12 +34,11 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
  * 2. EmailVerificationGuard - Ensures user email is verified
  * 3. ProviderOnboardingCompleteGuard - Ensures onboarding is complete, redirects if not
  * 4. ProviderProvider - Provides provider context (single source of truth for provider data)
- * 5. ProviderVerificationGuard - Shows verification pending state but allows access (allowPending=true)
+ * 5. ProviderVerificationGuard - Blocks access until provider is verified (allowPending=false)
  * 6. SubscriptionProvider - Provides subscription context
  * 7. PageMetadataProvider - Provides page metadata context
  *
  * Note: For pages that require specific subscription tiers, use ProviderSubscriptionGuard at the page level.
- * For pages that require full verification (not just pending), use ProviderVerificationGuard with allowPending=false.
  *
  * Pages requiring PRO subscription (use ProviderSubscriptionGuard):
  * - /provider/analytics
@@ -48,8 +47,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
  * - /provider/availability
  * - /provider/messages
  *
- * Pages requiring full verification (use ProviderVerificationGuard with allowPending=false):
- * - Pages that require verified status (can be added per page as needed)
+ * Verification is REQUIRED for all dashboard access.
+ * Unverified providers will see a "Verification Pending" screen.
  */
 export default function DashboardLayoutWrapper({
   children,
@@ -60,7 +59,7 @@ export default function DashboardLayoutWrapper({
   const content = (
     <EmailVerificationGuard>
       <ProviderProvider>
-        <ProviderVerificationGuard allowPending={true}>
+        <ProviderVerificationGuard allowPending={false}>
           <SubscriptionProvider>
             <PageMetadataProvider>
               <DashboardLayoutContent>{children}</DashboardLayoutContent>

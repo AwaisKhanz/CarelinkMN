@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import {
   Card,
   CardContent,
@@ -16,7 +17,7 @@ import { HospitalSWGuard } from "@/components/auth/route-guard";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
-import { DischargeStatus } from "@carelink/types";
+import { DischargeStatus, NotificationType } from "@carelink/types";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { LoadingState, StatsGrid } from "@/components/shared";
 import { useDischargeCases } from "@/hooks/use-hospital-sw-data";
@@ -38,7 +39,7 @@ function HospitalSWDashboardContent() {
   );
 
   // Use shared hook for fetching discharge cases
-  const { cases, isLoading } = useDischargeCases(
+  const { cases, isLoading, refetch } = useDischargeCases(
     canViewDischarges
       ? {
           page: 1,
@@ -46,6 +47,28 @@ function HospitalSWDashboardContent() {
         }
       : undefined
   );
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh dashboard on relevant notifications
+      if (
+        notification.type === NotificationType.DISCHARGE_INVITE_RESPONSE ||
+        notification.type === NotificationType.DISCHARGE_PLACEMENT
+      ) {
+        refetch();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, refetch]);
 
   useEffect(() => {
     setTitle("Hospital Social Work Dashboard");
@@ -129,14 +152,15 @@ function HospitalSWDashboardContent() {
     [stats]
   );
 
-  if (isLoading) {
-    return <LoadingState message="Loading dashboard..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading dashboard..." />;
+  // }
 
   return (
     <div className="space-y-8">
       {/* Quick Stats */}
-      <StatsGrid stats={statsData} columns={4} />
+      <StatsGrid stats={statsData} columns={4} isLoading={isLoading} />
 
       {/* Quick Actions */}
       <Card variant="healthcare">

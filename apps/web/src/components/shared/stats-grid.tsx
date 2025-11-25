@@ -23,11 +23,14 @@ export interface Stat {
   variant?: "default" | "healthcare";
 }
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface StatsGridProps {
   stats: Stat[];
   columns?: 2 | 3 | 4 | 5;
   variant?: "default" | "healthcare" | "card";
   className?: string;
+  isLoading?: boolean;
 }
 
 /**
@@ -39,6 +42,7 @@ export function StatsGrid({
   columns = 4,
   variant = "healthcare",
   className,
+  isLoading = false,
 }: StatsGridProps) {
   const gridCols = {
     2: "md:grid-cols-2",
@@ -66,33 +70,42 @@ export function StatsGrid({
               )}
             </CardHeader>
             <CardContent>
-              <div
-                className={cn(
-                  "text-2xl font-bold",
-                  stat.valueClassName
-                )}
-              >
-                {stat.value}
-              </div>
-              {stat.description && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {typeof stat.description === "string"
-                    ? stat.description
-                    : stat.description}
-                </p>
-              )}
-              {stat.trend && (
-                <p
-                  className={cn(
-                    "text-xs mt-1",
-                    stat.trend.isPositive
-                      ? "text-success"
-                      : "text-destructive"
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-1" />
+                  <Skeleton className="h-3 w-24 mt-1" />
+                </>
+              ) : (
+                <>
+                  <div
+                    className={cn(
+                      "text-2xl font-bold",
+                      stat.valueClassName
+                    )}
+                  >
+                    {stat.value}
+                  </div>
+                  {stat.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {typeof stat.description === "string"
+                        ? stat.description
+                        : stat.description}
+                    </p>
                   )}
-                >
-                  {stat.trend.isPositive ? "+" : ""}
-                  {stat.trend.value}
-                </p>
+                  {stat.trend && (
+                    <p
+                      className={cn(
+                        "text-xs mt-1",
+                        stat.trend.isPositive
+                          ? "text-success"
+                          : "text-destructive"
+                      )}
+                    >
+                      {stat.trend.isPositive ? "+" : ""}
+                      {stat.trend.value}
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -115,6 +128,7 @@ export function StatsGrid({
           key={index}
           title={stat.label}
           value={stat.value}
+          isLoading={isLoading}
           description={
             stat.description || stat.trend
               ? (() => {

@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface StatsCardProps {
   title: string;
   value: string | number;
@@ -17,6 +19,7 @@ interface StatsCardProps {
   variant?: "default" | "healthcare";
   valueClassName?: string;
   className?: string;
+  isLoading?: boolean;
 }
 
 export function StatsCard({
@@ -26,16 +29,25 @@ export function StatsCard({
   variant = "healthcare",
   valueClassName,
   className,
+  isLoading = false,
 }: StatsCardProps) {
   return (
     <Card variant={variant} className={className}>
       <CardHeader className="pb-2">
         <CardDescription>{title}</CardDescription>
-        <CardTitle className={cn("text-2xl", valueClassName)}>{value}</CardTitle>
+        {isLoading ? (
+          <Skeleton className="h-8 w-24 mb-1" />
+        ) : (
+          <CardTitle className={cn("text-2xl", valueClassName)}>{value}</CardTitle>
+        )}
         {description && (
-          <CardDescription className="text-xs mt-1">
-            {typeof description === "string" ? description : description}
-          </CardDescription>
+          <div className="text-xs text-muted-foreground mt-1">
+            {isLoading ? (
+              <Skeleton className="h-3 w-32" />
+            ) : (
+              typeof description === "string" ? description : description
+            )}
+          </div>
         )}
       </CardHeader>
     </Card>

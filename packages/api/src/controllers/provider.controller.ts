@@ -29,6 +29,7 @@ export class ProviderController {
     this.getProviderByOrganizationId =
       this.getProviderByOrganizationId.bind(this);
     this.getProviderReferrals = this.getProviderReferrals.bind(this);
+    this.getProviderReferralById = this.getProviderReferralById.bind(this);
     this.getProviderServices = this.getProviderServices.bind(this);
     this.updateProviderServices = this.updateProviderServices.bind(this);
     this.getOrganizationStaff = this.getOrganizationStaff.bind(this);
@@ -832,7 +833,7 @@ export class ProviderController {
   async getProviderReferrals(req: Request, res: Response): Promise<void> {
     try {
       const { providerId } = req.params;
-      const { page = 1, limit = 10, status } = req.query;
+      const { page, limit, status, urgency } = req.query;
       const user = (req as unknown as AuthenticatedRequest).user;
 
       if (!user) {
@@ -844,36 +845,32 @@ export class ProviderController {
         return;
       }
 
-      // Verify user has access to this provider
-      const hasAccess = await this.providerService.verifyProviderAccess(
-        user.id,
-        providerId
-      );
-      if (!hasAccess) {
-        res.status(403).json({
-          success: false,
-          error: "Forbidden",
-          message: "You do not have access to this provider's referrals",
-        } as ApiResponse);
-        return;
-      }
-
       const result = await this.providerService.getProviderReferrals(
         providerId,
+        user.id,
+        user.role,
         {
-          page: Number(page),
-          limit: Number(limit),
+          page: page ? parseInt(page as string) : undefined,
+          limit: limit ? parseInt(limit as string) : undefined,
           status: status as string | undefined,
+          urgency: urgency as string | undefined,
         }
       );
 
       res.status(200).json({
         success: true,
-        data: result,
+        data: {
+          referrals: result.referrals,
+          pagination: result.pagination,
+        },
         message: "Provider referrals retrieved successfully",
       } as ApiResponse);
     } catch (error) {
       console.error("Get provider referrals error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("Access denied")
+          ? 403
+          : 500;
       res.status(500).json({
         success: false,
         error: "Referral retrieval failed",
@@ -881,6 +878,54 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving provider referrals",
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get single referral detail for provider
+   * GET /api/providers/:providerId/referrals/:referralId
+   */
+  async getProviderReferralById(req: Request, res: Response): Promise<void> {
+    try {
+      const { providerId, referralId } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const result = await this.providerService.getProviderReferralById(
+        providerId,
+        referralId,
+        user.id
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "Referral details retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get provider referral by ID error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : error instanceof Error && error.message.includes("Access denied")
+          ? 403
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to retrieve referral",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving referral details",
       } as ApiResponse);
     }
   }

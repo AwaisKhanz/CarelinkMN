@@ -1,3 +1,4 @@
+import { getSocketServer } from "../websocket/socket.server";
 import { db } from "@carelink/database";
 import { Prisma, ThreadStatus as PrismaThreadStatus, NotificationType } from "@prisma/client";
 import {
@@ -796,6 +797,14 @@ export class MessagingService {
       } catch (notifError) {
         console.error("Failed to create message notification:", notifError);
         // Don't throw - notification failure shouldn't break message sending
+      }
+
+      // Emit real-time message event
+      try {
+        const socketServer = getSocketServer();
+        socketServer.emitNewMessage(threadId, result);
+      } catch (socketError) {
+        console.warn("Socket.IO not available, message created but not emitted:", socketError);
       }
 
       return {

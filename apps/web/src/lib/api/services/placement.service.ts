@@ -67,6 +67,18 @@ export class PlacementService {
     return await apiService.post<Placement>("/api/placements", payload);
   }
 
+  async createPlacementFromReferral(data: {
+    referralId: string;
+    providerId: string;
+    homeId: string;
+    openingId: string;
+    placementDate: string;
+    moveInDate?: string;
+    notes?: string;
+  }): Promise<ApiResponse<Placement>> {
+    return await apiService.post<Placement>("/api/placements/from-referral", data);
+  }
+
   async getPlacements(
     params: GetPlacementsParams = {}
   ): Promise<ApiResponse<PaginatedPlacements>> {

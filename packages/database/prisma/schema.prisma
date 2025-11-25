@@ -44,7 +44,7 @@ model User {
   supportTickets          SupportTicket[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
-  messageTemplates        MessageTemplate[]
+
   favorites               Favorite[]
   publicReferralRequests  PublicReferralRequest[]
   assignedRequests        PublicReferralRequest[] @relation("AssignedRequests")
@@ -145,7 +145,7 @@ model Organization {
   caseManagers     CaseManager[]
   hospitalStaff    HospitalStaff[]
   vendors          Vendor[]
-  messageTemplates MessageTemplate[]
+
 
   @@index([type])
   @@index([status])
@@ -266,23 +266,38 @@ model Provider {
   acceptsReferrals  Boolean @default(true)
   responseTimeHours Int? // Average response time
 
+  // Paid Boost Fields
+  boostLevel        Int       @default(0) // 0 = no boost, 1-3 = boost levels
+  boostExpiresAt    DateTime?
+  boostPurchasedAt  DateTime?
+  boostStripeSubId  String?   // Stripe subscription ID for recurring boosts
+
+  // Metrics for analytics
+  viewCount         Int       @default(0)
+  inquiryCount      Int       @default(0)
+  placementCount    Int       @default(0)
+  lastViewedAt      DateTime?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  homes           Home[]
-  services        ProviderService[]
-  openings        Opening[]
-  messages        MessageThread[]
-  placements      Placement[]
-  analyticsEvents AnalyticsEvent[]
-  onboardingState ProviderOnboardingState?
+  homes            Home[]
+  services         ProviderService[]
+  openings         Opening[]
+  messages         MessageThread[]
+  placements       Placement[]
+  analyticsEvents  AnalyticsEvent[]
+  onboardingState  ProviderOnboardingState?
   favorites        Favorite[]
+  boostPurchases   BoostPurchase[]
 
   @@index([organizationId])
   @@index([subscriptionTier])
   @@index([verified])
+  @@index([boostLevel, boostExpiresAt])
+  @@index([viewCount])
   @@schema("core")
 }
 
@@ -1172,39 +1187,6 @@ enum NotificationType {
   @@schema("messaging")
 }
 
-model MessageTemplate {
-  id String @id @default(uuid())
-
-  // Owner
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  // Template details
-  name    String
-  subject String?
-  content String  @db.Text
-
-  // Category/Type
-  category String? // e.g., "INITIAL_OUTREACH", "FOLLOW_UP", "URGENT", "GENERAL"
-
-  // Variables supported (stored as JSON array for flexibility)
-  variables Json? // e.g., ["referralNumber", "clientInitials", "clientAge", "providerName"]
-
-  // Usage tracking
-  usageCount Int       @default(0)
-  lastUsedAt DateTime?
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([organizationId])
-  @@index([category])
-  @@schema("messaging")
-}
 
 // ============================================
 // ANALYTICS SCHEMA
@@ -1329,6 +1311,45 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELLED
   UNPAID
+
+  @@schema("billing")
+}
+
+model BoostPurchase {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  boostLevel Int // 1, 2, or 3
+  amount     Int // Amount in cents
+  currency   String @default("usd")
+
+  // Stripe
+  stripePaymentId String?
+  stripeSubId     String? // For recurring subscriptions
+
+  // Duration
+  startDate DateTime
+  endDate   DateTime
+
+  // Status
+  status      BoostPurchaseStatus @default(ACTIVE)
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([providerId])
+  @@index([status])
+  @@index([endDate])
+  @@schema("billing")
+}
+
+enum BoostPurchaseStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  REFUNDED
 
   @@schema("billing")
 }

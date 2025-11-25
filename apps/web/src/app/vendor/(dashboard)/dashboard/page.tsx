@@ -84,9 +84,10 @@ export default function VendorDashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  if (isLoading) {
-    return <LoadingState message="Loading dashboard..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading dashboard..." />;
+  // }
 
   if (error) {
     return (
@@ -110,6 +111,7 @@ export default function VendorDashboardPage() {
     >
       <div className="space-y-6">
         <StatsGrid
+          isLoading={isLoading}
           stats={[
             {
               label: "Total Leads",

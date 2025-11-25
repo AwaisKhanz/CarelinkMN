@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePageMetadata } from "../use-page-metadata";
+import { useSocket } from "@/contexts/socket-context";
 import { vrsService, type VRSClient } from "@/lib/api";
 import { toast } from "sonner";
-import { VRSClientStatus } from "@carelink/types";
+import { VRSClientStatus, NotificationType } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { VRS_CAPABILITIES } from "@/lib/permissions/capabilities";
@@ -85,6 +86,30 @@ function VRSClientsPageContent() {
     fetchClients();
   }, [fetchClients]);
 
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.CLIENT_UPDATE ||
+        notification.type === NotificationType.JOB_MATCH ||
+        notification.type === NotificationType.RETENTION_ALERT ||
+        notification.type === NotificationType.PLACEMENT_SUCCESS
+      ) {
+        fetchClients(true);
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchClients]);
+
   // Reset page when filters change
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -104,9 +129,10 @@ function VRSClientsPageContent() {
     totalCount: pagination.total,
   });
 
-  if (isLoading && clients.length === 0) {
-    return <LoadingState message="Loading clients..." />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && clients.length === 0) {
+  //   return <LoadingState message="Loading clients..." />;
+  // }
 
   if (error && clients.length === 0) {
     return (

@@ -326,9 +326,10 @@ function AdminLicensesPageContent() {
     [router, handleOpenVerifyDialog]
   );
 
-  if (isLoading && licenses.length === 0) {
-    return <LoadingState message="Loading licenses..." fullHeight />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && licenses.length === 0) {
+  //   return <LoadingState message="Loading licenses..." fullHeight />;
+  // }
 
   if (error && licenses.length === 0) {
     return (
@@ -355,7 +356,7 @@ function AdminLicensesPageContent() {
           <CardTitle>Licenses</CardTitle>
           <CardDescription>Verify and manage provider licenses</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4" >
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <SearchFilterBar
@@ -396,8 +397,9 @@ function AdminLicensesPageContent() {
             </div>
           </div>
 
-          {licenses.length === 0 ? (
+          {!isLoading && licenses.length === 0 ? (
             <EmptyState
+              className=""
               icon={ShieldCheck}
               title="No licenses found"
               description="No licenses match your current filters"
@@ -406,6 +408,7 @@ function AdminLicensesPageContent() {
             <DataTable
               columns={columns}
               data={licenses}
+              isLoading={isLoading}
               enablePagination
               currentPage={pagination.page}
               totalPages={pagination.pages}

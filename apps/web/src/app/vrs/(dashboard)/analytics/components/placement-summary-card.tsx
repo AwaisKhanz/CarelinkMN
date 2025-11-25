@@ -9,16 +9,20 @@ import {
 } from "@/components/ui/card";
 import { Users, Briefcase, TrendingUp } from "lucide-react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface PlacementSummaryCardProps {
   totalClients: number;
   activeJobs: number;
   placementsThisQuarter: number;
+  isLoading?: boolean;
 }
 
 export function PlacementSummaryCard({
   totalClients,
   activeJobs,
   placementsThisQuarter,
+  isLoading = false,
 }: PlacementSummaryCardProps) {
   return (
     <Card variant="healthcare">
@@ -37,7 +41,11 @@ export function PlacementSummaryCard({
               <div className="text-sm text-muted-foreground">In the system</div>
             </div>
           </div>
-          <div className="text-2xl font-bold">{totalClients}</div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-12" />
+          ) : (
+            <div className="text-2xl font-bold">{totalClients}</div>
+          )}
         </div>
 
         <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -50,7 +58,11 @@ export function PlacementSummaryCard({
               </div>
             </div>
           </div>
-          <div className="text-2xl font-bold">{activeJobs}</div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-12" />
+          ) : (
+            <div className="text-2xl font-bold">{activeJobs}</div>
+          )}
         </div>
 
         <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -61,7 +73,11 @@ export function PlacementSummaryCard({
               <div className="text-sm text-muted-foreground">Last 90 days</div>
             </div>
           </div>
-          <div className="text-2xl font-bold">{placementsThisQuarter}</div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-12" />
+          ) : (
+            <div className="text-2xl font-bold">{placementsThisQuarter}</div>
+          )}
         </div>
       </CardContent>
     </Card>

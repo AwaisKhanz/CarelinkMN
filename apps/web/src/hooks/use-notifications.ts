@@ -12,19 +12,25 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 10;
 
   // Fetch initial notifications
   const fetchNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       const [data, count] = await Promise.all([
-        notificationService.getNotifications({ limit: 10 }),
+        notificationService.getNotifications({ page: 1, limit: ITEMS_PER_PAGE }),
         notificationService.getUnreadCount()
       ]);
       
       setNotifications(data.notifications);
       setUnreadCount(count);
+      setCurrentPage(1);
+      setHasMore(data.pagination.page < data.pagination.pages);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -33,6 +39,29 @@ export function useNotifications() {
       setIsLoading(false);
     }
   }, []);
+
+  // Load more notifications (for infinite scroll)
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+      const data = await notificationService.getNotifications({ 
+        page: nextPage, 
+        limit: ITEMS_PER_PAGE 
+      });
+      
+      setNotifications((prev) => [...prev, ...data.notifications]);
+      setCurrentPage(nextPage);
+      setHasMore(data.pagination.page < data.pagination.pages);
+    } catch (err) {
+      console.error("Failed to load more notifications:", err);
+      toast.error("Failed to load more notifications");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, hasMore, isLoadingMore]);
 
   // Initial fetch
   useEffect(() => {
@@ -132,10 +161,14 @@ export function useNotifications() {
     notifications,
     unreadCount,
     isLoading,
+    isLoadingMore,
+    hasMore,
     error,
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    loadMore,
     refresh: fetchNotifications
   };
 }
+

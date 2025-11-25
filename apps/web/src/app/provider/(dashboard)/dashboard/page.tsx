@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import {
   Card,
   CardContent,
@@ -51,6 +52,7 @@ import {
   ReferralStatus,
   SubscriptionTier,
   LicenseStatus,
+  NotificationType,
 } from "@carelink/types";
 import { SLABadge } from "@/components/ui/sla-badge";
 import { useSubscriptionContext } from "@/contexts/subscription-context";
@@ -168,142 +170,162 @@ function ProviderDashboardContent() {
   // Subscription is now fetched in SubscriptionProvider - no need to fetch here
 
   // Fetch dashboard data
-  useEffect(() => {
-    if (!providerId || !mountedRef.current) {
-      return;
-    }
+  const fetchDashboardData = useCallback(async () => {
+    if (!providerId || !mountedRef.current) return;
 
     // Create abort controller for this fetch
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    const fetchDashboardData = async () => {
+    try {
+      setIsLoadingAdditional(true);
+      setError(null);
+
+      // Fetch additional data (referrals, openings, placements)
+      // Homes and analytics are now fetched via hooks with caching
+      const [referralsResponse, openingsResponse, placementsResponse] =
+        await Promise.all([
+          // Fetch recent referrals (always available)
+          providerService
+            .getProviderReferrals(providerId, {
+              page: 1,
+              limit: RECENT_ITEMS_LIMIT,
+              status: "all",
+            })
+            .catch((error) => {
+              console.error("Error fetching referrals:", error);
+              return null;
+            }),
+
+          // Fetch openings (always available)
+          openingService
+            .getOpenings({
+              providerId,
+              status: OpeningStatus.OPEN,
+              page: 1,
+              limit: MAX_OPENINGS_FETCH_LIMIT,
+              includeExpired: false,
+            })
+            .catch((error) => {
+              console.error("Error fetching openings:", error);
+              return null;
+            }),
+
+          // Fetch placements (only for PRO+)
+          tier !== SubscriptionTier.FREE
+            ? placementService
+                .getPlacements({
+                  providerId,
+                  page: 1,
+                  limit: RECENT_ITEMS_LIMIT,
+                })
+                .catch((error) => {
+                  console.error("Error fetching placements:", error);
+                  return null;
+                })
+            : Promise.resolve(null),
+        ]);
+
       if (!mountedRef.current || abortController.signal.aborted) return;
 
-      try {
-        setIsLoadingAdditional(true);
-        setError(null);
+      // Process referrals
+      if (referralsResponse?.success && referralsResponse.data) {
+        const referrals =
+          (referralsResponse.data as ProviderReferralsResponse).referrals ??
+          [];
+        setRecentReferrals(referrals);
+      }
 
-        // Fetch additional data (referrals, openings, placements)
-        // Homes and analytics are now fetched via hooks with caching
-        const [referralsResponse, openingsResponse, placementsResponse] =
-          await Promise.all([
-            // Fetch recent referrals (always available)
-            providerService
-              .getProviderReferrals(providerId, {
-                page: 1,
-                limit: RECENT_ITEMS_LIMIT,
-                status: "all",
-              })
-              .catch((error) => {
-                console.error("Error fetching referrals:", error);
-                return null;
-              }),
+      // Process openings
+      if (openingsResponse?.success && openingsResponse.data) {
+        const openings = openingsResponse.data.openings || [];
+        const expiring = openings.filter((opening) =>
+          isOpeningExpiringSoon(opening.freshnessTimestamp)
+        );
+        const stale = openings.filter((opening) =>
+          isOpeningExpired(opening.freshnessTimestamp)
+        );
+        setExpiringOpenings(expiring);
+        setStaleOpenings(stale);
+      }
 
-            // Fetch openings (always available)
-            openingService
-              .getOpenings({
-                providerId,
-                status: OpeningStatus.OPEN,
-                page: 1,
-                limit: MAX_OPENINGS_FETCH_LIMIT,
-                includeExpired: false,
-              })
-              .catch((error) => {
-                console.error("Error fetching openings:", error);
-                return null;
-              }),
-
-            // Fetch placements (only for PRO+)
-            tier !== SubscriptionTier.FREE
-              ? placementService
-                  .getPlacements({
-                    providerId,
-                    page: 1,
-                    limit: RECENT_ITEMS_LIMIT,
-                  })
-                  .catch((error) => {
-                    console.error("Error fetching placements:", error);
-                    return null;
-                  })
-              : Promise.resolve(null),
-          ]);
-
-        if (!mountedRef.current || abortController.signal.aborted) return;
-
-        // Process referrals
-        if (referralsResponse?.success && referralsResponse.data) {
-          const referrals =
-            (referralsResponse.data as ProviderReferralsResponse).referrals ??
-            [];
-          setRecentReferrals(referrals);
-        }
-
-        // Process openings
-        if (openingsResponse?.success && openingsResponse.data) {
-          const openings = openingsResponse.data.openings || [];
-          const expiring = openings.filter((opening) =>
-            isOpeningExpiringSoon(opening.freshnessTimestamp)
-          );
-          const stale = openings.filter((opening) =>
-            isOpeningExpired(opening.freshnessTimestamp)
-          );
-          setExpiringOpenings(expiring);
-          setStaleOpenings(stale);
-        }
-
-        // Fetch expiring licenses if user can manage licenses
-        if (canManageLicenses && providerId) {
-          try {
-            const licensesResponse =
-              await providerService.getProviderLicenses(providerId);
-            if (licensesResponse.success && licensesResponse.data) {
-              const now = new Date();
-              const thirtyDaysFromNow = new Date(
-                now.getTime() + 30 * 24 * 60 * 60 * 1000
+      // Fetch expiring licenses if user can manage licenses
+      if (canManageLicenses && providerId) {
+        try {
+          const licensesResponse =
+            await providerService.getProviderLicenses(providerId);
+          if (licensesResponse.success && licensesResponse.data) {
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(
+              now.getTime() + 30 * 24 * 60 * 60 * 1000
+            );
+            const expiring = licensesResponse.data.filter((license: any) => {
+              if (license.status !== LicenseStatus.ACTIVE) return false;
+              const expirationDate = new Date(license.expirationDate);
+              return (
+                expirationDate >= now && expirationDate <= thirtyDaysFromNow
               );
-              const expiring = licensesResponse.data.filter((license: any) => {
-                if (license.status !== LicenseStatus.ACTIVE) return false;
-                const expirationDate = new Date(license.expirationDate);
-                return (
-                  expirationDate >= now && expirationDate <= thirtyDaysFromNow
-                );
-              });
-              setExpiringLicenses(expiring);
-            }
-          } catch (err) {
-            console.error("Error fetching licenses:", err);
-            // Don't set error state for license fetch failures
+            });
+            setExpiringLicenses(expiring);
           }
-        }
-
-        // Process placements (if PRO+)
-        if (placementsResponse?.success && placementsResponse.data) {
-          const placements = placementsResponse.data.placements || [];
-          setRecentPlacements(placements);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        if (mountedRef.current && !abortController.signal.aborted) {
-          setError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load dashboard data"
-          );
-        }
-      } finally {
-        if (mountedRef.current && !abortController.signal.aborted) {
-          setIsLoadingAdditional(false);
+        } catch (err) {
+          console.error("Error fetching licenses:", err);
+          // Don't set error state for license fetch failures
         }
       }
-    };
 
+      // Process placements (if PRO+)
+      if (placementsResponse?.success && placementsResponse.data) {
+        const placements = placementsResponse.data.placements || [];
+        setRecentPlacements(placements);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      if (mountedRef.current && !abortController.signal.aborted) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load dashboard data"
+        );
+      }
+    } finally {
+      if (mountedRef.current && !abortController.signal.aborted) {
+        setIsLoadingAdditional(false);
+      }
+    }
+  }, [providerId, tier, canManageLicenses]);
+
+  useEffect(() => {
     fetchDashboardData();
 
     return () => {
-      abortController.abort();
+      abortControllerRef.current?.abort();
     };
-  }, [providerId, tier]);
+  }, [fetchDashboardData]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh dashboard on relevant notifications
+      if (
+        notification.type === NotificationType.NEW_REFERRAL ||
+        notification.type === NotificationType.PLACEMENT_CONFIRMED ||
+        notification.type === NotificationType.OPENING_EXPIRING ||
+        notification.type === NotificationType.LICENSE_EXPIRING
+      ) {
+        fetchDashboardData();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchDashboardData]);
 
   // Compute stats from context data and hooks
   const stats = useMemo<DashboardStats>(() => {

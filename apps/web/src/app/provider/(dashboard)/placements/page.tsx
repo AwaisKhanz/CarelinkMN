@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { toast } from "sonner";
 import {
   placementService,
@@ -62,7 +63,7 @@ import {
   PLACEMENT_STATUS_CONFIG,
 } from "@/lib/constants";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { SubscriptionTier } from "@carelink/types";
+import { SubscriptionTier, NotificationType } from "@carelink/types";
 import { useProvider } from "@/contexts/provider-context";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
@@ -108,14 +109,7 @@ function PlacementsPageContent() {
     setDescription("Manage resident placements and track placement status");
   }, [setTitle, setDescription]);
 
-  // Fetch placements based on filters and pagination
-  useEffect(() => {
-    if (providerId) {
-      fetchPlacements();
-    }
-  }, [providerId, debouncedSearch, selectedStatus, pagination.page]);
-
-  const fetchPlacements = async () => {
+  const fetchPlacements = useCallback(async () => {
     if (!providerId) return;
 
     setIsLoading(true);
@@ -158,7 +152,37 @@ function PlacementsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [providerId, pagination.page, pagination.limit, selectedStatus, debouncedSearch]);
+
+  // Fetch placements based on filters and pagination
+  useEffect(() => {
+    if (providerId) {
+      fetchPlacements();
+    }
+  }, [fetchPlacements]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.PLACEMENT_CONFIRMED ||
+        notification.type === NotificationType.PLACEMENT_UPDATE ||
+        notification.type === NotificationType.NEW_REFERRAL // Might affect placements if converted
+      ) {
+        fetchPlacements();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchPlacements]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

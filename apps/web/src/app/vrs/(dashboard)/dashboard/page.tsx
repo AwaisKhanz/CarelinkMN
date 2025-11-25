@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import {
   Card,
   CardContent,
@@ -18,7 +19,7 @@ import { usePageMetadata } from "../use-page-metadata";
 import { vrsService } from "@/lib/api";
 import { toast } from "sonner";
 import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
-import { JobStatus } from "@carelink/types";
+import { JobStatus, NotificationType } from "@carelink/types";
 
 export default function VRSDashboardPage() {
   const { user } = useAuth();
@@ -90,9 +91,34 @@ export default function VRSDashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  if (isLoading) {
-    return <LoadingState message="Loading dashboard..." />;
-  }
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh dashboard on relevant notifications
+      if (
+        notification.type === NotificationType.CLIENT_UPDATE ||
+        notification.type === NotificationType.JOB_MATCH ||
+        notification.type === NotificationType.PLACEMENT_SUCCESS ||
+        notification.type === NotificationType.RETENTION_ALERT
+      ) {
+        fetchDashboardData();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchDashboardData]);
+
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading dashboard..." />;
+  // }
 
   if (error) {
     return (
@@ -116,6 +142,7 @@ export default function VRSDashboardPage() {
     >
       <div className="space-y-8">
         <StatsGrid
+          isLoading={isLoading}
           stats={[
             {
               label: "Total Clients",

@@ -15,6 +15,7 @@ interface ProviderSearchResultCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onView: () => void;
+  onAddToShortlist?: () => void;
   referralId?: string;
 }
 
@@ -23,6 +24,7 @@ export function ProviderSearchResultCard({
   isSelected,
   onSelect,
   onView,
+  onAddToShortlist,
   referralId,
 }: ProviderSearchResultCardProps) {
   const router = useRouter();
@@ -35,29 +37,9 @@ export function ProviderSearchResultCard({
     }
   };
 
-  const handleAddToShortlist = async () => {
-    if (!referralId) {
-      toast.error("No referral selected");
-      return;
-    }
-
-    try {
-      const response = await referralService.addToShortlist(referralId, {
-        providerIds: [provider.id],
-      });
-
-      if (response.success) {
-        toast.success("Provider added to shortlist");
-      } else {
-        toast.error(
-          response.message || "Failed to add provider to shortlist"
-        );
-      }
-    } catch (err) {
-      console.error("Error adding to shortlist:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to add to shortlist"
-      );
+  const handleAddToShortlist = () => {
+    if (onAddToShortlist) {
+      onAddToShortlist();
     }
   };
 

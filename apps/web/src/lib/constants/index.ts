@@ -800,6 +800,26 @@ export const GENDER_LABELS: Partial<Record<Gender, string>> = {
   [Gender.NO_PREFERENCE]: "No Preference",
 };
 
+// ============================================
+// USER ROLE LABELS
+// ============================================
+// User role labels as a map for quick lookups
+export const USER_ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  PROVIDER_OWNER: "Provider Owner",
+  PROVIDER_STAFF: "Provider Staff",
+  CASE_MANAGER: "Case Manager",
+  HOSPITAL_SW: "Hospital SW",
+  VRS_SPECIALIST: "VRS Specialist",
+  VENDOR: "Vendor",
+  PUBLIC: "Public",
+};
+
+export function getUserRoleLabel(role: string): string {
+  return USER_ROLE_LABELS[role] || role;
+}
+
 export function getGenderLabel(gender: Gender): string {
   return GENDER_OPTIONS.find((opt) => opt.value === gender)?.label || gender;
 }

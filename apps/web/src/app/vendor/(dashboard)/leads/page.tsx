@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
 import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { ColumnDef } from "@tanstack/react-table";
-import { VendorLead, LeadStatus } from "@carelink/types";
+import { VendorLead, LeadStatus, NotificationType } from "@carelink/types";
 import { getLeadStatusBadgeConfig } from "@/lib/utils/vendor";
 import { formatLeadSource } from "@/lib/utils/vendor";
 import { format } from "date-fns";
@@ -99,6 +100,25 @@ export default function VendorLeadsPage() {
     sourceFilter,
     searchTerm,
   ]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (notification.type === NotificationType.NEW_LEAD) {
+        fetchLeads();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchLeads]);
 
   useEffect(() => {
     fetchVendor();
@@ -195,9 +215,10 @@ export default function VendorLeadsPage() {
     [router]
   );
 
-  if (isLoading && !vendorId) {
-    return <LoadingState message="Loading leads..." />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && !vendorId) {
+  //   return <LoadingState message="Loading leads..." />;
+  // }
 
   if (error && !vendorId) {
     return (
@@ -288,9 +309,7 @@ export default function VendorLeadsPage() {
           </Select>
         </div>
 
-        {isLoading ? (
-          <LoadingState message="Loading leads..." />
-        ) : error ? (
+        {error ? (
           <ErrorState
             title="Error Loading Leads"
             message={error}
@@ -300,7 +319,7 @@ export default function VendorLeadsPage() {
               variant: "healthcare",
             }}
           />
-        ) : leads.length === 0 ? (
+        ) : leads.length === 0 && !isLoading ? (
           <EmptyState
             icon={FileText}
             title="No leads found"
@@ -310,6 +329,7 @@ export default function VendorLeadsPage() {
           <DataTable
             columns={columns}
             data={leads}
+            isLoading={isLoading}
             currentPage={pagination.page}
             pageSize={pagination.limit}
             totalItems={pagination.total}

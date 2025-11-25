@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { useCaseManagerId } from "@/hooks/use-case-manager-data";
 import { usePageMetadata } from "../use-page-metadata";
 import { referralService, Referral } from "@/lib/api";
 import { toast } from "sonner";
 import { format as formatDate } from "date-fns";
-import { ReferralStatus, Urgency, Payer } from "@carelink/types";
+import { ReferralStatus, Urgency, Payer, NotificationType } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   ReferralsFilters,
@@ -156,6 +157,30 @@ function CaseManagerReferralsPageContent() {
     setIsRefreshing(true);
     fetchReferrals();
   }, [fetchReferrals]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.PROVIDER_RESPONSE ||
+        notification.type === NotificationType.PLACEMENT_UPDATE ||
+        notification.type === NotificationType.URGENT_CASE_ALERT ||
+        notification.type === NotificationType.NEW_REFERRAL_REQUEST
+      ) {
+        fetchReferrals();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchReferrals]);
 
   const handleViewReferral = useCallback(
     (referral: Referral) => {
@@ -418,9 +443,10 @@ function CaseManagerReferralsPageContent() {
     handlePageChange();
   };
 
-  if (isLoading && referrals.length === 0) {
-    return <LoadingState message="Loading referrals..." fullHeight />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && referrals.length === 0) {
+  //   return <LoadingState message="Loading referrals..." fullHeight />;
+  // }
 
   return (
     <div className="space-y-6">

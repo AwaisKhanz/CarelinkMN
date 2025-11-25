@@ -10,6 +10,7 @@ interface QuickActionsCardProps {
   referral: Referral;
   shortlistCount: number;
   onBatchMessage: () => void;
+  onCreatePlacement: () => void;
   canManageShortlist?: boolean;
   canBatchMessage?: boolean;
 }
@@ -18,6 +19,7 @@ export function QuickActionsCard({
   referral, 
   shortlistCount, 
   onBatchMessage,
+  onCreatePlacement,
   canManageShortlist = true,
   canBatchMessage = true,
 }: QuickActionsCardProps) {
@@ -53,7 +55,7 @@ export function QuickActionsCard({
         <Button
           variant="outline"
           className="w-full justify-start"
-          onClick={() => router.push(`/case-manager/placements/create?referralId=${referral.id}`)}
+          onClick={onCreatePlacement}
         >
           <CheckCircle className="h-4 w-4 mr-2" />
           Create Placement
@@ -62,5 +64,3 @@ export function QuickActionsCard({
     </Card>
   );
 }
-
-

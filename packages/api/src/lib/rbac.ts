@@ -43,6 +43,8 @@ export const CASE_MANAGER_PERMISSIONS = {
   MESSAGES_MANAGE: "case_manager:messages:manage",
   ANALYTICS_VIEW: "case_manager:analytics:view",
   PROFILE_MANAGE: "case_manager:profile:manage",
+  PLACEMENTS_MANAGE: "case_manager:placements:manage",
+  
 } as const;
 
 // ============================================

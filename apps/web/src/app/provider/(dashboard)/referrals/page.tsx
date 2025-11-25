@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { StatsCard } from "@/components/ui/stats-card";
 import { SearchFilterBar } from "@/components/ui/search-filter-bar";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { usePageMetadata } from "../use-page-metadata";
 import {
   providerService,
@@ -37,6 +38,7 @@ import {
   Loader2,
   FileText,
   Send,
+  Download,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionsToolbar } from "@/components/ui/bulk-actions-toolbar";
@@ -57,6 +59,7 @@ import {
   ShortlistStatus,
   Urgency,
   Payer,
+  NotificationType,
 } from "@carelink/types";
 import { SHORTLIST_STATUS_CONFIG, PAYER_LABELS } from "@/lib/constants";
 import { RequirePermission } from "@/components/auth/require-permission";
@@ -106,7 +109,7 @@ function ProviderReferralsPageContent() {
     }
   }, [providerId, statusFilter, urgencyFilter, pagination.page]);
 
-  const fetchReferrals = async () => {
+  const fetchReferrals = useCallback(async () => {
     if (!providerId) return;
 
     try {
@@ -143,7 +146,30 @@ function ProviderReferralsPageContent() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [providerId, pagination.page, pagination.limit, statusFilter]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.NEW_REFERRAL ||
+        notification.type === NotificationType.REFERRAL_UPDATE ||
+        notification.type === NotificationType.URGENT_CASE_ALERT
+      ) {
+        fetchReferrals();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchReferrals]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -156,6 +182,58 @@ function ProviderReferralsPageContent() {
 
   const handleMessageReferral = (referral: Referral) => {
     router.push(`/provider/messages?referralId=${referral.id}`);
+  };
+
+  const handleExportCSV = () => {
+    if (filteredReferrals.length === 0) return;
+
+    // Define CSV headers
+    const headers = [
+      "Referral #",
+      "Client Initials",
+      "Age",
+      "Gender",
+      "Payer",
+      "Urgency",
+      "Status",
+      "Received Date",
+      "Location",
+    ];
+
+    // Map data to rows
+    const rows = filteredReferrals.map((r) => [
+      r.referralNumber,
+      r.clientInitials,
+      r.clientAge,
+      r.clientGender,
+      r.primaryPayer,
+      r.urgency,
+      r.status,
+      format(new Date(r.createdAt), "yyyy-MM-dd"),
+      r.preferredCounties.join(", "),
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `referrals-${format(new Date(), "yyyy-MM-dd")}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   // Filter referrals based on search and filters
@@ -365,11 +443,11 @@ function ProviderReferralsPageContent() {
             <div className="whitespace-nowrap">
               <div className="flex items-center gap-1 text-sm">
                 <MapPin className="h-3 w-3" />
-                {referral.preferredCounties.length > 0
+                {referral.preferredCounties?.length > 0
                   ? referral.preferredCounties[0]
                   : "Any"}
               </div>
-              {referral.preferredCities.length > 0 && (
+              {referral.preferredCities?.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                   {referral.preferredCities[0]}
                 </div>
@@ -424,21 +502,18 @@ function ProviderReferralsPageContent() {
         accessorKey: "shortlistStatus",
         header: "Your Status",
         cell: ({ row }) => {
-          const referral = row.original;
-          // shortlist is an array, find the one for this provider
-          const shortlistItem = referral.shortlist?.find(
-            (s) => s.providerId === providerId
-          );
-          if (!shortlistItem) {
+          const referral = row.original as any; // Provider referral includes shortlistStatus
+          const status = referral.shortlistStatus as ShortlistStatus;
+          if (!status) {
             return <span className="text-muted-foreground text-sm">-</span>;
           }
-          const config = SHORTLIST_STATUS_CONFIG[shortlistItem.status];
+          const config = SHORTLIST_STATUS_CONFIG[status];
           return (
             <Badge
               variant={config?.color || "outline"}
               className="whitespace-nowrap"
             >
-              {config?.label || shortlistItem.status}
+              {config?.label || status}
             </Badge>
           );
         },
@@ -505,23 +580,33 @@ function ProviderReferralsPageContent() {
             Manage referrals sent to your organization
           </p>
         </div>
-        <Button
-          variant="healthcareSecondary"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <FileText className="h-4 w-4 mr-2" />
-              Refresh
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            disabled={filteredReferrals.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button
+            variant="healthcareSecondary"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4 mr-2" />
+                Refresh
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Statistics */}

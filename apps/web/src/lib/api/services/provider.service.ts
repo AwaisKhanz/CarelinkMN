@@ -258,6 +258,13 @@ export class ProviderService {
     );
   }
 
+  // Get single provider referral detail
+  async getProviderReferralById(providerId: string, referralId: string) {
+    return await apiService.get<Referral>(
+      `/api/providers/${providerId}/referrals/${referralId}`
+    );
+  }
+
   // Get provider services
   async getProviderServices(providerId: string): Promise<ApiResponse<ProviderServiceType[]>> {
     return await apiService.get<ProviderServiceType[]>(`/api/providers/${providerId}/services`);

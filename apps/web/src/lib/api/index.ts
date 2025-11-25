@@ -41,8 +41,7 @@ export {
 export { aiSearchService, AISearchService } from "./services/ai-search.service";
 export { notificationService } from "./services/notification.service";
 export {
-  messageTemplateService,
-  MessageTemplateService,
+
 } from "./services/message-template.service";
 export {
   dischargeCaseService,
@@ -169,11 +168,7 @@ export {
   DischargeStatus,
   InviteResponse,
 } from "@carelink/types";
-export type {
-  MessageTemplate,
-  CreateMessageTemplateData,
-  UpdateMessageTemplateData,
-} from "./services/message-template.service";
+
 export type {
   Provider,
   ProviderLicense,

@@ -69,6 +69,77 @@ export class PlacementController {
     }
   }
 
+  async createPlacementFromReferral(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: errors.array()[0].msg,
+        } as ApiResponse);
+        return;
+      }
+
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const {
+        referralId,
+        providerId,
+        homeId,
+        openingId,
+        placementDate,
+        moveInDate,
+        notes,
+      } = req.body;
+
+      const placement = await this.placementService.createPlacementFromReferral(
+        {
+          referralId,
+          providerId,
+          homeId,
+          openingId,
+          placementDate,
+          moveInDate,
+          notes,
+        },
+        user.id
+      );
+
+      res.status(201).json({
+        success: true,
+        data: placement,
+        message: "Placement created successfully from referral",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Create placement from referral error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("Access denied")
+          ? 403
+          : error instanceof Error && error.message.includes("not found")
+          ? 404
+          : error instanceof Error && error.message.includes("No spots available")
+          ? 400
+          : error instanceof Error && error.message.includes("not available")
+          ? 400
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Placement creation failed",
+        message:
+          error instanceof Error ? error.message : "An error occurred while creating placement from referral",
+      } as ApiResponse);
+    }
+  }
+
   async getPlacements(req: Request, res: Response): Promise<void> {
     try {
       const errors = validationResult(req);

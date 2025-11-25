@@ -26,11 +26,12 @@ export function PlacementsTable({
 }: PlacementsTableProps) {
   const columns = usePlacementsColumns();
 
-  if (isLoading) {
-    return <LoadingState message="Loading placements..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading placements..." />;
+  // }
 
-  if (placements.length === 0) {
+  if (placements.length === 0 && !isLoading) {
     return (
       <EmptyState
         icon={Users}
@@ -44,6 +45,7 @@ export function PlacementsTable({
     <DataTable
       columns={columns}
       data={placements}
+      isLoading={isLoading}
       currentPage={pagination.page}
       totalPages={pagination.pages}
       totalItems={pagination.total}

@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { PlacementController } from "../controllers/placement.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS, CASE_MANAGER_PERMISSIONS } from "../lib/rbac";
 import { PlacementStatus } from "@prisma/client";
 
 const router: Router = Router();
@@ -45,6 +45,41 @@ router.post(
   authMiddleware.requireAuth,
   authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.createPlacement.bind(placementController)
+);
+
+// Create placement from referral (case manager workflow)
+router.post(
+  "/placements/from-referral",
+  [
+    body("referralId")
+      .isUUID()
+      .withMessage("Invalid referral ID"),
+    body("providerId")
+      .isUUID()
+      .withMessage("Invalid provider ID"),
+    body("homeId")
+      .isUUID()
+      .withMessage("Invalid home ID"),
+    body("openingId")
+      .isUUID()
+      .withMessage("Invalid opening ID"),
+    body("placementDate")
+      .isISO8601()
+      .withMessage("Placement date must be a valid date"),
+    body("moveInDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Move-in date must be a valid date"),
+    body("notes")
+      .optional()
+      .isString()
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage("Notes must be less than 1000 characters"),
+  ],
+  validate([]),
+  authMiddleware.requireAuth,
+  placementController.createPlacementFromReferral.bind(placementController)
 );
 
 // Get placements with filters
@@ -91,6 +126,7 @@ router.get(
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
     HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
   ]),
   placementController.getPlacements.bind(placementController)
 );
@@ -103,7 +139,10 @@ router.get(
   ],
   validate([]),
   authMiddleware.requireAuth,
-  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.RESIDENTS_VIEW),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+  ]),
   placementController.getPlacementById.bind(placementController)
 );
 

@@ -56,9 +56,10 @@ function VRSAnalyticsPageContent() {
   // Calculate stats using hook
   const { stats, retentionBreakdown } = useAnalyticsStats(analytics);
 
-  if (isLoading) {
-    return <LoadingState message="Loading analytics..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading analytics..." />;
+  // }
 
   if (error) {
     return (
@@ -74,38 +75,47 @@ function VRSAnalyticsPageContent() {
     );
   }
 
-  if (!analytics) {
-    return (
-      <ErrorState
-        title="No Data Available"
-        message="No analytics data available"
-        action={{
-          label: "Refresh",
-          onClick: fetchAnalytics,
-          variant: "healthcare",
-        }}
-      />
-    );
-  }
+  const safeAnalytics = analytics || {
+    totalClients: 0,
+    totalActiveJobs: 0,
+    placementsThisQuarter: 0,
+    retentionRate: 0,
+    retentionBreakdown: [],
+    placementsByMonth: [],
+    jobsByIndustry: [],
+  };
 
   return (
     <div className="space-y-6">
-      <AnalyticsStats stats={stats} />
+      <AnalyticsStats
+        stats={{
+          totalClients: safeAnalytics.totalClients,
+          activeJobs: safeAnalytics.totalActiveJobs,
+          placementsThisQuarter: safeAnalytics.placementsThisQuarter,
+          retentionRate: (safeAnalytics.retentionRate || 0).toString(),
+        }}
+        isLoading={isLoading}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RetentionBreakdownCard breakdown={retentionBreakdown} />
+        <RetentionBreakdownCard
+          breakdown={retentionBreakdown}
+          isLoading={isLoading}
+        />
         <PlacementSummaryCard
-          totalClients={analytics.totalClients}
-          activeJobs={analytics.totalActiveJobs}
-          placementsThisQuarter={analytics.placementsThisQuarter}
+          totalClients={safeAnalytics.totalClients}
+          activeJobs={safeAnalytics.totalActiveJobs}
+          placementsThisQuarter={safeAnalytics.placementsThisQuarter}
+          isLoading={isLoading}
         />
       </div>
 
       <KeyMetricsCard
         retentionBreakdown={retentionBreakdown}
-        totalClients={analytics.totalClients}
-        placementsThisQuarter={analytics.placementsThisQuarter}
-        totalActiveJobs={analytics.totalActiveJobs}
+        totalClients={safeAnalytics.totalClients}
+        placementsThisQuarter={safeAnalytics.placementsThisQuarter}
+        totalActiveJobs={safeAnalytics.totalActiveJobs}
+        isLoading={isLoading}
       />
     </div>
   );

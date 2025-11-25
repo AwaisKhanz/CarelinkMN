@@ -372,17 +372,13 @@ async function main() {
 
     await prisma.license.upsert({
       where: {
-        licenseNumber_issuingState: {
-          licenseNumber: "TEST-245D-001",
-          issuingState: "MN",
-        },
+        licenseNumber: "TEST-245D-001",
       },
       update: {},
       create: {
         providerId: testProvider.id,
         licenseType: "245D",
         licenseNumber: "TEST-245D-001",
-        issuingState: "MN",
         issueDate: new Date("2023-01-01"),
         expirationDate: futureDate,
         status: "ACTIVE",

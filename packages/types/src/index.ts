@@ -47,6 +47,63 @@ export enum SubscriptionTier {
   ENTERPRISE = "ENTERPRISE",
 }
 
+// Onboarding review status enum
+export enum OnboardingReviewStatus {
+  PENDING = "PENDING",
+  IN_REVIEW = "IN_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  NEEDS_CHANGES = "NEEDS_CHANGES",
+}
+
+// ============================================
+// BOOST TYPES
+// ============================================
+
+export enum BoostPurchaseStatus {
+  ACTIVE = "ACTIVE",
+  EXPIRED = "EXPIRED",
+  CANCELLED = "CANCELLED",
+  REFUNDED = "REFUNDED",
+}
+
+export interface BoostTier {
+  level: number;
+  name: string;
+  influence: number; // Percentage (10, 20, 30)
+  monthlyPrice: number; // In cents
+  stripePriceId: string;
+}
+
+export interface BoostStatus {
+  isActive: boolean;
+  level: number;
+  tier: BoostTier | null;
+  expiresAt: Date | null;
+  purchasedAt: Date | null;
+  isRecurring: boolean;
+  metrics: {
+    views: number;
+    inquiries: number;
+    placements: number;
+  };
+}
+
+export interface CreateBoostCheckoutParams {
+  providerId: string;
+  boostLevel: number;
+  isRecurring: boolean;
+}
+
+export interface BoostCheckoutSession {
+  sessionId: string;
+  url: string;
+}
+
+export interface CancelBoostParams {
+  providerId: string;
+}
+
 // Service types - shared between frontend and backend
 export interface Service {
   id: string;
@@ -147,6 +204,17 @@ export interface ProviderAnalyticsFilters {
   providerId: string;
   startDate?: Date | string;
   endDate?: Date | string;
+}
+
+// Placement creation from referral
+export interface CreatePlacementFromReferralData {
+  referralId: string;
+  providerId: string;
+  homeId: string;
+  openingId: string;
+  placementDate: string;
+  moveInDate?: string;
+  notes?: string;
 }
 
 // ============================================
@@ -743,6 +811,55 @@ export interface Referral {
   shortlist?: ReferralShortlist[];
   messages?: MessageThread[];
   placements?: Placement[];
+}
+
+// Provider-specific referral types
+export interface ProviderReferralListItem {
+  id: string;
+  referralNumber: string;
+  clientAge: number;
+  clientGender: Gender;
+  clientInitials: string;
+  careLevels: string[];
+  servicesNeeded: string[];
+  primaryPayer: Payer;
+  urgency: Urgency;
+  targetMoveDate: string | null;
+  shortlistStatus: ShortlistStatus;
+  shortlistAddedAt: string;
+  shortlistContactedAt?: string;
+  shortlistRespondedAt?: string;
+  shortlistNotes?: string;
+  caseManager: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+export interface ProviderReferralDetail extends ProviderReferralListItem {
+  mobilityLevel?: string;
+  behavioralNeeds: string[];
+  medicalNeeds: string[];
+  preferredCounties: string[];
+  preferredCities: string[];
+  maxDistance: number | null;
+  secondaryPayer: Payer | null;
+  status: ReferralStatus;
+  caseManagerProfile?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+  };
+}
+
+export interface RespondToReferralData {
+  status: ShortlistStatus; // RESPONDED, DECLINED, TOURING
+  notes?: string;
 }
 
 // Referral creation data
@@ -1719,6 +1836,7 @@ export interface ProviderPublicProfile {
   logo?: string;
   verified: boolean;
   subscriptionTier: SubscriptionTier;
+  boostLevel?: number; // 0 = no boost, 1-3 = boost levels
   homes: HomePublicProfile[];
   primaryLicenseType: string;
   licenses: Array<{
@@ -1729,6 +1847,7 @@ export interface ProviderPublicProfile {
   averageRating?: number;
   reviewCount: number;
   distance?: number; // in miles, if location provided
+  createdAt?: Date | string;
 }
 
 export interface Favorite {

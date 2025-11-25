@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/contexts/socket-context";
 import { Plus, Filter } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   publicReferralRequestService,
   type ReferralRequest,
 } from "@/lib/api";
+import { NotificationType } from "@carelink/types";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +61,29 @@ export default function RequestsPage() {
   useEffect(() => {
     fetchRequests();
   }, [statusFilter]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.REQUEST_ASSIGNED ||
+        notification.type === NotificationType.REQUEST_STATUS_UPDATE ||
+        notification.type === NotificationType.REQUEST_CONVERTED
+      ) {
+        fetchRequests();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, statusFilter]);
 
   const fetchRequests = async () => {
     setIsLoading(true);

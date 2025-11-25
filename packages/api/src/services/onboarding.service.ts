@@ -3,6 +3,7 @@ import {
   ProviderOnboardingState,
   OnboardingReviewStatus,
   Prisma,
+  OrganizationStatus,
 } from "@carelink/database";
 
 export interface OnboardingStepData {
@@ -348,6 +349,12 @@ export class OnboardingService {
     try {
       const { status, reviewedBy, notes } = reviewData;
 
+      // Get the current onboarding state to access license data
+      const currentState = await this.getOnboardingState(providerId);
+      if (!currentState) {
+        throw new Error("Onboarding state not found");
+      }
+
       const updatedState = await this.prisma.providerOnboardingState.update({
         where: { providerId },
         data: {
@@ -359,8 +366,9 @@ export class OnboardingService {
         },
       });
 
-      // If approved, also update provider verification status
+      // If approved, update provider verification status AND migrate license data
       if (status === OnboardingReviewStatus.APPROVED) {
+        // Update provider verification
         await this.prisma.provider.update({
           where: { id: providerId },
           data: {
@@ -368,6 +376,146 @@ export class OnboardingService {
             verifiedAt: new Date(),
           },
         });
+
+        // Migrate organization data from onboarding state to Organization table
+        const organizationData = currentState.organizationData as any;
+        if (organizationData) {
+          // Get the provider to find the organizationId
+          const provider = await this.prisma.provider.findUnique({
+            where: { id: providerId },
+            select: { organizationId: true },
+          });
+
+          if (provider?.organizationId) {
+            // Prepare organization update data
+            const orgUpdateData: any = {};
+
+            // Only update fields that are provided and not placeholders
+            if (organizationData.organizationName && 
+                !organizationData.organizationName.includes('Pending Setup')) {
+              orgUpdateData.name = organizationData.organizationName;
+            }
+            
+            if (organizationData.addressLine1 && 
+                organizationData.addressLine1 !== 'Address to be provided') {
+              orgUpdateData.addressLine1 = organizationData.addressLine1;
+            }
+            
+            if (organizationData.addressLine2) {
+              orgUpdateData.addressLine2 = organizationData.addressLine2;
+            }
+            
+            if (organizationData.city && 
+                organizationData.city !== 'City to be provided') {
+              orgUpdateData.city = organizationData.city;
+            }
+            
+            if (organizationData.state) {
+              orgUpdateData.state = organizationData.state;
+            }
+            
+            if (organizationData.zipCode && 
+                organizationData.zipCode !== '00000') {
+              orgUpdateData.zipCode = organizationData.zipCode;
+            }
+            
+            if (organizationData.county && 
+                organizationData.county !== 'County to be provided') {
+              orgUpdateData.county = organizationData.county;
+            }
+            
+            if (organizationData.phone && 
+                organizationData.phone !== 'Phone to be provided') {
+              orgUpdateData.phone = organizationData.phone;
+            }
+            
+            if (organizationData.email) {
+              orgUpdateData.email = organizationData.email;
+            }
+            
+            if (organizationData.website) {
+              orgUpdateData.website = organizationData.website;
+            }
+            
+            if (organizationData.ein) {
+              orgUpdateData.ein = organizationData.ein;
+            }
+            
+            if (organizationData.npi) {
+              orgUpdateData.npi = organizationData.npi;
+            }
+            
+            if (organizationData.fax) {
+              orgUpdateData.fax = organizationData.fax;
+            }
+
+            // Update organization status to VERIFIED when onboarding is approved
+            orgUpdateData.status = OrganizationStatus.VERIFIED;
+
+            // Update the organization
+            await this.prisma.organization.update({
+              where: { id: provider.organizationId },
+              data: orgUpdateData,
+            });
+          }
+        }
+
+        // Also update provider-specific fields from organization data
+        if (organizationData) {
+          const providerUpdateData: any = {};
+          
+          if (organizationData.acceptsReferrals !== undefined) {
+            providerUpdateData.acceptsReferrals = organizationData.acceptsReferrals;
+          }
+          
+          if (organizationData.responseTimeHours) {
+            providerUpdateData.responseTimeHours = organizationData.responseTimeHours;
+          }
+
+          if (Object.keys(providerUpdateData).length > 0) {
+            await this.prisma.provider.update({
+              where: { id: providerId },
+              data: providerUpdateData,
+            });
+          }
+        }
+
+        // Migrate license data from onboarding state to License table
+        const licenseData = currentState.licenseData as any;
+        if (licenseData && licenseData.licenses && Array.isArray(licenseData.licenses)) {
+          for (const license of licenseData.licenses) {
+            // Only create licenses that have ALL required fields (including dates)
+            if (
+              license.licenseType && 
+              license.licenseNumber && 
+              license.issueDate && 
+              license.expirationDate
+            ) {
+              await this.prisma.license.create({
+                data: {
+                  providerId,
+                  licenseType: license.licenseType,
+                  licenseNumber: license.licenseNumber,
+                  issueDate: new Date(license.issueDate),
+                  expirationDate: new Date(license.expirationDate),
+                  documentUrl: license.documentUrl || null,
+                  fileName: license.fileName || null,
+                  status: "ACTIVE", 
+                },
+              });
+            }
+          }
+        }
+
+        // Also update primary license type if provided
+        if (licenseData && licenseData.primaryLicenseType) {
+          await this.prisma.provider.update({
+            where: { id: providerId },
+            data: {
+              primaryLicenseType: licenseData.primaryLicenseType,
+            },
+          });
+        }
       }
 
       return {

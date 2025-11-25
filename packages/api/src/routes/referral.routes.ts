@@ -44,8 +44,9 @@ router.post(
       .isArray({ min: 1 })
       .withMessage("At least one service is required"),
     body("servicesNeeded.*")
-      .isUUID()
-      .withMessage("Each service ID must be a valid UUID"),
+      .isString()
+      .notEmpty()
+      .withMessage("Each service must be a non-empty string"),
     body("mobilityLevel").optional().isString().withMessage("Mobility level must be a string"),
     body("behavioralNeeds")
       .optional()

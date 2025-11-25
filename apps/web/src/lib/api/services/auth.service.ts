@@ -13,6 +13,7 @@ export interface User {
   organizationId?: string;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt?: string;
 }
 
 export interface LoginCredentials {

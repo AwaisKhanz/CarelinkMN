@@ -332,8 +332,23 @@ router.get(
       .withMessage("Status must be a string"),
   ],
   validate([]),
-  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.REFERRALS_VIEW),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.REFERRALS_VIEW,
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW
+  ]),
   providerController.getProviderReferrals
+);
+
+// Get single provider referral detail
+router.get(
+  "/providers/:providerId/referrals/:referralId",
+  [
+    param("providerId").isUUID().withMessage("Invalid provider ID"),
+    param("referralId").isUUID().withMessage("Invalid referral ID"),
+  ],
+  validate([]),
+  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.REFERRALS_VIEW),
+  providerController.getProviderReferralById
 );
 
 // Staff management (PROVIDER_OWNER only)

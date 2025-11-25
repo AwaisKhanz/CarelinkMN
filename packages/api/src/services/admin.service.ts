@@ -3,12 +3,14 @@ import {
   LicenseStatus,
   OrganizationStatus,
   OrganizationType,
+  ReferralStatus,
   UserRole,
   UserStatus,
 } from "@carelink/types";
 import { AuditResult, Prisma } from "@prisma/client";
 import { LicenseService } from "./license.service";
 import { AuditService } from "./audit.service";
+import { complianceService } from "./compliance.service";
 
 interface PaginationParams {
   page?: number;
@@ -49,13 +51,23 @@ interface GetComplianceParams extends PaginationParams {
   search?: string;
 }
 
+import { OnboardingService } from "./onboarding.service";
+import { OnboardingReviewStatus } from "@carelink/database";
+
+interface GetOnboardingParams extends PaginationParams {
+  status?: OnboardingReviewStatus | string;
+  search?: string;
+}
+
 export class AdminService {
   private licenseService: LicenseService;
   private auditService: AuditService;
+  private onboardingService: OnboardingService;
 
   constructor() {
     this.licenseService = new LicenseService();
     this.auditService = new AuditService();
+    this.onboardingService = new OnboardingService();
   }
 
   /**
@@ -144,6 +156,28 @@ export class AdminService {
     });
 
     return user;
+  }
+
+  async getUserDetails(userId: string) {
+    const [user, auditLogs] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        include: {
+          organization: true,
+        },
+      }),
+      this.auditService.search({
+        userId,
+        limit: 10,
+      }),
+    ]);
+
+    if (!user) return null;
+
+    return {
+      user,
+      recentActivity: auditLogs.logs,
+    };
   }
 
   async updateUser(
@@ -248,6 +282,51 @@ export class AdminService {
     return db.organization.findUnique({
       where: { id: organizationId },
     });
+  }
+
+  async getOrganizationDetails(organizationId: string) {
+    const [organization, users, licenses, auditLogs] = await Promise.all([
+      db.organization.findUnique({
+        where: { id: organizationId },
+        include: {
+          providers: {
+            include: {
+              services: true,
+            },
+          },
+        },
+      }),
+      db.user.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          status: true,
+          lastLoginAt: true,
+        },
+      }),
+      db.license.findMany({
+        where: { provider: { organizationId } },
+        orderBy: { expirationDate: "asc" },
+      }),
+      this.auditService.search({
+        resourceType: "Organization",
+        resourceId: organizationId,
+        limit: 10,
+      }),
+    ]);
+
+    if (!organization) return null;
+
+    return {
+      organization,
+      users,
+      licenses,
+      recentActivity: auditLogs.logs,
+    };
   }
 
   async updateOrganization(
@@ -495,6 +574,14 @@ export class AdminService {
     };
   }
 
+  async getComplianceStats() {
+    return complianceService.getComplianceStats();
+  }
+
+  async getComplianceIssuesList() {
+    return complianceService.getComplianceIssues();
+  }
+
   /**
    * ANALYTICS
    */
@@ -508,43 +595,303 @@ export class AdminService {
         }
       : undefined;
 
-    const [totalUsers, totalOrganizations, totalReferrals, totalPlacements] =
-      await Promise.all([
-        db.user.count(),
-        db.organization.count(),
-        db.referral.count({ where: dateFilter ? { createdAt: dateFilter } : {} }),
-        db.placement.count({
-          where: dateFilter ? { createdAt: dateFilter } : {},
-        }),
-      ]);
+    // Calculate date ranges for growth comparison
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    const dailyActiveUsers = await db.auditLog.count({
-      where: {
-        timestamp: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    const [
+      totalUsers,
+      totalOrganizations,
+      totalReferrals,
+      totalPlacements,
+      activeReferrals,
+      usersThisMonth,
+      usersLastMonth,
+      orgsThisMonth,
+      orgsLastMonth,
+    ] = await Promise.all([
+      // Total counts
+      db.user.count(),
+      db.organization.count(),
+      db.referral.count({ where: dateFilter ? { createdAt: dateFilter } : {} }),
+      db.placement.count({
+        where: dateFilter ? { createdAt: dateFilter } : {},
+      }),
+      
+      // Active referrals (not completed or cancelled)
+      db.referral.count({
+        where: {
+          status: {
+            notIn: [ReferralStatus.PLACED, ReferralStatus.CLOSED, ReferralStatus.CANCELLED],
+          },
         },
-      },
-    });
+      }),
 
-    const monthlyActiveUsers = await db.auditLog.count({
-      where: {
-        timestamp: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      // Users this month
+      db.user.count({
+        where: {
+          createdAt: {
+            gte: thisMonthStart,
+          },
         },
-      },
-    });
+      }),
+
+      // Users last month
+      db.user.count({
+        where: {
+          createdAt: {
+            gte: lastMonthStart,
+            lte: lastMonthEnd,
+          },
+        },
+      }),
+
+      // Organizations this month
+      db.organization.count({
+        where: {
+          createdAt: {
+            gte: thisMonthStart,
+          },
+        },
+      }),
+
+      // Organizations last month
+      db.organization.count({
+        where: {
+          createdAt: {
+            gte: lastMonthStart,
+            lte: lastMonthEnd,
+          },
+        },
+      }),
+    ]);
+
+    // Calculate growth percentages
+    const userGrowth = usersLastMonth > 0
+      ? Math.round(((usersThisMonth - usersLastMonth) / usersLastMonth) * 100)
+      : 0;
+
+    const orgGrowth = orgsLastMonth > 0
+      ? Math.round(((orgsThisMonth - orgsLastMonth) / orgsLastMonth) * 100)
+      : 0;
+
+    // Get unique active users (based on audit logs)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [dailyActiveLogs, monthlyActiveLogs] = await Promise.all([
+      db.auditLog.findMany({
+        where: {
+          timestamp: {
+            gte: oneDayAgo,
+          },
+        },
+        select: {
+          userId: true,
+        },
+        distinct: ['userId'],
+      }),
+      db.auditLog.findMany({
+        where: {
+          timestamp: {
+            gte: thirtyDaysAgo,
+          },
+        },
+        select: {
+          userId: true,
+        },
+        distinct: ['userId'],
+      }),
+    ]);
+
+    const dailyActiveUsers = dailyActiveLogs.filter(log => log.userId).length;
+    const monthlyActiveUsers = monthlyActiveLogs.filter(log => log.userId).length;
+
+    // Get monthly growth data for the last 12 months
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+    twelveMonthsAgo.setDate(1);
+    twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+    // Query users grouped by month
+    const usersGroupedByMonth = await db.$queryRaw<Array<{ month: Date; count: bigint }>>`
+      SELECT 
+        DATE_TRUNC('month', "createdAt") as month,
+        COUNT(*)::bigint as count
+      FROM "auth"."User"
+      WHERE "createdAt" >= ${twelveMonthsAgo}
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+    `;
+
+    // Query organizations grouped by month
+    const orgsGroupedByMonth = await db.$queryRaw<Array<{ month: Date; count: bigint }>>`
+      SELECT 
+        DATE_TRUNC('month', "createdAt") as month,
+        COUNT(*)::bigint as count
+      FROM "auth"."Organization"
+      WHERE "createdAt" >= ${twelveMonthsAgo}
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+    `;
+
+    // Format the growth data
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const growthData: Array<{ month: string; users: number; organizations: number }> = [];
+
+    // Create a map for quick lookup
+    const usersByMonth = new Map(
+      usersGroupedByMonth.map(item => [
+        new Date(item.month).getMonth() + '-' + new Date(item.month).getFullYear(),
+        Number(item.count)
+      ])
+    );
+
+    const orgsByMonth = new Map(
+      orgsGroupedByMonth.map(item => [
+        new Date(item.month).getMonth() + '-' + new Date(item.month).getFullYear(),
+        Number(item.count)
+      ])
+    );
+
+    // Generate data for each of the last 12 months
+    for (let i = 0; i < 12; i++) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (11 - i));
+      const monthKey = date.getMonth() + '-' + date.getFullYear();
+      const monthName = monthNames[date.getMonth()];
+
+      growthData.push({
+        month: monthName,
+        users: usersByMonth.get(monthKey) || 0,
+        organizations: orgsByMonth.get(monthKey) || 0,
+      });
+    }
 
     return {
       totalUsers,
       totalOrganizations,
       totalReferrals,
       totalPlacements,
+      activeReferrals,
       dailyActiveUsers,
       monthlyActiveUsers,
       platformActivity: monthlyActiveUsers,
-      userGrowth: 0,
-      orgGrowth: 0,
+      userGrowth,
+      orgGrowth,
+      usersThisMonth,
+      usersLastMonth,
+      orgsThisMonth,
+      orgsLastMonth,
+      growthData,
     };
+  }
+
+
+  /**
+   * ONBOARDING
+   */
+  async getOnboardingSubmissions(params: GetOnboardingParams = {}) {
+    const { page = 1, limit = 10, status, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ProviderOnboardingStateWhereInput = {};
+
+    if (status) {
+      where.adminReviewStatus = status as OnboardingReviewStatus;
+    }
+
+    // Only show completed submissions unless specifically filtering
+    if (!status) {
+      where.isComplete = true;
+    }
+
+    if (search) {
+      where.provider = {
+        organization: {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      };
+    }
+
+    const [submissions, total] = await Promise.all([
+      db.providerOnboardingState.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { submittedAt: "desc" },
+        include: {
+          provider: {
+            include: {
+              organization: true,
+            },
+          },
+        },
+      }),
+      db.providerOnboardingState.count({ where }),
+    ]);
+
+    return {
+      submissions,
+      pagination: this.buildPagination(page, limit, total),
+    };
+  }
+
+  async getOnboardingSubmissionById(id: string) {
+    return db.providerOnboardingState.findUnique({
+      where: { id },
+      include: {
+        provider: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+  }
+
+  async reviewOnboardingSubmission(
+    id: string,
+    status: OnboardingReviewStatus,
+    notes: string | undefined,
+    actingUserId: string
+  ) {
+    // Get the provider ID from the onboarding state
+    const onboardingState = await db.providerOnboardingState.findUnique({
+      where: { id },
+    });
+
+    if (!onboardingState) {
+      throw new Error("Onboarding submission not found");
+    }
+
+    const result = await this.onboardingService.reviewOnboarding(
+      onboardingState.providerId,
+      {
+        status,
+        reviewedBy: actingUserId,
+        notes,
+      }
+    );
+
+    await this.auditService.logAuditEvent(
+      actingUserId,
+      "onboarding.review",
+      "ProviderOnboardingState",
+      id,
+      {
+        status,
+        providerId: onboardingState.providerId,
+      }
+    );
+
+    return result;
   }
 
   /**

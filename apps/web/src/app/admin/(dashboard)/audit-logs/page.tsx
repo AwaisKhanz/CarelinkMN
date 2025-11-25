@@ -35,6 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -52,6 +59,8 @@ function AdminAuditLogsPageContent() {
   const [resourceTypeFilter, setResourceTypeFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
@@ -119,6 +128,11 @@ function AdminAuditLogsPageContent() {
 
   const handlePageChange = useCallback((newPage: number) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
+  }, []);
+
+  const handleViewDetails = useCallback((log: AuditLogEntry) => {
+    setSelectedLog(log);
+    setDetailDialogOpen(true);
   }, []);
 
   const columns: ColumnDef<AuditLogEntry>[] = useMemo(
@@ -206,7 +220,7 @@ function AdminAuditLogsPageContent() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push(`/admin/audit-logs/${row.original.id}`)}
+              onClick={() => handleViewDetails(row.original)}
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -214,12 +228,13 @@ function AdminAuditLogsPageContent() {
         },
       },
     ],
-    [router]
+    [handleViewDetails]
   );
 
-  if (isLoading && logs.length === 0) {
-    return <LoadingState message="Loading audit logs..." fullHeight />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && logs.length === 0) {
+  //   return <LoadingState message="Loading audit logs..." fullHeight />;
+  // }
 
   if (error && logs.length === 0) {
     return (
@@ -299,7 +314,7 @@ function AdminAuditLogsPageContent() {
             </div>
           </div>
 
-          {logs.length === 0 ? (
+          {!isLoading && logs.length === 0 ? (
             <EmptyState
               icon={FileText}
               title="No audit logs found"
@@ -309,6 +324,7 @@ function AdminAuditLogsPageContent() {
             <DataTable
               columns={columns}
               data={logs}
+              isLoading={isLoading}
               enablePagination
               currentPage={pagination.page}
               totalPages={pagination.pages}
@@ -319,6 +335,93 @@ function AdminAuditLogsPageContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Audit Log Detail Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Audit Log Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about this audit log entry
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Timestamp</Label>
+                  <p className="font-medium">
+                    {format(new Date(selectedLog.createdAt), "PPpp")}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Action</Label>
+                  <p className="font-medium capitalize">
+                    {selectedLog.action.replace(".", " ")}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">User</Label>
+                  <p className="font-medium">
+                    {selectedLog.user
+                      ? `${selectedLog.user.firstName} ${selectedLog.user.lastName}`
+                      : selectedLog.userId || "System"}
+                  </p>
+                  {selectedLog.user?.email && (
+                    <p className="text-sm text-muted-foreground">
+                      {selectedLog.user.email}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Result</Label>
+                  <Badge
+                    variant={
+                      selectedLog.result?.toLowerCase() === "success"
+                        ? "default"
+                        : "destructive"
+                    }
+                  >
+                    {selectedLog.result}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Resource Type</Label>
+                  <p className="font-medium">{selectedLog.resourceType}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Resource ID</Label>
+                  <p className="font-mono text-sm">
+                    {selectedLog.resourceId || "N/A"}
+                  </p>
+                </div>
+                {selectedLog.ipAddress && (
+                  <div>
+                    <Label className="text-muted-foreground">IP Address</Label>
+                    <p className="font-mono text-sm">{selectedLog.ipAddress}</p>
+                  </div>
+                )}
+                {selectedLog.userAgent && (
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">User Agent</Label>
+                    <p className="text-sm break-all">{selectedLog.userAgent}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground">Metadata</Label>
+                  <pre className="mt-2 p-4 bg-muted rounded-md text-xs overflow-x-auto">
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

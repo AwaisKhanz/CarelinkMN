@@ -52,24 +52,6 @@ function EditHomePageContent() {
     }
   };
 
-  // Simple geocoding function (using a free geocoding service)
-  const geocodeAddress = async (
-    address: string
-  ): Promise<{ latitude: number; longitude: number }> => {
-    try {
-      // Use geocoding utility which uses apiService
-      const coords = await geocodeAddress(address);
-      return coords;
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      // Fallback: return existing coordinates or default
-      return {
-        latitude: home?.latitude || 44.9778,
-        longitude: home?.longitude || -93.265,
-      };
-    }
-  };
-
   const handleSubmit = async (
     data: HomeFormData & { photos: UploadedFile[]; amenities: string[] }
   ) => {
@@ -90,9 +72,15 @@ function EditHomePageContent() {
 
       if (addressChanged) {
         const address = `${data.addressLine1}, ${data.city}, ${data.state} ${data.zipCode}`;
-        const geocodeResult = await geocodeAddress(address);
-        latitude = geocodeResult.latitude;
-        longitude = geocodeResult.longitude;
+        try {
+          const geocodeResult = await geocodeAddress(address);
+          latitude = geocodeResult.latitude;
+          longitude = geocodeResult.longitude;
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          // Keep existing coordinates if geocoding fails
+          toast.warning("Could not geocode new address, using existing coordinates");
+        }
       }
 
       // Map amenities to schema format

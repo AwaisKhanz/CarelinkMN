@@ -14,7 +14,7 @@ import { VENDOR_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { usePageMetadata } from "../use-page-metadata";
 import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
-import { LoadingState, ErrorState } from "@/components/shared";
+import {  ErrorState } from "@/components/shared";
 import { VendorAnalytics } from "@carelink/types";
 import { StatsCard } from "@/components/ui/stats-card";
 import { Star } from "lucide-react";
@@ -78,11 +78,12 @@ export default function VendorAnalyticsPage() {
     }
   }, [vendorId, fetchAnalytics]);
 
-  if (isLoading) {
-    return <LoadingState message="Loading analytics..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading analytics..." />;
+  // }
 
-  if (error || !analytics) {
+  if (error && !isLoading) {
     return (
       <ErrorState
         title="Error Loading Analytics"
@@ -96,6 +97,22 @@ export default function VendorAnalyticsPage() {
     );
   }
 
+  const safeAnalytics = analytics || {
+    totalLeads: 0,
+    newLeads: 0,
+    conversionRate: 0,
+    convertedLeads: 0,
+    totalBookings: 0,
+    completedBookings: 0,
+    totalRevenue: 0,
+    leadsBySource: [],
+    bookingsByStatus: [],
+    leadsThisMonth: 0,
+    bookingsThisMonth: 0,
+    averageRating: 0,
+    reviewCount: 0,
+  };
+
   return (
     <RequirePermission
       permission={VENDOR_CAPABILITIES.ANALYTICS_VIEW}
@@ -106,24 +123,28 @@ export default function VendorAnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Total Leads"
-            value={analytics.totalLeads}
-            description={`${analytics.newLeads} new`}
+            value={safeAnalytics.totalLeads}
+            description={`${safeAnalytics.newLeads} new`}
+            isLoading={isLoading}
           />
           <StatsCard
             title="Conversion Rate"
-            value={`${analytics.conversionRate}%`}
-            description={`${analytics.convertedLeads} converted`}
+            value={`${safeAnalytics.conversionRate}%`}
+            description={`${safeAnalytics.convertedLeads} converted`}
+            isLoading={isLoading}
           />
           <StatsCard
             title="Total Bookings"
-            value={analytics.totalBookings}
-            description={`${analytics.completedBookings} completed`}
+            value={safeAnalytics.totalBookings}
+            description={`${safeAnalytics.completedBookings} completed`}
+            isLoading={isLoading}
           />
-          {analytics.totalRevenue !== undefined && (
+          {(safeAnalytics.totalRevenue !== undefined || isLoading) && (
             <StatsCard
               title="Total Revenue"
-              value={`$${analytics.totalRevenue.toFixed(2)}`}
+              value={`$${(safeAnalytics.totalRevenue || 0).toFixed(2)}`}
               description="From completed bookings"
+              isLoading={isLoading}
             />
           )}
         </div>
@@ -135,9 +156,18 @@ export default function VendorAnalyticsPage() {
               <CardDescription>Lead distribution by source</CardDescription>
             </CardHeader>
             <CardContent>
-              {analytics.leadsBySource.length > 0 ? (
+              {isLoading ? (
                 <div className="space-y-3">
-                  {analytics.leadsBySource.map((item, index) => (
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                      <div className="h-5 w-8 bg-muted animate-pulse rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : safeAnalytics.leadsBySource.length > 0 ? (
+                <div className="space-y-3">
+                  {safeAnalytics.leadsBySource.map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">
@@ -160,9 +190,18 @@ export default function VendorAnalyticsPage() {
               <CardDescription>Booking distribution by status</CardDescription>
             </CardHeader>
             <CardContent>
-              {analytics.bookingsByStatus.length > 0 ? (
+              {isLoading ? (
                 <div className="space-y-3">
-                  {analytics.bookingsByStatus.map((item, index) => {
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="h-5 w-24 bg-muted animate-pulse rounded-full" />
+                      <div className="h-4 w-8 bg-muted animate-pulse rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : safeAnalytics.bookingsByStatus.length > 0 ? (
+                <div className="space-y-3">
+                  {safeAnalytics.bookingsByStatus.map((item, index) => {
                     const statusConfig = getBookingStatusBadgeConfig(item.status);
                     return (
                       <div key={index} className="flex items-center justify-between">
@@ -192,34 +231,49 @@ export default function VendorAnalyticsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="text-sm text-muted-foreground">Leads This Month</div>
-                <div className="text-2xl font-bold mt-1">{analytics.leadsThisMonth}</div>
+                {isLoading ? (
+                  <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <div className="text-2xl font-bold mt-1">{safeAnalytics.leadsThisMonth}</div>
+                )}
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Bookings This Month</div>
-                <div className="text-2xl font-bold mt-1">{analytics.bookingsThisMonth}</div>
+                {isLoading ? (
+                  <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <div className="text-2xl font-bold mt-1">{safeAnalytics.bookingsThisMonth}</div>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {analytics.averageRating !== undefined && (
+        {(safeAnalytics.averageRating !== undefined || isLoading) && (
           <Card variant="healthcare">
             <CardHeader>
               <CardTitle>Ratings & Reviews</CardTitle>
               <CardDescription>Customer feedback</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-primary fill-primary" />
-                  <span className="text-2xl font-bold">
-                    {analytics.averageRating.toFixed(1)}
-                  </span>
+              {isLoading ? (
+                <div className="flex items-center gap-4">
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-4 w-32 bg-muted animate-pulse rounded" />
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  Based on {analytics.reviewCount} review{analytics.reviewCount !== 1 ? "s" : ""}
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-primary fill-primary" />
+                    <span className="text-2xl font-bold">
+                      {(safeAnalytics.averageRating || 0).toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Based on {safeAnalytics.reviewCount} review{safeAnalytics.reviewCount !== 1 ? "s" : ""}
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}

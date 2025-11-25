@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { useRef, useCallback } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -9,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/use-notifications";
 import { NotificationItem } from "./notification-item";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NotificationDropdownProps {
@@ -24,14 +25,30 @@ export function NotificationDropdown({ children }: NotificationDropdownProps) {
     isLoading, 
     markAsRead, 
     markAllAsRead,
-    deleteNotification 
+    deleteNotification,
+    hasMore,
+    loadMore,
+    isLoadingMore
   } = useNotifications();
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const handleNotificationClick = (notification: any) => {
     if (notification.actionUrl) {
       router.push(notification.actionUrl);
     }
   };
+
+  // Handle scroll to load more notifications
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    const scrollPercentage = (target.scrollTop + target.clientHeight) / target.scrollHeight;
+    
+    // Load more when scrolled to 80% of the content
+    if (scrollPercentage > 0.8 && hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   return (
     <DropdownMenu>
@@ -64,9 +81,14 @@ export function NotificationDropdown({ children }: NotificationDropdownProps) {
           )}
         </div>
         
-        <ScrollArea className="h-[400px]">
+        <ScrollArea 
+          className="h-[400px]" 
+          ref={scrollAreaRef}
+          onScroll={handleScroll}
+        >
           {isLoading ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
               Loading...
             </div>
           ) : notifications.length === 0 ? (
@@ -85,20 +107,26 @@ export function NotificationDropdown({ children }: NotificationDropdownProps) {
                   onClick={handleNotificationClick}
                 />
               ))}
+              
+              {/* Loading more indicator */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-4 text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Loading more...
+                </div>
+              )}
+              
+              {/* End of notifications indicator */}
+              {!hasMore && notifications.length > 0 && (
+                <div className="text-center py-4 text-muted-foreground text-xs">
+                  No more notifications
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
-        
-        <div className="p-2 border-t bg-muted/30">
-          <Button 
-            variant="ghost" 
-            className="w-full h-8 text-xs justify-center"
-            onClick={() => router.push("/notifications")}
-          >
-            View all notifications
-          </Button>
-        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+

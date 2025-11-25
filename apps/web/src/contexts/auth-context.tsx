@@ -136,18 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { authService } = await import("@/lib/api");
-      const authData = await authService.register(data);
+      await authService.register(data);
 
-      // Ensure emailVerified is always a boolean (should be false for new registrations)
-      const user = {
-        ...authData.user,
-        emailVerified: authData.user.emailVerified ?? false,
-      };
-
-      setUser(user);
-      setToken(authData.token);
-      localStorage.setItem("auth_token", authData.token);
-      apiService.setAuthToken(authData.token);
+      // Do NOT auto-login after registration
+      // Users should verify their email before logging in
     } catch (error) {
       console.error("Registration error:", error);
       throw error;

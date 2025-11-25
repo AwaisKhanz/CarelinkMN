@@ -183,12 +183,13 @@ function VRSJobsPageContent() {
     totalCount: placementsPagination.total,
   });
 
-  if (
-    isLoading &&
-    (activeTab === "jobs" ? jobs.length === 0 : placements.length === 0)
-  ) {
-    return <LoadingState message={`Loading ${activeTab}...`} />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (
+  //   isLoading &&
+  //   (activeTab === "jobs" ? jobs.length === 0 : placements.length === 0)
+  // ) {
+  //   return <LoadingState message={`Loading ${activeTab}...`} />;
+  // }
 
   if (
     error &&

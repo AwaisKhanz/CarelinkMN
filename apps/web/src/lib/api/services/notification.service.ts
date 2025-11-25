@@ -18,7 +18,7 @@ export const notificationService = {
     if (params.type) queryParams.append("type", params.type);
 
     const response = await apiService.get<PaginatedNotifications>(
-      `/notifications?${queryParams.toString()}`
+      `/api/notifications?${queryParams.toString()}`
     );
     
     if (!response.data) {
@@ -33,7 +33,7 @@ export const notificationService = {
    */
   getUnreadCount: async (): Promise<number> => {
     const response = await apiService.get<{ count: number }>(
-      "/notifications/unread-count"
+      "/api/notifications/unread-count"
     );
     return response.data?.count || 0;
   },
@@ -41,29 +41,28 @@ export const notificationService = {
   /**
    * Mark a notification as read
    */
-  markAsRead: async (id: string): Promise<void> => {
-    await apiService.patch<void>(`/notifications/${id}/read`);
+  markAsRead: async (notificationId: string): Promise<void> => {
+    await apiService.patch<void>(`/api/notifications/${notificationId}/read`);
   },
 
   /**
    * Mark all notifications as read
    */
   markAllAsRead: async (): Promise<void> => {
-    await apiService.patch<void>("/notifications/read-all");
+    await apiService.patch<void>("/api/notifications/read-all");
   },
 
   /**
    * Delete a notification
    */
-  deleteNotification: async (id: string): Promise<void> => {
-    await apiService.delete<void>(`/notifications/${id}`);
+  deleteNotification: async (notificationId: string): Promise<void> => {
+    await apiService.delete<void>(`/api/notifications/${notificationId}`);
   },
 
   /**
    * Delete all read notifications
    */
   deleteAllRead: async (): Promise<void> => {
-    await apiService.delete<void>("/notifications/read");
+    await apiService.delete<void>("/api/notifications/read");
   }
 };
-

@@ -35,11 +35,12 @@ import messagingRoutes from "./routes/messaging.routes";
 import referralRoutes from "./routes/referral.routes";
 import aiSearchRoutes from "./routes/ai-search.routes";
 import notificationRoutes from "./routes/notification.routes";
-import messageTemplateRoutes from "./routes/message-template.routes";
+
 import dischargeCaseRoutes from "./routes/discharge-case.routes";
 import publicRoutes from "./routes/public.routes";
 import contactRoutes from "./routes/contact.routes";
 import publicReferralRequestRoutes from "./routes/public-referral-request.routes";
+import boostRoutes from "./routes/boost.routes";
 
 // Import middleware
 import {
@@ -47,8 +48,11 @@ import {
   notFoundHandler,
 } from "./middleware/validation.middleware";
 import { AuthMiddleware } from "./middleware/auth.middleware";
+import { performanceMiddleware } from "./middleware/performance.middleware";
 
 const app: express.Application = express();
+// Performance Monitoring (Should be early in the chain)
+app.use(performanceMiddleware);
 const authMiddleware = new AuthMiddleware();
 
 // Security middleware
@@ -178,10 +182,11 @@ app.use("/api", messagingRoutes);
 app.use("/api", referralRoutes);
 app.use("/api", aiSearchRoutes);
 app.use("/api", notificationRoutes);
-app.use("/api", messageTemplateRoutes);
+
 app.use("/api", dischargeCaseRoutes);
 app.use("/api/contact", contactRoutes); // Public contact form
 app.use("/api/public-requests", publicReferralRequestRoutes); // Public referral requests
+app.use("/api/boost", boostRoutes); // Boost management
 
 // 404 handler
 app.use(notFoundHandler);

@@ -1,33 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/auth-context";
-import { usePageMetadata } from "../use-page-metadata";
-import {
-  adminService,
-  type AdminComplianceIssue,
-  type AdminComplianceSummary,
-} from "@/lib/api";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { useDebounce } from "@/hooks/use-debounce";
-import { RequirePermission } from "@/components/auth/require-permission";
-import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
-import { LoadingState, ErrorState, EmptyState, StatsGrid } from "@/components/shared";
-import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  RefreshCw,
-  Eye,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ShieldCheck,
-} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -35,340 +9,257 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SearchFilterBar } from "@/components/ui/search-filter-bar";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileText,
+  Building,
+  TrendingUp,
+} from "lucide-react";
+import { format } from "date-fns";
+import { apiService } from "@/lib/api/config";
+import { toast } from "sonner";
+import { usePageMetadata } from "../use-page-metadata";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { SYSTEM_CAPABILITIES } from "@/lib/permissions/capabilities";
+import { StatsGrid } from "@/components/shared";
 
-function AdminCompliancePageContent() {
+interface ComplianceStats {
+  totalLicenses: number;
+  expiredLicenses: number;
+  expiringLicenses: number;
+  pendingVerifications: number;
+  providersWithoutLicenses: number;
+  totalIssues: number;
+  complianceRate: number;
+}
+
+interface ComplianceIssue {
+  id: string;
+  type: "EXPIRED_LICENSE" | "EXPIRING_LICENSE" | "PENDING_VERIFICATION" | "MISSING_LICENSE";
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  title: string;
+  description: string;
+  resourceType: string;
+  resourceId: string;
+  resourceName: string;
+  organizationId?: string;
+  organizationName?: string;
+  dueDate?: string;
+  createdAt: string;
+}
+
+function CompliancePageContent() {
   const router = useRouter();
-  const { user } = useAuth();
   const { setTitle, setDescription } = usePageMetadata();
-
-  const [issues, setIssues] = useState<AdminComplianceIssue[]>([]);
+  const [stats, setStats] = useState<ComplianceStats | null>(null);
+  const [issues, setIssues] = useState<ComplianceIssue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState<string>("");
-  const debouncedSearch = useDebounce(searchInput, 500);
-  const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [summary, setSummary] = useState<AdminComplianceSummary | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 0,
-  });
 
   useEffect(() => {
     setTitle("Compliance Monitoring");
-    setDescription("Monitor and manage compliance issues");
+    setDescription("Monitor license compliance and identify issues");
+    fetchData();
   }, [setTitle, setDescription]);
 
-  const fetchIssues = useCallback(async () => {
+  const fetchData = async () => {
     setIsLoading(true);
-    setError(null);
-
     try {
-      const response = await adminService.getComplianceIssues({
-        page: pagination.page,
-        limit: pagination.limit,
-        severity: severityFilter !== "all" ? severityFilter : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        search: debouncedSearch || undefined,
-      });
+      const [statsResponse, issuesResponse] = await Promise.all([
+        apiService.get<ComplianceStats>("/api/admin/compliance/stats"),
+        apiService.get<ComplianceIssue[]>("/api/admin/compliance/issues"),
+      ]);
 
-      if (!response.success || !response.data) {
-        const message = response.message || "Failed to load compliance issues";
-        setError(message);
-        toast.error(message);
-        setIssues([]);
-        setSummary(null);
-        setPagination((prev) => ({ ...prev, total: 0, pages: 0 }));
-        return;
+      if (statsResponse.success && statsResponse.data) {
+        setStats(statsResponse.data);
       }
 
-      const { issues: fetchedIssues, pagination: meta, summary: summaryData } =
-        response.data;
-
-      setIssues(fetchedIssues || []);
-      setSummary(summaryData ?? null);
-      setPagination((prev) => ({
-        ...prev,
-        total: meta?.total || 0,
-        pages: meta?.pages || 0,
-      }));
-    } catch (err) {
-      console.error("Error fetching compliance issues:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load compliance issues"
-      );
-      toast.error("Failed to load compliance issues");
+      if (issuesResponse.success && issuesResponse.data) {
+        setIssues(issuesResponse.data);
+      }
+    } catch (error) {
+      console.error("Error fetching compliance data:", error);
+      toast.error("Failed to load compliance data");
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.page, pagination.limit, severityFilter, statusFilter, debouncedSearch]);
-
-  useEffect(() => {
-    fetchIssues();
-  }, [fetchIssues]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [debouncedSearch, severityFilter, statusFilter]);
-
-  const handleRefresh = useCallback(() => {
-    fetchIssues();
-  }, [fetchIssues]);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPagination((prev) => ({ ...prev, page: newPage }));
-  }, []);
-
-  // Calculate stats
-  const stats = useMemo(() => {
-    const fallbackSeverity = {
-      critical: issues.filter((i) => i.severity === "critical").length,
-      high: issues.filter((i) => i.severity === "high").length,
-      medium: issues.filter((i) => i.severity === "medium").length,
-      low: issues.filter((i) => i.severity === "low").length,
-    };
-
-    const fallbackStatus = {
-      open: issues.filter((i) => i.status === "open").length,
-      resolved: issues.filter((i) => i.status === "resolved").length,
-      acknowledged: issues.filter((i) => i.status === "acknowledged").length,
-    };
-
-    const totalIssues = summary?.total ?? pagination.total;
-    const severityCounts = summary?.bySeverity ?? fallbackSeverity;
-    const statusCounts = summary?.byStatus ?? fallbackStatus;
-
-    return [
-      {
-        label: "Total Issues",
-        value: totalIssues.toLocaleString(),
-        icon: <AlertTriangle className="h-4 w-4 text-muted-foreground" />,
-        description: "All compliance issues",
-      },
-      {
-        label: "Critical",
-        value: severityCounts.critical.toLocaleString(),
-        icon: <XCircle className="h-4 w-4 text-muted-foreground" />,
-        description: "Requires immediate attention",
-      },
-      {
-        label: "Open",
-        value: statusCounts.open.toLocaleString(),
-        icon: <Clock className="h-4 w-4 text-muted-foreground" />,
-        description: "Unresolved issues",
-      },
-      {
-        label: "Resolved",
-        value: statusCounts.resolved.toLocaleString(),
-        icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
-        description: "Resolved incidents",
-      },
-    ];
-  }, [issues, pagination.total, summary]);
+  };
 
   const getSeverityBadge = (severity: string) => {
-    const configs: Record<
-      string,
-      {
-        label: string;
-        variant: "default" | "destructive" | "secondary" | "outline";
-      }
-    > = {
-      critical: { label: "Critical", variant: "destructive" },
-      high: { label: "High", variant: "destructive" },
-      medium: { label: "Medium", variant: "default" },
-      low: { label: "Low", variant: "outline" },
+    const config = {
+      HIGH: { variant: "destructive" as const, icon: XCircle },
+      MEDIUM: { variant: "secondary" as const, icon: AlertTriangle },
+      LOW: { variant: "outline" as const, icon: Clock },
     };
-    const config = configs[severity] || { label: severity, variant: "outline" };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return config[severity as keyof typeof config] || config.LOW;
   };
 
-  const getStatusBadge = (status: string) => {
-    const configs: Record<
-      string,
-      {
-        label: string;
-        variant: "default" | "destructive" | "secondary" | "outline";
-      }
-    > = {
-      open: { label: "Open", variant: "destructive" },
-      resolved: { label: "Resolved", variant: "default" },
-      acknowledged: { label: "Acknowledged", variant: "secondary" },
+  const getTypeLabel = (type: string) => {
+    const labels = {
+      EXPIRED_LICENSE: "Expired License",
+      EXPIRING_LICENSE: "Expiring Soon",
+      PENDING_VERIFICATION: "Pending Verification",
+      MISSING_LICENSE: "Missing License",
     };
-    const config = configs[status] || { label: status, variant: "outline" };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return labels[type as keyof typeof labels] || type;
   };
 
-  const columns: ColumnDef<AdminComplianceIssue>[] = useMemo(
-    () => [
-      {
-        accessorKey: "title",
-        header: "Issue",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          const issue = row.original;
-          return (
-            <div>
-              <div className="font-medium">{issue.title}</div>
-              <div className="text-sm text-muted-foreground">
-                {issue.description}
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "type",
-        header: "Type",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          return (
-            <Badge variant="outline" className="capitalize">
-              {row.original.type.replace("_", " ")}
-            </Badge>
-          );
-        },
-      },
-      {
-        accessorKey: "severity",
-        header: "Severity",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          return getSeverityBadge(row.original.severity);
-        },
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          return getStatusBadge(row.original.status);
-        },
-      },
-      {
-        accessorKey: "createdAt",
-        header: "Reported",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          return format(new Date(row.original.createdAt), "MMM d, yyyy");
-        },
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }: { row: { original: AdminComplianceIssue } }) => {
-          return (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                router.push(`/admin/compliance/${row.original.id}`)
-              }
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-          );
-        },
-      },
-    ],
-    [router]
-  );
+  const handleViewResource = (issue: ComplianceIssue) => {
+    if (issue.resourceType === "License") {
+      router.push(`/admin/licenses/${issue.resourceId}`);
+    } else if (issue.resourceType === "Organization") {
+      router.push(`/admin/organizations/${issue.resourceId}`);
+    } else if (issue.resourceType === "Provider" && issue.organizationId) {
+      router.push(`/admin/organizations/${issue.organizationId}`);
+    }
+  };
 
-  if (isLoading && issues.length === 0) {
-    return (
-      <LoadingState message="Loading compliance issues..." fullHeight />
-    );
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading compliance data...</div>;
   }
 
-  if (error && issues.length === 0) {
-    return (
-      <ErrorState
-        title="Error Loading Compliance Issues"
-        message={error}
-        action={{
-          label: "Retry",
-          onClick: handleRefresh,
-          variant: "healthcare",
-        }}
-      />
-    );
-  }
+  const statsData = stats
+    ? [
+        {
+          label: "Compliance Rate",
+          value: `${stats.complianceRate}%`,
+          icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
+          description: "Overall compliance",
+        },
+        {
+          label: "Total Issues",
+          value: stats.totalIssues.toString(),
+          icon: <AlertTriangle className="h-4 w-4 text-muted-foreground" />,
+          description: "Requiring attention",
+        },
+        {
+          label: "Expired Licenses",
+          value: stats.expiredLicenses.toString(),
+          icon: <XCircle className="h-4 w-4 text-muted-foreground" />,
+          description: "Need immediate action",
+        },
+        {
+          label: "Expiring Soon",
+          value: stats.expiringLicenses.toString(),
+          icon: <Clock className="h-4 w-4 text-muted-foreground" />,
+          description: "Within 30 days",
+        },
+      ]
+    : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Shield className="h-8 w-8 text-primary" />
+            Compliance Monitoring
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor license compliance and identify issues
+          </p>
+        </div>
+      </div>
+
       {/* Stats */}
-      <StatsGrid stats={stats} columns={4} variant="card" />
+      {stats && <StatsGrid stats={statsData} columns={4} variant="card" />}
 
-      {/* Filters and Search */}
-      <Card variant="healthcare">
+      {/* Compliance Issues */}
+      <Card>
         <CardHeader>
-          <CardTitle>Compliance Issues</CardTitle>
-          <CardDescription>
-            Monitor and manage system compliance issues
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <SearchFilterBar
-                searchQuery={searchInput}
-                onSearchChange={setSearchInput}
-                searchPlaceholder="Search compliance issues..."
-              />
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Compliance Issues</CardTitle>
+              <CardDescription>
+                {issues.length} issue{issues.length !== 1 ? "s" : ""} requiring attention
+              </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Severities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={handleRefresh}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button variant="outline" onClick={fetchData}>
+              Refresh
+            </Button>
           </div>
+        </CardHeader>
+        <CardContent>
+          {issues.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {issues.map((issue) => {
+                  const severityConfig = getSeverityBadge(issue.severity);
+                  const SeverityIcon = severityConfig.icon;
 
-          {issues.length === 0 ? (
-            <EmptyState
-              icon={ShieldCheck}
-              title="No compliance issues found"
-              description="No compliance issues match your current filters"
-            />
+                  return (
+                    <TableRow key={issue.id}>
+                      <TableCell>
+                        <Badge variant={severityConfig.variant}>
+                          <SeverityIcon className="mr-1 h-3 w-3" />
+                          {issue.severity}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{getTypeLabel(issue.type)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{issue.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {issue.description}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {issue.organizationName || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {issue.dueDate
+                          ? format(new Date(issue.dueDate), "MMM d, yyyy")
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewResource(issue)}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           ) : (
-            <DataTable
-              columns={columns}
-              data={issues}
-              enablePagination
-              currentPage={pagination.page}
-              totalPages={pagination.pages}
-              totalItems={pagination.total}
-              pageSize={pagination.limit}
-              onPageChange={handlePageChange}
-            />
+            <div className="text-center py-12">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium">All Clear!</h3>
+              <p className="text-muted-foreground">
+                No compliance issues found
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -376,14 +267,14 @@ function AdminCompliancePageContent() {
   );
 }
 
-export default function AdminCompliancePage() {
+export default function CompliancePage() {
   return (
     <RequirePermission
-      permission={SYSTEM_CAPABILITIES.COMPLIANCE_MANAGE}
+      permission={SYSTEM_CAPABILITIES.COMPLIANCE_VIEW}
       title="Access Restricted"
-      description="You don't have permission to view compliance issues."
+      description="You don't have permission to view compliance monitoring."
     >
-      <AdminCompliancePageContent />
+      <CompliancePageContent />
     </RequirePermission>
   );
 }

@@ -268,9 +268,10 @@ function AdminOrganizationsPageContent() {
     [router]
   );
 
-  if (isLoading && organizations.length === 0) {
-    return <LoadingState message="Loading organizations..." fullHeight />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && organizations.length === 0) {
+  //   return <LoadingState message="Loading organizations..." fullHeight />;
+  // }
 
   if (error && organizations.length === 0) {
     return (
@@ -354,7 +355,7 @@ function AdminOrganizationsPageContent() {
             </div>
           </div>
 
-          {organizations.length === 0 ? (
+          {!isLoading && organizations.length === 0 ? (
             <EmptyState
               icon={Building2}
               title="No organizations found"
@@ -364,6 +365,7 @@ function AdminOrganizationsPageContent() {
             <DataTable
               columns={columns}
               data={organizations}
+              isLoading={isLoading}
               enablePagination
               currentPage={pagination.page}
               totalPages={pagination.pages}

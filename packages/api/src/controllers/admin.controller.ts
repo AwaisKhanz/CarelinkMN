@@ -72,6 +72,35 @@ export class AdminController {
     }
   };
 
+  getUserDetails = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const details = await adminService.getUserDetails(userId);
+
+      if (!details) {
+        res.status(404).json({
+          success: false,
+          error: "User not found",
+          message: "User does not exist",
+        } as ApiResponse);
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: details,
+        message: "User details retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getUserDetails error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load user details",
+        message: "An error occurred while retrieving user details",
+      } as ApiResponse);
+    }
+  };
+
   updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userId } = req.params;
@@ -179,6 +208,38 @@ export class AdminController {
         success: false,
         error: "Failed to load organization",
         message: "An error occurred while retrieving the organization",
+      } as ApiResponse);
+    }
+  };
+
+  getOrganizationDetails = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { organizationId } = req.params;
+      const details = await adminService.getOrganizationDetails(organizationId);
+
+      if (!details) {
+        res.status(404).json({
+          success: false,
+          error: "Organization not found",
+          message: "Organization does not exist",
+        } as ApiResponse);
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: details,
+        message: "Organization details retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getOrganizationDetails error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load organization details",
+        message: "An error occurred while retrieving organization details",
       } as ApiResponse);
     }
   };
@@ -335,6 +396,50 @@ export class AdminController {
     }
   };
 
+  getComplianceStats = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const stats = await adminService.getComplianceStats();
+
+      res.status(200).json({
+        success: true,
+        data: stats,
+        message: "Compliance statistics retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getComplianceStats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load compliance statistics",
+        message: "An error occurred while retrieving compliance statistics",
+      } as ApiResponse);
+    }
+  };
+
+  getComplianceIssuesList = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const issues = await adminService.getComplianceIssuesList();
+
+      res.status(200).json({
+        success: true,
+        data: issues,
+        message: "Compliance issues retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getComplianceIssuesList error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load compliance issues",
+        message: "An error occurred while retrieving compliance issues",
+      } as ApiResponse);
+    }
+  };
+
   /**
    * ANALYTICS
    */
@@ -361,6 +466,101 @@ export class AdminController {
         success: false,
         error: "Failed to load analytics",
         message: "An error occurred while retrieving analytics",
+      } as ApiResponse);
+    }
+  };
+
+  /**
+   * ONBOARDING
+   */
+  getOnboardingSubmissions = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { page, limit, status, search } = req.query;
+
+      const result = await adminService.getOnboardingSubmissions({
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        status: status as any,
+        search: search as string,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "Onboarding submissions retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getOnboardingSubmissions error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load onboarding submissions",
+        message: "An error occurred while retrieving onboarding submissions",
+      } as ApiResponse);
+    }
+  };
+
+  getOnboardingSubmissionById = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const submission = await adminService.getOnboardingSubmissionById(id);
+
+      if (!submission) {
+        res.status(404).json({
+          success: false,
+          error: "Submission not found",
+          message: "Onboarding submission does not exist",
+        } as ApiResponse);
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: submission,
+        message: "Onboarding submission retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin getOnboardingSubmissionById error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load onboarding submission",
+        message: "An error occurred while retrieving the onboarding submission",
+      } as ApiResponse);
+    }
+  };
+
+  reviewOnboardingSubmission = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      const actingUserId = (req as unknown as AuthenticatedRequest).user?.id as string;
+
+      const result = await adminService.reviewOnboardingSubmission(
+        id,
+        status,
+        notes,
+        actingUserId
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "Onboarding submission reviewed successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Admin reviewOnboardingSubmission error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to review onboarding submission",
+        message: "An error occurred while reviewing the onboarding submission",
       } as ApiResponse);
     }
   };

@@ -92,14 +92,16 @@ export class HomeController {
         return;
       }
 
-      // Verify user has access to this provider
-      if (!(await this.homeService.verifyProviderAccess(user.id, providerId))) {
-        res.status(403).json({
-          success: false,
-          error: "Forbidden",
-          message: "You don't have access to this provider",
-        } as ApiResponse);
-        return;
+      // Verify user has access to this provider (skip for Case Managers who need to create placements)
+      if (user.role !== UserRole.CASE_MANAGER && user.role !== UserRole.HOSPITAL_SW) {
+        if (!(await this.homeService.verifyProviderAccess(user.id, providerId))) {
+          res.status(403).json({
+            success: false,
+            error: "Forbidden",
+            message: "You don't have access to this provider",
+          } as ApiResponse);
+          return;
+        }
       }
 
       const homes = await this.homeService.getProviderHomes(providerId, {

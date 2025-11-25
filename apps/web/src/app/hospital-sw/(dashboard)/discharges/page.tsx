@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { usePageMetadata } from "../use-page-metadata";
 import { dischargeCaseService, DischargeCase } from "@/lib/api";
 import { toast } from "sonner";
 import { format as formatDate } from "date-fns";
-import { DischargeStatus } from "@carelink/types";
+import { DischargeStatus, NotificationType } from "@carelink/types";
 import { useDebounce } from "@/hooks/use-debounce";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
@@ -129,6 +130,28 @@ function DischargesPageContent() {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.DISCHARGE_INVITE_RESPONSE ||
+        notification.type === NotificationType.DISCHARGE_PLACEMENT
+      ) {
+        refetch();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, refetch]);
 
   const handleViewCase = useCallback(
     (dischargeCase: DischargeCase) => {
@@ -322,11 +345,12 @@ function DischargesPageContent() {
     ]
   );
 
-  if (isLoading && dischargeCases.length === 0) {
-    return (
-      <LoadingState message="Loading discharge cases..." fullHeight />
-    );
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && dischargeCases.length === 0) {
+  //   return (
+  //     <LoadingState message="Loading discharge cases..." fullHeight />
+  //   );
+  // }
 
   if (fetchError && dischargeCases.length === 0) {
     return (

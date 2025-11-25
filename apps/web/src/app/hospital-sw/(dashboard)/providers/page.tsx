@@ -336,9 +336,10 @@ function HospitalSWProvidersPageContent() {
     ];
   }, [providers, pagination]);
 
-  if (isLoading && providers.length === 0) {
-    return <LoadingState message="Loading providers..." fullHeight />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && providers.length === 0) {
+  //   return <LoadingState message="Loading providers..." fullHeight />;
+  // }
 
   if (error && providers.length === 0) {
     return (

@@ -28,14 +28,6 @@ function CreateHomePageContent() {
     setDescription("Create a new care home for your organization");
   }, [setTitle, setDescription]);
 
-  // Simple geocoding function (using a free geocoding service)
-  const geocodeAddress = async (
-    address: string
-  ): Promise<{ latitude: number; longitude: number }> => {
-    // Use geocoding utility which uses apiService
-    return geocodeAddress(address);
-  };
-
   const handleSubmit = async (
     data: HomeFormData & { photos: UploadedFile[]; amenities: string[] }
   ) => {

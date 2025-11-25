@@ -255,8 +255,18 @@ export function getProviderBadges(
   }
 
   // Check if provider is "new" (created within last 30 days)
-  // This would need to be added to ProviderPublicProfile if needed
-  // For now, we'll just return verified badge
+  if (provider.createdAt) {
+    const createdDate = new Date(provider.createdAt);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    if (createdDate > thirtyDaysAgo) {
+      badges.push({
+        label: "New",
+        variant: "healthcarePrimary",
+      });
+    }
+  }
 
   return badges;
 }

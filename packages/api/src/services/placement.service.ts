@@ -351,6 +351,258 @@ export class PlacementService {
     }
   }
 
+  // Create placement from referral (case manager workflow)
+  async createPlacementFromReferral(
+    data: {
+      referralId: string;
+      providerId: string;
+      homeId: string;
+      openingId: string;
+      placementDate: string;
+      moveInDate?: string;
+      notes?: string;
+    },
+    userId: string
+  ): Promise<any> {
+    try {
+      // Verify referral exists and get case manager
+      const referral = await db.referral.findUnique({
+        where: { id: data.referralId },
+        include: {
+          caseManager: {
+            select: {
+              id: true,
+              organizationId: true,
+            },
+          },
+          shortlist: {
+            where: {
+              providerId: data.providerId,
+            },
+            select: {
+              status: true,
+              providerId: true,
+            },
+          },
+        },
+      });
+
+      if (!referral) {
+        throw new Error("Referral not found");
+      }
+
+      // Verify user is the case manager or has access to the referral
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true, organizationId: true },
+      });
+
+      const isCaseManager = user?.role === "CASE_MANAGER";
+      const hasAccess = 
+        referral.caseManagerId === userId || 
+        (isCaseManager && user.organizationId === referral.caseManager?.organizationId);
+
+      if (!hasAccess) {
+        throw new Error("Access denied: You don't have permission to create placements for this referral");
+      }
+
+      // Verify provider is in shortlist with RESPONDED status
+      const shortlistEntry = referral.shortlist.find(
+        (s) => s.providerId === data.providerId
+      );
+
+      if (!shortlistEntry) {
+        throw new Error("Provider not found in referral shortlist");
+      }
+
+      if (shortlistEntry.status !== "RESPONDED") {
+        throw new Error(
+          "Can only create placements for providers who have responded to the referral"
+        );
+      }
+
+      // Verify home belongs to provider
+      const home = await db.home.findFirst({
+        where: {
+          id: data.homeId,
+          providerId: data.providerId,
+        },
+      });
+
+      if (!home) {
+        throw new Error("Home not found or doesn't belong to the selected provider");
+      }
+
+      // Verify opening belongs to home and has available spots
+      const opening = await db.opening.findFirst({
+        where: {
+          id: data.openingId,
+          homeId: data.homeId,
+        },
+      });
+
+      if (!opening) {
+        throw new Error("Opening not found or doesn't belong to the selected home");
+      }
+
+      if (opening.spotsAvailable <= 0) {
+        throw new Error("No spots available in this opening");
+      }
+
+      if (opening.status !== "OPEN") {
+        throw new Error("Opening is not available for placement");
+      }
+
+      // Use transaction to create placement and update referral status
+      const result = await db.$transaction(async (tx) => {
+        // Create placement using existing logic
+        const placement = await tx.placement.create({
+          data: {
+            providerId: data.providerId,
+            openingId: data.openingId,
+            referralId: data.referralId,
+            placementDate: new Date(data.placementDate),
+            moveInDate: data.moveInDate ? new Date(data.moveInDate) : null,
+            status: PlacementStatus.PENDING,
+          },
+          include: {
+            referral: {
+              select: {
+                id: true,
+                referralNumber: true,
+                caseManagerId: true,
+                clientAge: true,
+                clientGender: true,
+                clientInitials: true,
+                careLevels: true,
+                servicesNeeded: true,
+                primaryPayer: true,
+                targetMoveDate: true,
+                urgency: true,
+                status: true,
+              },
+            },
+            opening: {
+              include: {
+                home: {
+                  select: {
+                    id: true,
+                    name: true,
+                    city: true,
+                    state: true,
+                    addressLine1: true,
+                  },
+                },
+              },
+            },
+            provider: {
+              include: {
+                organization: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        // Decrement opening spots
+        const updatedOpening = await tx.opening.update({
+          where: { id: data.openingId },
+          data: {
+            spotsAvailable: {
+              decrement: 1,
+            },
+            freshnessTimestamp: new Date(),
+          },
+        });
+
+        // Update opening status to FILLED if no spots left
+        if (updatedOpening.spotsAvailable === 0) {
+          await tx.opening.update({
+            where: { id: data.openingId },
+            data: {
+              status: "FILLED",
+            },
+          });
+        }
+
+        // Increment home's current occupancy
+        await tx.home.update({
+          where: { id: data.homeId },
+          data: {
+            currentOccupancy: {
+              increment: 1,
+            },
+          },
+        });
+
+        // Update referral status to PLACED
+        await tx.referral.update({
+          where: { id: data.referralId },
+          data: {
+            status: "PLACED",
+          },
+        });
+
+        return placement;
+      });
+
+      // Send notifications
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+
+        // Notify provider users
+        const provider = await db.provider.findUnique({
+          where: { id: data.providerId },
+          include: {
+            organization: {
+              include: {
+                users: true,
+              },
+            },
+          },
+        });
+
+        if (provider?.organization?.users) {
+          await notificationService.createBatchNotifications(
+            provider.organization.users.map((u) => ({
+              userId: u.id,
+              type: NotificationType.PLACEMENT_UPDATE,
+              title: "New Placement Created",
+              message: `New placement created for referral ${referral.referralNumber}`,
+              actionUrl: `/provider/placements/${result.id}`,
+              actionLabel: "View Placement",
+              metadata: { placementId: result.id, referralId: data.referralId },
+            }))
+          );
+        }
+
+        // Notify case manager
+        if (referral.caseManagerId && referral.caseManagerId !== userId) {
+          await notificationService.createNotification({
+            userId: referral.caseManagerId,
+            type: NotificationType.PLACEMENT_UPDATE,
+            title: "Placement Created",
+            message: `Placement created for referral ${referral.referralNumber}`,
+            channels: ["IN_APP", "EMAIL"],
+            actionUrl: `/case-manager/referrals/${data.referralId}`,
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create placement notifications:", notifError);
+        // Don't throw - notification failure shouldn't break placement creation
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Create placement from referral error:", error);
+      throw error;
+    }
+  }
+
   // Get placements with filters
   async getPlacements(filters: PlacementFilters, userId: string): Promise<{
     placements: any[];

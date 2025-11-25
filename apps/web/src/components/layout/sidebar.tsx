@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Briefcase,
   Heart,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { UserRole, SubscriptionTier } from "@carelink/types";
@@ -99,6 +100,11 @@ const getNavItems = (
           title: "Organizations",
           href: "/admin/organizations",
           icon: Building2,
+        },
+        {
+          title: "Onboarding Reviews",
+          href: "/admin/onboarding",
+          icon: ClipboardList,
         },
         {
           title: "License Verification",

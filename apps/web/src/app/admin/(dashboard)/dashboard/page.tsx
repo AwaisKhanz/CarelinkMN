@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import {
   Card,
   CardContent,
@@ -28,7 +29,7 @@ import { usePageMetadata } from "../use-page-metadata";
 import { StatsGrid, LoadingState, ErrorState } from "@/components/shared";
 import { adminService, onboardingService } from "@/lib/api";
 import { toast } from "sonner";
-import { LicenseStatus, OrganizationStatus } from "@carelink/types";
+import { LicenseStatus, OrganizationStatus, NotificationType } from "@carelink/types";
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -153,6 +154,28 @@ function AdminDashboardContent() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh dashboard on relevant notifications
+      if (
+        notification.type === NotificationType.ACCOUNT_UPDATE ||
+        notification.type === NotificationType.LICENSE_EXPIRING
+      ) {
+        fetchDashboardData();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchDashboardData]);
 
   const stats = useMemo(
     () => [

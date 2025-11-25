@@ -981,107 +981,134 @@ export class ProviderService {
     }
   }
 
-  // Get provider referrals
+  /**
+   * Get provider's incoming referrals from shortlist
+   */
   async getProviderReferrals(
     providerId: string,
-    filters: {
+    userId: string,
+    userRole?: string,
+    filters?: {
+      status?: string;
+      urgency?: string;
       page?: number;
       limit?: number;
-      status?: string;
     }
   ): Promise<{
     referrals: any[];
     pagination: {
-      page: number;
-      limit: number;
       total: number;
       pages: number;
+      page: number;
+      limit: number;
     };
   }> {
     try {
-      const { page = 1, limit = 10, status } = filters;
-      const skip = (page - 1) * limit;
-
-      // Build where clause
-      const where: Prisma.ReferralWhereInput = {
-        shortlist: {
-          some: {
-            providerId,
-          },
-        },
-      };
-
-      // Add status filter if provided
-      if (status && status !== "all") {
-        where.status = status as any;
+      // Verify user has access to this provider (skip for Case Managers)
+      const isCaseManager = userRole === 'CASE_MANAGER';
+      if (!isCaseManager) {
+        const hasAccess = await this.verifyProviderAccess(userId, providerId);
+        if (!hasAccess) {
+          throw new Error("Access denied");
+        }
       }
 
-      // Get referrals with pagination
-      const [referrals, total] = await Promise.all([
-        db.referral.findMany({
-          where,
+      const { status, urgency, page = 1, limit = 20 } = filters || {};
+      const skip = (page - 1) * limit;
+
+      // Build where clause for shortlist
+      const shortlistWhere: Prisma.ReferralShortlistWhereInput = {
+        providerId,
+      };
+
+      if (status) {
+        shortlistWhere.status = status as any;
+      }
+
+      // Build where clause for referral
+      const referralWhere: Prisma.ReferralWhereInput = {};
+
+      if (urgency) {
+        referralWhere.urgency = urgency as any;
+      }
+
+      // Combine filters
+      if (Object.keys(referralWhere).length > 0) {
+        shortlistWhere.referral = referralWhere;
+      }
+
+      // Get shortlist entries with referral details
+      const [shortlistEntries, total] = await Promise.all([
+        db.referralShortlist.findMany({
+          where: shortlistWhere,
           include: {
-            caseManager: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                role: true,
-              },
-            },
-            shortlist: {
-              where: {
-                providerId,
-              },
-              select: {
-                id: true,
-                status: true,
-                addedAt: true,
-                contactedAt: true,
-                respondedAt: true,
-                notes: true,
-              },
-            },
-            messages: {
-              where: {
-                providerId,
-              },
-              select: {
-                id: true,
-                status: true,
-                createdAt: true,
-                lastMessageAt: true,
-              },
-              take: 1,
-              orderBy: {
-                lastMessageAt: "desc",
+            referral: {
+              include: {
+                caseManager: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+                caseManagerProfile: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
               },
             },
           },
           orderBy: {
-            createdAt: "desc",
+            addedAt: "desc",
           },
           skip,
           take: limit,
         }),
-        db.referral.count({ where }),
+        db.referralShortlist.count({ where: shortlistWhere }),
       ]);
+
+      // Map to ProviderReferralListItem format
+      const referrals = shortlistEntries.map((entry) => ({
+        id: entry.referral.id,
+        referralNumber: entry.referral.referralNumber,
+        status: entry.referral.status,
+        clientAge: entry.referral.clientAge,
+        clientGender: entry.referral.clientGender,
+        clientInitials: entry.referral.clientInitials,
+        careLevels: entry.referral.careLevels,
+        servicesNeeded: entry.referral.servicesNeeded,
+        primaryPayer: entry.referral.primaryPayer,
+        urgency: entry.referral.urgency,
+        targetMoveDate: entry.referral.targetMoveDate?.toISOString() || null,
+        shortlistStatus: entry.status,
+        shortlistAddedAt: entry.addedAt.toISOString(),
+        shortlistContactedAt: entry.contactedAt?.toISOString(),
+        shortlistRespondedAt: entry.respondedAt?.toISOString(),
+        shortlistNotes: entry.notes || undefined,
+        caseManager: entry.referral.caseManager,
+        createdAt: entry.referral.createdAt.toISOString(),
+      }));
 
       const pages = Math.ceil(total / limit);
 
       return {
         referrals,
         pagination: {
-          page,
-          limit,
           total,
           pages,
+          page,
+          limit,
         },
       };
     } catch (error) {
       console.error("Get provider referrals error:", error);
-      throw new Error("Failed to retrieve provider referrals");
+      throw error;
     }
   }
 
@@ -1518,14 +1545,150 @@ export class ProviderService {
               id: true,
               referralNumber: true,
               status: true,
+              caseManagerId: true,
             },
           },
         },
       });
 
+      // Fetch provider details for notification
+      const provider = await db.provider.findUnique({
+        where: { id: providerId },
+        include: {
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      // Notify Case Manager of response
+      if (updated.referral.caseManagerId && provider) {
+        try {
+          const { NotificationService } = await import("./notification.service");
+          const notificationService = new NotificationService();
+          
+          let title = "Provider Response Update";
+          let message = `Provider ${provider.organization.name} updated their status to ${data.status}`;
+          
+          if (data.status === "RESPONDED") {
+            title = "Provider Responded";
+            message = `Provider ${provider.organization.name} has responded to referral ${updated.referral.referralNumber}`;
+          } else if (data.status === "DECLINED") {
+            title = "Provider Declined";
+            message = `Provider ${provider.organization.name} has declined referral ${updated.referral.referralNumber}`;
+          }
+
+          // Import NotificationType dynamically or use string if enum not available in scope
+          // Assuming NotificationType is available from @prisma/client which is usually imported at top
+          // If not, we can use the string value directly as it matches the enum
+          
+          await notificationService.createNotification({
+            userId: updated.referral.caseManagerId,
+            type: "REFERRAL_UPDATE" as any, // Cast to any to avoid import issues if not imported
+            title,
+            message,
+            channels: ["IN_APP", "EMAIL"],
+            actionUrl: `/case-manager/referrals/${referralId}`,
+          });
+        } catch (notifError) {
+          console.error("Failed to create provider response notification:", notifError);
+        }
+      }
+
       return updated;
     } catch (error) {
       console.error("Respond to referral error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get single referral detail for provider
+   */
+  async getProviderReferralById(
+    providerId: string,
+    referralId: string,
+    userId: string
+  ): Promise<any> {
+    try {
+      // Verify user has access to this provider
+      const hasAccess = await this.verifyProviderAccess(userId, providerId);
+      if (!hasAccess) {
+        throw new Error("Access denied");
+      }
+
+      // Get shortlist entry to verify provider has access to this referral
+      const shortlistEntry = await db.referralShortlist.findUnique({
+        where: {
+          referralId_providerId: {
+            referralId,
+            providerId,
+          },
+        },
+        include: {
+          referral: {
+            include: {
+              caseManager: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              caseManagerProfile: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!shortlistEntry) {
+        throw new Error("Referral not found in shortlist");
+      }
+
+      // Map to ProviderReferralDetail format
+      const referralDetail = {
+        id: shortlistEntry.referral.id,
+        referralNumber: shortlistEntry.referral.referralNumber,
+        clientAge: shortlistEntry.referral.clientAge,
+        clientGender: shortlistEntry.referral.clientGender,
+        clientInitials: shortlistEntry.referral.clientInitials,
+        careLevels: shortlistEntry.referral.careLevels,
+        servicesNeeded: shortlistEntry.referral.servicesNeeded,
+        mobilityLevel: shortlistEntry.referral.mobilityLevel || undefined,
+        behavioralNeeds: shortlistEntry.referral.behavioralNeeds,
+        medicalNeeds: shortlistEntry.referral.medicalNeeds,
+        preferredCounties: shortlistEntry.referral.preferredCounties,
+        preferredCities: shortlistEntry.referral.preferredCities,
+        maxDistance: shortlistEntry.referral.maxDistance,
+        primaryPayer: shortlistEntry.referral.primaryPayer,
+        secondaryPayer: shortlistEntry.referral.secondaryPayer || null,
+        urgency: shortlistEntry.referral.urgency,
+        targetMoveDate: shortlistEntry.referral.targetMoveDate?.toISOString() || null,
+        status: shortlistEntry.referral.status,
+        shortlistStatus: shortlistEntry.status,
+        shortlistAddedAt: shortlistEntry.addedAt.toISOString(),
+        shortlistContactedAt: shortlistEntry.contactedAt?.toISOString(),
+        shortlistRespondedAt: shortlistEntry.respondedAt?.toISOString(),
+        shortlistNotes: shortlistEntry.notes || undefined,
+        caseManager: shortlistEntry.referral.caseManager,
+        caseManagerProfile: shortlistEntry.referral.caseManagerProfile || undefined,
+        createdAt: shortlistEntry.referral.createdAt.toISOString(),
+      };
+
+      return referralDetail;
+    } catch (error) {
+      console.error("Get provider referral by ID error:", error);
       throw error;
     }
   }

@@ -62,7 +62,7 @@ export function EmptyState({
   return (
     <Card
       variant={variant}
-      className={cn("max-w-md mx-auto", className)}
+      className={cn("max-w-full mx-auto", className)}
     >
       <CardContent className="pt-6">
         <div className="text-center py-8 space-y-4">

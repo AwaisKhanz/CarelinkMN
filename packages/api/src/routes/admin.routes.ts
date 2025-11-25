@@ -11,6 +11,50 @@ const authMiddleware = new AuthMiddleware();
 router.use(authMiddleware.requireAuth);
 
 /**
+ * ONBOARDING
+ */
+router.get(
+  "/onboarding",
+  authMiddleware.requireAnyPermission([
+    "system:onboarding:manage",
+    "system:manage",
+    "system:view",
+  ]),
+  validate([
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("status").optional().isString(),
+    query("search").optional().isString(),
+  ]),
+  adminController.getOnboardingSubmissions
+);
+
+router.get(
+  "/onboarding/:id",
+  authMiddleware.requireAnyPermission([
+    "system:onboarding:manage",
+    "system:manage",
+    "system:view",
+  ]),
+  validate([param("id").isUUID()]),
+  adminController.getOnboardingSubmissionById
+);
+
+router.put(
+  "/onboarding/:id/review",
+  authMiddleware.requireAnyPermission([
+    "system:onboarding:manage",
+    "system:manage",
+  ]),
+  validate([
+    param("id").isUUID(),
+    body("status").isString().notEmpty(),
+    body("notes").optional().isString(),
+  ]),
+  adminController.reviewOnboardingSubmission
+);
+
+/**
  * USERS
  */
 router.get(
@@ -36,6 +80,17 @@ router.get(
   ]),
   validate([param("userId").isUUID()]),
   adminController.getUserById
+);
+
+router.get(
+  "/users/:userId/details",
+  authMiddleware.requireAnyPermission([
+    "system:users:view",
+    "system:manage",
+    "system:view",
+  ]),
+  validate([param("userId").isUUID()]),
+  adminController.getUserDetails
 );
 
 router.put(
@@ -93,6 +148,17 @@ router.get(
   ]),
   validate([param("organizationId").isUUID()]),
   adminController.getOrganizationById
+);
+
+router.get(
+  "/organizations/:organizationId/details",
+  authMiddleware.requireAnyPermission([
+    "system:organizations:view",
+    "system:manage",
+    "system:view",
+  ]),
+  validate([param("organizationId").isUUID()]),
+  adminController.getOrganizationDetails
 );
 
 router.put(
@@ -174,6 +240,26 @@ router.get(
     query("search").optional().isString(),
   ]),
   adminController.getComplianceIssues
+);
+
+router.get(
+  "/compliance/stats",
+  authMiddleware.requireAnyPermission([
+    "system:compliance:view",
+    "system:manage",
+    "system:view",
+  ]),
+  adminController.getComplianceStats
+);
+
+router.get(
+  "/compliance/issues",
+  authMiddleware.requireAnyPermission([
+    "system:compliance:view",
+    "system:manage",
+    "system:view",
+  ]),
+  adminController.getComplianceIssuesList
 );
 
 /**

@@ -131,6 +131,15 @@ export function getUrgencyBadgeConfig(urgency: Urgency): {
   icon: LucideIcon;
 } {
   const config = URGENCY_CONFIG[urgency];
+  if (!config) {
+    // Fallback for unknown urgency
+    const { AlertCircle } = require("lucide-react");
+    return {
+      label: urgency || "Unknown",
+      variant: "outline",
+      icon: AlertCircle,
+    };
+  }
   return {
     label: config.label,
     variant: config.color,
@@ -148,6 +157,12 @@ export function getReferralStatusBadgeConfig(status: ReferralStatus): {
   variant: BadgeProps["variant"];
 } {
   const config = REFERRAL_STATUS_CONFIG[status];
+  if (!config) {
+    return {
+      label: status || "Unknown",
+      variant: "outline",
+    };
+  }
   return {
     label: config.label,
     variant: config.color,

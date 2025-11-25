@@ -30,11 +30,12 @@ export function ClientsTable({
   const router = useRouter();
   const columns = useClientsColumns();
 
-  if (isLoading) {
-    return <LoadingState message="Loading clients..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading clients..." />;
+  // }
 
-  if (clients.length === 0) {
+  if (clients.length === 0 && !isLoading) {
     return (
       <EmptyState
         icon={Users}
@@ -61,6 +62,7 @@ export function ClientsTable({
     <DataTable
       columns={columns}
       data={clients}
+      isLoading={isLoading}
       currentPage={pagination.page}
       totalPages={pagination.pages}
       totalItems={pagination.total}

@@ -125,6 +125,7 @@ export const SYSTEM_CAPABILITIES = {
   PROVIDERS_VERIFY: "system:providers:verify",
   LICENSES_VERIFY: "system:licenses:verify",
   AUDIT_VIEW: "system:audit:view",
+  COMPLIANCE_VIEW: "system:compliance:view",
   COMPLIANCE_MANAGE: "system:compliance:manage",
   ANALYTICS_SYSTEM: "system:analytics:system",
 } as const;
@@ -211,6 +212,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
     SYSTEM_CAPABILITIES.PROVIDERS_VERIFY,
     SYSTEM_CAPABILITIES.LICENSES_VERIFY,
     SYSTEM_CAPABILITIES.AUDIT_VIEW,
+    SYSTEM_CAPABILITIES.COMPLIANCE_VIEW,
     SYSTEM_CAPABILITIES.COMPLIANCE_MANAGE,
   ],
 

@@ -98,9 +98,10 @@ function VRSEmployersPageContent() {
     totalCount: pagination.total,
   });
 
-  if (isLoading && employers.length === 0) {
-    return <LoadingState message="Loading employers..." />;
-  }
+  // Remove the full page loading check that hides filters
+  // if (isLoading && employers.length === 0) {
+  //   return <LoadingState message="Loading employers..." />;
+  // }
 
   if (error && employers.length === 0) {
     return (

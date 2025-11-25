@@ -86,43 +86,6 @@ function AdminSettingsPageContent() {
 
           <Separator />
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Email Settings</h3>
-            <div>
-              <Label htmlFor="smtpHost">SMTP Host</Label>
-              <Input
-                id="smtpHost"
-                placeholder="smtp.example.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="smtpPort">SMTP Port</Label>
-              <Input
-                id="smtpPort"
-                type="number"
-                defaultValue="587"
-                placeholder="587"
-              />
-            </div>
-            <div>
-              <Label htmlFor="smtpUser">SMTP Username</Label>
-              <Input
-                id="smtpUser"
-                placeholder="Enter SMTP username"
-              />
-            </div>
-            <div>
-              <Label htmlFor="smtpPassword">SMTP Password</Label>
-              <Input
-                id="smtpPassword"
-                type="password"
-                placeholder="Enter SMTP password"
-              />
-            </div>
-          </div>
-
-          <Separator />
-
           <div className="flex justify-end">
             <Button
               variant="healthcare"

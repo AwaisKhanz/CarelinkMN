@@ -30,11 +30,12 @@ export function EmployersTable({
   const router = useRouter();
   const columns = useEmployersColumns();
 
-  if (isLoading) {
-    return <LoadingState message="Loading employers..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading employers..." />;
+  // }
 
-  if (employers.length === 0) {
+  if (employers.length === 0 && !isLoading) {
     return (
       <EmptyState
         icon={Building2}
@@ -61,6 +62,7 @@ export function EmployersTable({
     <DataTable
       columns={columns}
       data={employers}
+      isLoading={isLoading}
       currentPage={pagination.page}
       totalPages={pagination.pages}
       totalItems={pagination.total}

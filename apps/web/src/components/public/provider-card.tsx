@@ -19,6 +19,7 @@ import {
 import { getProviderBadges } from "@/lib/utils/public";
 import { VIEW_MODES, ViewMode } from "@/lib/constants/public";
 import { FavoriteButton } from "./favorite-button";
+import { SponsoredBadge } from "@/components/provider";
 import Link from "next/link";
 
 interface ProviderCardProps {
@@ -54,6 +55,7 @@ export function ProviderCard({
                 <CardTitle className="text-lg">
                   {provider.organizationName}
                 </CardTitle>
+                <SponsoredBadge boostLevel={provider.boostLevel || 0} />
                 {badges.map((badge, idx) => (
                   <Badge key={idx} variant={badge.variant as any}>
                     {badge.label}
@@ -140,12 +142,15 @@ export function ProviderCard({
             </div>
           )}
           {badges.length > 0 && (
-            <div className="absolute top-2 left-2 flex gap-1">
-              {badges.map((badge, idx) => (
-                <Badge key={idx} variant={badge.variant as any}>
-                  {badge.label}
-                </Badge>
-              ))}
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              <SponsoredBadge boostLevel={provider.boostLevel || 0} />
+              <div className="flex gap-1">
+                {badges.map((badge, idx) => (
+                  <Badge key={idx} variant={badge.variant as any}>
+                    {badge.label}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
         </div>

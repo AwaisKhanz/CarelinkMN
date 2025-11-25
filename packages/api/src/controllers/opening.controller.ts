@@ -119,7 +119,7 @@ export class OpeningController {
         search: search as string,
       };
 
-      const result = await this.openingService.getOpenings(filters, user.id);
+      const result = await this.openingService.getOpenings(filters, user.id, user.role);
 
       res.status(200).json({
         success: true,
@@ -188,7 +188,7 @@ export class OpeningController {
         return;
       }
 
-      const opening = await this.openingService.getOpeningById(openingId, user.id);
+      const opening = await this.openingService.getOpeningById(openingId, user.id, user.role);
 
       if (!opening) {
         res.status(404).json({

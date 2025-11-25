@@ -178,7 +178,7 @@ export class OpeningService {
   }
 
   // Get openings with filters
-  async getOpenings(filters: OpeningFilters, userId: string) {
+  async getOpenings(filters: OpeningFilters, userId: string, userRole?: string) {
     try {
       const {
         homeId,
@@ -192,19 +192,27 @@ export class OpeningService {
 
       const where: any = {};
 
-      // If providerId is provided, verify access
+      // If providerId is provided, verify access (skip for Case Managers who can view all)
       if (providerId) {
-        const hasAccess = await this.verifyProviderAccess(userId, providerId);
-        if (!hasAccess) {
-          throw new Error("Access denied");
+        // Case Managers can view openings from any provider
+        const isCaseManager = userRole === 'CASE_MANAGER';
+        if (!isCaseManager) {
+          const hasAccess = await this.verifyProviderAccess(userId, providerId);
+          if (!hasAccess) {
+            throw new Error("Access denied");
+          }
         }
         where.providerId = providerId;
       }
 
       if (homeId) {
-        const hasAccess = await this.verifyHomeAccess(userId, homeId);
-        if (!hasAccess) {
-          throw new Error("Access denied");
+        // Case Managers can view openings from any home
+        const isCaseManager = userRole === 'CASE_MANAGER';
+        if (!isCaseManager) {
+          const hasAccess = await this.verifyHomeAccess(userId, homeId);
+          if (!hasAccess) {
+            throw new Error("Access denied");
+          }
         }
         where.homeId = homeId;
       }
@@ -332,21 +340,26 @@ export class OpeningService {
   }
 
   // Get opening by ID
-  async getOpeningById(openingId: string, userId: string) {
+  async getOpeningById(openingId: string, userId: string, userRole?: string) {
     try {
-      const opening = await db.opening.findFirst({
-        where: {
-          id: openingId,
-          provider: {
-            organization: {
-              users: {
-                some: {
-                  id: userId,
-                },
+      // Case Managers can view any opening, Providers can only view their own
+      const isCaseManager = userRole === 'CASE_MANAGER';
+      const where: any = { id: openingId };
+      
+      if (!isCaseManager) {
+        where.provider = {
+          organization: {
+            users: {
+              some: {
+                id: userId,
               },
             },
           },
-        },
+        };
+      }
+
+      const opening = await db.opening.findFirst({
+        where,
         include: {
           home: {
             include: {

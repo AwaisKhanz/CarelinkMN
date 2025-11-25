@@ -259,9 +259,13 @@ export class PublicService {
         db.provider.count({ where }),
       ]);
 
+      // Apply Diversity Caps (Max 2 per org in top results)
+      // We reorder the fetched results to prioritize diversity
+      const reorderedProviders = this.applyDiversityCaps(providers);
+
       // Map to public profile format
       const publicProfiles = await Promise.all(
-        providers.map((provider) => this.mapProviderToPublicProfile(provider, location))
+        reorderedProviders.map((provider) => this.mapProviderToPublicProfile(provider, location))
       );
 
       return {
@@ -275,6 +279,30 @@ export class PublicService {
       console.error("Public search providers error:", error);
       throw new Error("Failed to search providers");
     }
+  }
+
+  /**
+   * Apply diversity caps to provider list
+   * Max 2 providers per organization in the top results
+   */
+  private applyDiversityCaps(providers: any[]): any[] {
+    const accepted: any[] = [];
+    const deferred: any[] = [];
+    const orgCounts: Record<string, number> = {};
+
+    for (const provider of providers) {
+      const orgId = provider.organizationId;
+      const count = orgCounts[orgId] || 0;
+
+      if (count < 2) {
+        accepted.push(provider);
+        orgCounts[orgId] = count + 1;
+      } else {
+        deferred.push(provider);
+      }
+    }
+
+    return [...accepted, ...deferred];
   }
 
   /**
@@ -307,29 +335,29 @@ export class PublicService {
                 },
                 include: {
                   service: true,
-                },
-              },
-              openings: {
-                where: {
-                  status: OpeningStatus.OPEN,
-                  spotsAvailable: {
-                    gt: 0,
                   },
                 },
-                orderBy: {
-                  availableFrom: "asc",
+                openings: {
+                  where: {
+                    status: OpeningStatus.OPEN,
+                    spotsAvailable: {
+                      gt: 0,
+                    },
+                  },
+                  orderBy: {
+                    availableFrom: "asc",
+                  },
                 },
+                amenities: true,
               },
-              amenities: true,
+            },
+            licenses: {
+              where: {
+                status: "ACTIVE",
+              },
             },
           },
-          licenses: {
-            where: {
-              status: "ACTIVE",
-            },
-          },
-        },
-      });
+        });
 
       if (!provider) {
         throw new Error("Provider not found");
@@ -690,6 +718,7 @@ export class PublicService {
       logo: provider.logo || undefined,
       verified: provider.verified,
       subscriptionTier: provider.subscriptionTier,
+      boostLevel: provider.boostLevel || 0,
       homes,
       primaryLicenseType: provider.primaryLicenseType,
       licenses: provider.licenses.map((license: any) => ({
@@ -700,6 +729,7 @@ export class PublicService {
       averageRating: undefined, // TODO: Add rating system
       reviewCount: 0, // TODO: Add review system
       distance,
+      createdAt: provider.createdAt,
     };
   }
 
@@ -712,6 +742,7 @@ export class PublicService {
         // Distance sorting would need to be done in application layer
         // For now, fall back to relevance
         return {
+          boostLevel: "desc", // Boosted providers first
           verified: "desc",
           createdAt: "desc",
         };
@@ -719,6 +750,7 @@ export class PublicService {
         // Rating sorting would need rating field
         // For now, fall back to relevance
         return {
+          boostLevel: "desc", // Boosted providers first
           verified: "desc",
           createdAt: "desc",
         };
@@ -728,10 +760,13 @@ export class PublicService {
         };
       case "relevance":
       default:
+        // Boost influence: Boosted providers appear higher
+        // But verified status and subscription tier still matter
         return {
-          verified: "desc",
-          subscriptionTier: "desc",
-          createdAt: "desc",
+          boostLevel: "desc", // Primary ranking factor (0, 1, 2, 3)
+          verified: "desc",    // Verified providers ranked higher
+          subscriptionTier: "desc", // Higher tiers ranked higher
+          createdAt: "desc",   // Newest first as tiebreaker
         };
     }
   }

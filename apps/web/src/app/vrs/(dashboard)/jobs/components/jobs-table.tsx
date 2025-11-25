@@ -32,11 +32,12 @@ export function JobsTable({
   const router = useRouter();
   const columns = useJobsColumns();
 
-  if (isLoading) {
-    return <LoadingState message="Loading jobs..." />;
-  }
+  // Remove blocking loading state
+  // if (isLoading) {
+  //   return <LoadingState message="Loading jobs..." />;
+  // }
 
-  if (jobs.length === 0) {
+  if (jobs.length === 0 && !isLoading) {
     return (
       <EmptyState
         icon={Briefcase}
@@ -63,6 +64,7 @@ export function JobsTable({
     <DataTable
       columns={columns}
       data={jobs}
+      isLoading={isLoading}
       currentPage={pagination.page}
       totalPages={pagination.pages}
       totalItems={pagination.total}

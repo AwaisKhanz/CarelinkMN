@@ -27,6 +27,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 function AdminAnalyticsPageContent() {
   const { user } = useAuth();
@@ -147,6 +159,20 @@ function AdminAnalyticsPageContent() {
     ];
   }, [analytics]);
 
+  // Use real growth data from backend
+  const userGrowthData = useMemo(() => {
+    return analytics?.growthData || [];
+  }, [analytics]);
+
+  const activityData = useMemo(() => {
+    return [
+      { name: "Referrals", value: analytics?.totalReferrals || 0 },
+      { name: "Placements", value: analytics?.totalPlacements || 0 },
+      { name: "Active Users", value: analytics?.dailyActiveUsers || 0 },
+      { name: "Searches", value: analytics?.totalSearches || 0 },
+    ];
+  }, [analytics]);
+
   if (isLoading) {
     return <LoadingState message="Loading analytics..." fullHeight />;
   }
@@ -205,55 +231,128 @@ function AdminAnalyticsPageContent() {
       {/* Stats */}
       <StatsGrid stats={stats} columns={4} variant="card" />
 
-      {/* Additional Analytics Cards */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* User Growth Chart */}
         <Card variant="healthcare">
           <CardHeader>
-            <CardTitle>User Growth</CardTitle>
-            <CardDescription>New user registrations over time</CardDescription>
+            <CardTitle>User & Organization Growth</CardTitle>
+            <CardDescription>New registrations over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              Chart placeholder - Integration with charting library needed
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={userGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="month" 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="users" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  name="Users"
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="organizations" 
+                  stroke="hsl(var(--chart-2))" 
+                  strokeWidth={2}
+                  name="Organizations"
+                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
+        {/* Activity Bar Chart */}
         <Card variant="healthcare">
           <CardHeader>
-            <CardTitle>Platform Usage</CardTitle>
-            <CardDescription>Key metrics and usage statistics</CardDescription>
+            <CardTitle>Platform Activity</CardTitle>
+            <CardDescription>Key metrics comparison</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Daily Active Users</span>
-                <span className="font-medium">
-                  {analytics?.dailyActiveUsers || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Monthly Active Users</span>
-                <span className="font-medium">
-                  {analytics?.monthlyActiveUsers || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Total Referrals</span>
-                <span className="font-medium">
-                  {analytics?.totalReferrals || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Total Placements</span>
-                <span className="font-medium">
-                  {analytics?.totalPlacements || 0}
-                </span>
-              </div>
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={activityData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="name" 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="hsl(var(--primary))" 
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Platform Usage Stats */}
+      <Card variant="healthcare">
+        <CardHeader>
+          <CardTitle>Platform Usage</CardTitle>
+          <CardDescription>Detailed usage statistics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Daily Active Users</p>
+              <p className="text-2xl font-bold">
+                {(analytics?.dailyActiveUsers || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Monthly Active Users</p>
+              <p className="text-2xl font-bold">
+                {(analytics?.monthlyActiveUsers || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Total Referrals</p>
+              <p className="text-2xl font-bold">
+                {(analytics?.totalReferrals || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Total Placements</p>
+              <p className="text-2xl font-bold">
+                {(analytics?.totalPlacements || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

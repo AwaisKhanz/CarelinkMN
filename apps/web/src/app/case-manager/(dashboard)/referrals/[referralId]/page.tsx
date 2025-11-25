@@ -36,6 +36,7 @@ import {
   BatchMessageDialog,
   DeleteReferralDialog,
   AssignmentDialog,
+  CreatePlacementDialog,
 } from "./components";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
@@ -75,6 +76,7 @@ function ReferralDetailPageContent() {
   const [isSendingBatchMessage, setIsSendingBatchMessage] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [createPlacementDialogOpen, setCreatePlacementDialogOpen] = useState(false);
 
   useEffect(() => {
     if (referral) {
@@ -452,6 +454,7 @@ function ReferralDetailPageContent() {
                 referral={referral}
                 shortlistCount={shortlist.length}
                 onBatchMessage={() => setBatchMessageDialogOpen(true)}
+                onCreatePlacement={() => setCreatePlacementDialogOpen(true)}
                 canManageShortlist={canManageShortlist}
                 canBatchMessage={canBatchOutreach}
               />
@@ -489,6 +492,8 @@ function ReferralDetailPageContent() {
             referralId={referral.id}
             placements={placements}
             isLoading={isLoadingPlacements}
+            shortlist={shortlist}
+            onRefresh={fetchPlacements}
           />
         </TabsContent>
       </Tabs>
@@ -530,6 +535,18 @@ function ReferralDetailPageContent() {
         currentCaseManagerId={referral.caseManagerId}
         onAssign={handleAssign}
         isAssigning={isAssigning}
+      />
+
+      <CreatePlacementDialog
+        open={createPlacementDialogOpen}
+        onOpenChange={setCreatePlacementDialogOpen}
+        referralId={referral.id}
+        shortlist={shortlist.filter(s => s.status === ShortlistStatus.RESPONDED)}
+        onSuccess={() => {
+          setCreatePlacementDialogOpen(false);
+          fetchPlacements();
+          fetchReferralData();
+        }}
       />
     </div>
   );

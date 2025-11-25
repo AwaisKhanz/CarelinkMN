@@ -13,3 +13,4 @@ export { PayerSelector } from "./payer-selector";
 export { ProviderDeleteDialog } from "./provider-delete-dialog";
 export { ProviderDetailHeader } from "./provider-detail-header";
 export { AccessRestricted } from "./access-restricted";
+export { SponsoredBadge } from "./sponsored-badge";

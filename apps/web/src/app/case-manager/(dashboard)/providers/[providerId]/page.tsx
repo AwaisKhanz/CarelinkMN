@@ -26,6 +26,8 @@ import {
   Plus,
   Mail,
   Calendar,
+  Home,
+  Bed,
 } from "lucide-react";
 import { toast } from "sonner";
 import { providerService, referralService, Provider } from "@/lib/api";
@@ -36,7 +38,6 @@ import { format } from "date-fns";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -57,6 +58,21 @@ interface ProviderPerformanceMetrics {
   lastResponseDate?: string;
 }
 
+interface Opening {
+  id: string;
+  spotsAvailable: number;
+  availableFrom: string;
+  availableUntil?: string;
+  ageMin?: number;
+  ageMax?: number;
+  genderPreference?: string;
+  home: {
+    name: string;
+    city: string;
+    state: string;
+  };
+}
+
 function ProviderProfilePageContent() {
   const params = useParams();
   const router = useRouter();
@@ -67,8 +83,10 @@ function ProviderProfilePageContent() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [performanceMetrics, setPerformanceMetrics] =
     useState<ProviderPerformanceMetrics | null>(null);
+  const [openings, setOpenings] = useState<Opening[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+  const [isLoadingOpenings, setIsLoadingOpenings] = useState(true);
   const [isAddingToShortlist, setIsAddingToShortlist] = useState(false);
   const [referralId, setReferralId] = useState<string | null>(null);
 
@@ -90,6 +108,7 @@ function ProviderProfilePageContent() {
     if (providerId) {
       fetchProvider();
       fetchPerformanceMetrics();
+      fetchOpenings();
     }
   }, [providerId]);
 
@@ -115,9 +134,6 @@ function ProviderProfilePageContent() {
   const fetchPerformanceMetrics = async () => {
     setIsLoadingMetrics(true);
     try {
-      // Get referrals for this provider to calculate metrics
-      // Note: API limit is max 100, so we use the maximum allowed limit
-      // If we need more data, we'd need to implement pagination
       const referralsResponse = await providerService.getProviderReferrals(
         providerId,
         { page: 1, limit: 100 }
@@ -127,9 +143,7 @@ function ProviderProfilePageContent() {
         const referrals = referralsResponse.data.referrals || [];
         const totalReferrals = referrals.length;
 
-        // Calculate response metrics from message threads
-        // For now, we'll use a simplified calculation
-        // In a real implementation, you'd query message threads
+        // Calculate real response metrics
         const respondedReferrals = referrals.filter(
           (r) =>
             r.status !== ReferralStatus.NEW &&
@@ -139,7 +153,7 @@ function ProviderProfilePageContent() {
         const responseRate =
           totalReferrals > 0 ? (respondedReferrals / totalReferrals) * 100 : 0;
 
-        // Calculate placements
+        // Calculate real placements
         const placements = referrals.filter(
           (r) => r.status === ReferralStatus.PLACED
         ).length;
@@ -157,9 +171,33 @@ function ProviderProfilePageContent() {
       }
     } catch (error) {
       console.error("Error fetching performance metrics:", error);
-      // Don't show error toast - metrics are optional
     } finally {
       setIsLoadingMetrics(false);
+    }
+  };
+
+  const fetchOpenings = async () => {
+    setIsLoadingOpenings(true);
+    try {
+      const response = await fetch(
+        `/api/openings?providerId=${providerId}&status=OPEN&limit=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setOpenings(data.data.openings || []);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching openings:", error);
+    } finally {
+      setIsLoadingOpenings(false);
     }
   };
 
@@ -197,6 +235,11 @@ function ProviderProfilePageContent() {
       router.push(`/case-manager/messages?providerId=${providerId}`);
     }
   };
+
+  // Calculate total capacity and occupancy from homes
+  const totalCapacity = provider?.homes?.reduce((sum, home) => sum + (home.capacity || 0), 0) || 0;
+  const totalOccupancy = provider?.homes?.reduce((sum, home) => sum + (home.currentOccupancy || 0), 0) || 0;
+  const availableSpots = totalCapacity - totalOccupancy;
 
   if (isLoading) {
     return (
@@ -243,7 +286,7 @@ function ProviderProfilePageContent() {
               {provider.organization?.name || "Provider Profile"}
             </h1>
             <p className="text-muted-foreground mt-1">
-              Provider details and performance metrics
+              {provider.primaryLicenseType} Provider
             </p>
           </div>
         </div>
@@ -274,9 +317,9 @@ function ProviderProfilePageContent() {
         </div>
       </div>
 
-      {/* Provider Overview */}
+      {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info Card */}
+        {/* Provider Overview - 2 columns */}
         <Card variant="healthcare" className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -373,10 +416,28 @@ function ProviderProfilePageContent() {
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            {/* Capacity Summary */}
+            <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{totalCapacity}</div>
+                <div className="text-xs text-muted-foreground">Total Capacity</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-healthcare">{totalOccupancy}</div>
+                <div className="text-xs text-muted-foreground">Current Occupancy</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-success">{availableSpots}</div>
+                <div className="text-xs text-muted-foreground">Available Spots</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Performance Metrics Card */}
+        {/* Performance Metrics - 1 column */}
         <Card variant="healthcare">
           <CardHeader>
             <CardTitle>Performance Metrics</CardTitle>
@@ -396,7 +457,7 @@ function ProviderProfilePageContent() {
                     <span className="text-sm text-muted-foreground">
                       Total Referrals
                     </span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-xl">
                       {performanceMetrics.totalReferrals}
                     </span>
                   </div>
@@ -409,7 +470,7 @@ function ProviderProfilePageContent() {
                     <span className="text-sm text-muted-foreground">
                       Response Rate
                     </span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-xl">
                       {performanceMetrics.responseRate.toFixed(1)}%
                     </span>
                   </div>
@@ -426,7 +487,7 @@ function ProviderProfilePageContent() {
                     <span className="text-sm text-muted-foreground">
                       Placement Success Rate
                     </span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-xl">
                       {performanceMetrics.placementSuccessRate.toFixed(1)}%
                     </span>
                   </div>
@@ -443,7 +504,7 @@ function ProviderProfilePageContent() {
                         <span className="text-sm text-muted-foreground">
                           Avg. Response Time
                         </span>
-                        <span className="font-semibold">
+                        <span className="font-semibold text-xl">
                           {performanceMetrics.averageResponseTime.toFixed(1)}h
                         </span>
                       </div>
@@ -460,167 +521,211 @@ function ProviderProfilePageContent() {
         </Card>
       </div>
 
-      {/* Detailed Information Tabs */}
-      <Tabs defaultValue="licenses" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="licenses">Licenses</TabsTrigger>
-          <TabsTrigger value="homes">Homes</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="licenses">
-          <Card variant="healthcare">
-            <CardHeader>
-              <CardTitle>Active Licenses</CardTitle>
-              <CardDescription>
-                Current licenses held by this provider
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {provider.licenses && provider.licenses.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>License Type</TableHead>
-                      <TableHead>License Number</TableHead>
-                      <TableHead>Expiration Date</TableHead>
+      {/* Licenses and Homes Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Active Licenses */}
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle>Active Licenses</CardTitle>
+            <CardDescription>
+              Current licenses held by this provider
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {provider.licenses && provider.licenses.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>License Type</TableHead>
+                    <TableHead>License Number</TableHead>
+                    <TableHead>Expiration Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {provider.licenses.map((license, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        {license.licenseType}
+                      </TableCell>
+                      <TableCell>{license.licenseNumber}</TableCell>
+                      <TableCell>
+                        {license.expirationDate
+                          ? format(
+                              new Date(license.expirationDate),
+                              "MMM d, yyyy"
+                            )
+                          : "N/A"}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {provider.licenses.map((license, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">
-                          {license.licenseType}
-                        </TableCell>
-                        <TableCell>{license.licenseNumber}</TableCell>
-                        <TableCell>
-                          {license.expirationDate
-                            ? format(
-                                new Date(license.expirationDate),
-                                "MMM d, yyyy"
-                              )
-                            : "N/A"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No active licenses found
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="homes">
-          <Card variant="healthcare">
-            <CardHeader>
-              <CardTitle>Homes</CardTitle>
-              <CardDescription>
-                Active homes managed by this provider
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {provider.homes && provider.homes.length > 0 ? (
-                <div className="space-y-4">
-                  {provider.homes.map((home) => (
-                    <Card key={home.id} variant="healthcare">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">
-                              {home.name}
-                            </CardTitle>
-                            <CardDescription className="mt-1">
-                              {home.city}, {home.state}
-                              {home.county && ` • ${home.county} County`}
-                            </CardDescription>
-                          </div>
-                          {home.acceptingNew && (
-                            <Badge variant="healthcareSuccess">
-                              Accepting New
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Capacity:
-                            </span>
-                            <p className="font-medium">{home.capacity}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Occupancy:
-                            </span>
-                            <p className="font-medium">
-                              {home.currentOccupancy} / {home.capacity}
-                            </p>
-                          </div>
-                          {home.wheelchairAccessible && (
-                            <div>
-                              <span className="text-muted-foreground">
-                                Accessibility:
-                              </span>
-                              <p className="font-medium">
-                                Wheelchair Accessible
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
                   ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No homes found</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No active licenses found
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-        <TabsContent value="services">
-          <Card variant="healthcare">
-            <CardHeader>
-              <CardTitle>Services</CardTitle>
-              <CardDescription>
-                Services offered by this provider
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {provider.homes && provider.homes.length > 0 ? (
-                <div className="space-y-4">
-                  {provider.homes.map((home) => {
-                    const services = home.services || [];
-                    if (services.length === 0) return null;
-
-                    return (
-                      <div key={home.id}>
-                        <h4 className="font-semibold mb-2">{home.name}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {services.map((homeService, index) => (
-                            <Badge key={index} variant="outline">
-                              {homeService.service?.name || "Unknown Service"}
-                            </Badge>
-                          ))}
-                        </div>
+        {/* Homes */}
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle>Homes ({provider.homes?.length || 0})</CardTitle>
+            <CardDescription>
+              Active homes managed by this provider
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {provider.homes && provider.homes.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {provider.homes.map((home) => (
+                  <div
+                    key={home.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-semibold">{home.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {home.city}, {home.state}
+                          {home.county && ` • ${home.county} County`}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No services found
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                      {home.acceptingNew && (
+                        <Badge variant="healthcareSuccess" className="text-xs">
+                          Accepting New
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm mt-3">
+                      <div>
+                        <span className="text-muted-foreground">Capacity:</span>
+                        <p className="font-medium">{home.capacity}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Occupancy:</span>
+                        <p className="font-medium">
+                          {home.currentOccupancy} / {home.capacity}
+                        </p>
+                      </div>
+                      {home.wheelchairAccessible && (
+                        <div>
+                          <span className="text-muted-foreground">Access:</span>
+                          <p className="font-medium text-xs">Wheelchair</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No homes found</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Services and Openings Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Services */}
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle>Services Offered</CardTitle>
+            <CardDescription>
+              Services provided by this provider
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {provider.homes && provider.homes.length > 0 ? (
+              <div className="space-y-4">
+                {provider.homes.map((home) => {
+                  const services = home.services || [];
+                  if (services.length === 0) return null;
+
+                  return (
+                    <div key={home.id}>
+                      <h4 className="font-semibold mb-2 text-sm">{home.name}</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {services.map((homeService, index) => (
+                          <Badge key={index} variant="outline">
+                            {homeService.service?.name || "Unknown Service"}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No services found
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Current Openings */}
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle>Current Openings ({openings.length})</CardTitle>
+            <CardDescription>
+              Available spots at this provider
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingOpenings ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : openings.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {openings.map((opening) => (
+                  <div
+                    key={opening.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-semibold text-sm">
+                          {opening.home.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {opening.home.city}, {opening.home.state}
+                        </p>
+                      </div>
+                      <Badge variant="healthcareSuccess">
+                        {opening.spotsAvailable} Spot{opening.spotsAvailable !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                      <div>
+                        <span className="text-muted-foreground">Available From:</span>
+                        <p className="font-medium">
+                          {format(new Date(opening.availableFrom), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      {opening.ageMin !== undefined && opening.ageMax !== undefined && (
+                        <div>
+                          <span className="text-muted-foreground">Age Range:</span>
+                          <p className="font-medium">
+                            {opening.ageMin}-{opening.ageMax} years
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No current openings available
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

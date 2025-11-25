@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import { vendorService } from "@/lib/api";
 import { toast } from "sonner";
 import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { ColumnDef } from "@tanstack/react-table";
-import { TransportBooking, BookingStatus } from "@carelink/types";
+import { TransportBooking, BookingStatus, NotificationType } from "@carelink/types";
 import { getBookingStatusBadgeConfig } from "@/lib/utils/vendor";
 import { formatVehicleType } from "@/lib/utils/vendor";
 import { format } from "date-fns";
@@ -91,6 +92,28 @@ export default function VendorBookingsPage() {
       setIsLoading(false);
     }
   }, [vendorId, pagination.page, pagination.limit, statusFilter, searchTerm]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification: any) => {
+      // Refresh list on relevant notifications
+      if (
+        notification.type === NotificationType.BOOKING_CONFIRMED ||
+        notification.type === NotificationType.BOOKING_COMPLETED
+      ) {
+        fetchBookings();
+      }
+    };
+
+    socket.on("notification:new", handleNotification);
+
+    return () => {
+      socket.off("notification:new", handleNotification);
+    };
+  }, [socket, fetchBookings]);
 
   useEffect(() => {
     fetchVendor();
@@ -252,9 +275,7 @@ export default function VendorBookingsPage() {
           </Select>
         </div>
 
-        {isLoading ? (
-          <LoadingState message="Loading bookings..." />
-        ) : error ? (
+        {error ? (
           <ErrorState
             title="Error Loading Bookings"
             message={error}
@@ -264,7 +285,7 @@ export default function VendorBookingsPage() {
               variant: "healthcare",
             }}
           />
-        ) : bookings.length === 0 ? (
+        ) : bookings.length === 0 && !isLoading ? (
           <EmptyState
             icon={Calendar}
             title="No bookings found"
@@ -274,6 +295,7 @@ export default function VendorBookingsPage() {
           <DataTable
             columns={columns}
             data={bookings}
+            isLoading={isLoading}
             currentPage={pagination.page}
             pageSize={pagination.limit}
             totalItems={pagination.total}

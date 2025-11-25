@@ -10,6 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface RetentionBreakdownItem {
   status: string;
   label: string;
@@ -19,10 +21,12 @@ interface RetentionBreakdownItem {
 
 interface RetentionBreakdownCardProps {
   breakdown: RetentionBreakdownItem[];
+  isLoading?: boolean;
 }
 
 export function RetentionBreakdownCard({
   breakdown,
+  isLoading = false,
 }: RetentionBreakdownCardProps) {
   const total = breakdown.reduce((sum, item) => sum + item.count, 0);
 
@@ -35,7 +39,22 @@ export function RetentionBreakdownCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {breakdown.length > 0 ? (
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-8" />
+                </div>
+                <Skeleton className="w-full h-2 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : breakdown.length > 0 ? (
           <div className="space-y-4">
             {breakdown.map((item, index) => {
               const percentage =
