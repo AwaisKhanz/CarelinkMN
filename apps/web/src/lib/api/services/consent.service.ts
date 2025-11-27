@@ -33,9 +33,13 @@ export class ConsentService {
    * Create a consent record
    */
   async createConsent(
+    caseId: string,
     data: CreateConsentData
   ): Promise<ApiResponse<Consent>> {
-    return apiService.post<Consent>("/api/consents", data);
+    return apiService.post<Consent>(
+      `/api/discharge-cases/${caseId}/consent`,
+      data
+    );
   }
 
   /**

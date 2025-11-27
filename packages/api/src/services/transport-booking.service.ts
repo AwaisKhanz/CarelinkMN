@@ -94,6 +94,37 @@ export class TransportBookingService {
         include: this.getDefaultInclude(),
       });
 
+      // Create notification for vendor
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+        
+        // Get vendor owner user
+        const vendorOwner = await db.user.findFirst({
+          where: {
+            organizationId: vendor.organizationId,
+            role: "VENDOR",
+          },
+        });
+
+        if (vendorOwner) {
+          await notificationService.createNotification({
+            userId: vendorOwner.id,
+            type: "NEW_LEAD",
+            title: "New Transport Booking Request",
+            message: `You have received a new transport booking request`,
+            metadata: {
+              transportBookingId: transportBooking.id,
+              dischargeCaseId: data.dischargeCaseId,
+              pickupTime: data.pickupTime,
+            },
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create vendor notification:", notifError);
+        // Don't fail the booking if notification fails
+      }
+
       return this.mapTransportBookingToType(transportBooking);
     } catch (error) {
       console.error("Create transport booking error:", error);

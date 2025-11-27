@@ -224,6 +224,13 @@ const getNavItems = (
         });
       }
 
+      // Add Discharge Invitations
+      providerItems.push({
+        title: "Discharge Invitations",
+        href: "/provider/discharge-invitations",
+        icon: ClipboardList,
+      });
+
       if (perms.canManageStaff) {
         providerItems.push({
           title: "Staff",

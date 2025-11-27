@@ -610,6 +610,37 @@ export class DischargeCaseService {
             },
           });
 
+          // Create notification for provider
+          try {
+            const { NotificationService } = await import("./notification.service");
+            const notificationService = new NotificationService();
+            
+            // Get provider owner user
+            const providerOwner = await db.user.findFirst({
+              where: {
+                organizationId: provider?.organizationId,
+                role: "PROVIDER_OWNER",
+              },
+            });
+
+            if (providerOwner) {
+              await notificationService.createNotification({
+                userId: providerOwner.id,
+                type: "DISCHARGE_INVITATION_RECEIVED",
+                title: "New Discharge Case Invitation",
+                message: `You have been invited to review a discharge case (${dischargeCase.caseNumber})`,
+                metadata: {
+                  dischargeCaseId: caseId,
+                  invitationId: invitation.id,
+                  caseNumber: dischargeCase.caseNumber,
+                },
+              });
+            }
+          } catch (notifError) {
+            console.error("Failed to create notification:", notifError);
+            // Don't fail the invitation if notification fails
+          }
+
           return { ...invitation, provider };
         })
       );

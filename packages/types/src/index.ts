@@ -354,6 +354,7 @@ export enum NotificationType {
   MESSAGE_RECEIVED = "MESSAGE_RECEIVED",
   OPENING_EXPIRING = "OPENING_EXPIRING",
   PLACEMENT_CONFIRMED = "PLACEMENT_CONFIRMED",
+  DISCHARGE_INVITATION_RECEIVED = "DISCHARGE_INVITATION_RECEIVED",
 
   // HOSPITAL_SW
   DISCHARGE_INVITE_RESPONSE = "DISCHARGE_INVITE_RESPONSE",
@@ -1196,6 +1197,25 @@ export interface DischargeInvitation {
 
   reminderSentAt?: string | Date;
   escalatedAt?: string | Date;
+
+  dischargeCase?: {
+    id: string;
+    caseNumber: string;
+    patientInitials: string;
+    patientAge: number;
+    patientGender: Gender;
+    diagnosisCodes: string[];
+    mobilityStatus: string;
+    cognitiveStatus?: string;
+    primaryInsurance: Payer;
+    targetDischargeDate: string | Date;
+    preferredCounties: string[];
+    preferredCities: string[];
+    status: DischargeStatus;
+    hospital?: {
+      name: string;
+    };
+  };
 }
 
 export interface DischargeChecklist {
@@ -1479,6 +1499,12 @@ export interface CreateConsentData {
 }
 
 export interface UpdateConsentData {
+  consentType?: ConsentType;
+  consentVersion?: string;
+  captureMethod?: CaptureMethod;
+  witnessName?: string;
+  witnessTitle?: string;
+  signatureData?: string;
   isActive?: boolean;
   revokedAt?: string | Date;
   revokedReason?: string;

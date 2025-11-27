@@ -134,6 +134,49 @@ import {
 } from "@carelink/types";
 import type { BadgeProps } from "@/components/ui/badge";
 import { LICENSE_TYPES } from "@carelink/utils";
+import {
+  BookingStatus,
+  ConsentType,
+  CaptureMethod,
+} from "@carelink/types";
+
+// ============================================
+// TRANSPORT BOOKING CONSTANTS
+// ============================================
+
+export const EQUIPMENT_OPTIONS = [
+  "Oxygen",
+  "Wheelchair",
+  "Stretcher",
+  "IV Equipment",
+  "Ventilator",
+  "Other",
+];
+
+export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
+  [BookingStatus.PENDING]: "Pending",
+  [BookingStatus.CONFIRMED]: "Confirmed",
+  [BookingStatus.IN_TRANSIT]: "In Transit",
+  [BookingStatus.COMPLETED]: "Completed",
+  [BookingStatus.CANCELLED]: "Cancelled",
+};
+
+// ============================================
+// CONSENT MANAGEMENT CONSTANTS
+// ============================================
+
+export const CONSENT_TYPES = [
+  { value: ConsentType.REFERRAL, label: "Referral Consent" },
+  { value: ConsentType.DISCHARGE, label: "Discharge Consent" },
+  { value: ConsentType.PHI_RELEASE, label: "PHI Release" },
+  { value: ConsentType.MARKETING, label: "Marketing Consent" },
+];
+
+export const CAPTURE_METHODS = [
+  { value: CaptureMethod.ELECTRONIC_SIGNATURE, label: "Electronic Signature" },
+  { value: CaptureMethod.VERBAL_WITH_WITNESS, label: "Verbal with Witness" },
+  { value: CaptureMethod.WRITTEN_SCAN, label: "Written Scan" },
+];
 
 // ============================================
 // LICENSE TYPES MAP (UI-specific helper)

@@ -185,6 +185,12 @@ export class ConsentService {
       // Update consent
       const updateData: Prisma.ConsentUpdateInput = {};
 
+      if (data.consentType !== undefined) updateData.consentType = data.consentType as ConsentType;
+      if (data.consentVersion !== undefined) updateData.consentVersion = data.consentVersion;
+      if (data.captureMethod !== undefined) updateData.captureMethod = data.captureMethod as CaptureMethod;
+      if (data.witnessName !== undefined) updateData.witnessName = data.witnessName;
+      if (data.witnessTitle !== undefined) updateData.witnessTitle = data.witnessTitle;
+      if (data.signatureData !== undefined) updateData.signatureData = data.signatureData;
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
       if (data.revokedAt !== undefined) updateData.revokedAt = data.revokedAt ? normalizeDate(data.revokedAt) as Date : null;
       if (data.revokedReason !== undefined) updateData.revokedReason = data.revokedReason;
@@ -202,6 +208,64 @@ export class ConsentService {
       throw error instanceof Error
         ? error
         : new Error("Failed to update consent");
+    }
+  }
+  /**
+   * Revoke consent
+   */
+  async revokeConsent(
+    consentId: string,
+    userId: string,
+    revokedReason?: string
+  ): Promise<Consent> {
+    try {
+      // Get existing consent
+      const existingConsent = await db.consent.findUnique({
+        where: { id: consentId },
+        include: {
+          dischargeCase: {
+            select: {
+              hospitalId: true,
+            },
+          },
+        },
+      });
+
+      if (!existingConsent) {
+        throw new Error("Consent not found");
+      }
+
+      // Verify user has access
+      if (existingConsent.dischargeCase) {
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { organizationId: true },
+        });
+
+        if (!user || user.organizationId !== existingConsent.dischargeCase.hospitalId) {
+          throw new Error("Access denied");
+        }
+      } else if (existingConsent.userId !== userId) {
+        throw new Error("Access denied");
+      }
+
+      // Revoke consent
+      const consent = await db.consent.update({
+        where: { id: consentId },
+        data: {
+          isActive: false,
+          revokedAt: new Date(),
+          revokedReason: revokedReason || "Revoked by user",
+        },
+        include: this.getDefaultInclude(),
+      });
+
+      return this.mapConsentToType(consent);
+    } catch (error) {
+      console.error("Revoke consent error:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to revoke consent");
     }
   }
 

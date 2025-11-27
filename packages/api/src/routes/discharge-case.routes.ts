@@ -517,11 +517,35 @@ router.post(
 );
 
 // Update consent
-router.put(
+router.patch(
   "/consents/:id",
   authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.CONSENT_MANAGE),
   [
     param("id").isUUID().withMessage("Consent ID must be a valid UUID"),
+    body("consentType")
+      .optional()
+      .isIn(Object.values(ConsentType))
+      .withMessage("Invalid consent type"),
+    body("consentVersion")
+      .optional()
+      .isString()
+      .withMessage("Consent version must be a string"),
+    body("captureMethod")
+      .optional()
+      .isIn(Object.values(CaptureMethod))
+      .withMessage("Invalid capture method"),
+    body("witnessName")
+      .optional()
+      .isString()
+      .withMessage("Witness name must be a string"),
+    body("witnessTitle")
+      .optional()
+      .isString()
+      .withMessage("Witness title must be a string"),
+    body("signatureData")
+      .optional()
+      .isString()
+      .withMessage("Signature data must be a string"),
     body("isActive")
       .optional()
       .isBoolean()
@@ -537,6 +561,21 @@ router.put(
   ],
   validate([]),
   consentController.updateConsent
+);
+
+// Revoke consent
+router.patch(
+  "/consents/:id/revoke",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.CONSENT_MANAGE),
+  [
+    param("id").isUUID().withMessage("Consent ID must be a valid UUID"),
+    body("revokedReason")
+      .optional()
+      .isString()
+      .withMessage("Revoked reason must be a string"),
+  ],
+  validate([]),
+  consentController.revokeConsent
 );
 
 // Get Hospital SW analytics

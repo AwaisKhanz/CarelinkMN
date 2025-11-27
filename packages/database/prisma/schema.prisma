@@ -1288,10 +1288,11 @@ enum NotificationType {
   URGENT_CASE_ALERT    // Urgent case needs attention
 
   // PROVIDER
-  NEW_REFERRAL        // New referral added to shortlist
-  MESSAGE_RECEIVED    // New message
-  OPENING_EXPIRING    // Opening about to expire
-  PLACEMENT_CONFIRMED // Placement confirmed
+  NEW_REFERRAL                  // New referral added to shortlist
+  MESSAGE_RECEIVED              // New message
+  OPENING_EXPIRING              // Opening about to expire
+  PLACEMENT_CONFIRMED           // Placement confirmed
+  DISCHARGE_INVITATION_RECEIVED // Invited to discharge case
 
   // HOSPITAL_SW
   DISCHARGE_INVITE_RESPONSE // Provider responded to invite

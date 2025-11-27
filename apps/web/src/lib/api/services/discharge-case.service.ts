@@ -174,6 +174,35 @@ export class DischargeCaseService {
 
     return apiService.get<HospitalSWAnalytics>(url);
   }
+
+  /**
+   * Get provider discharge invitations
+   * NOTE: Backend API endpoint needs to be created: GET /providers/:providerId/discharge-invitations
+   */
+  async getProviderDischargeInvitations(
+    providerId: string
+  ): Promise<ApiResponse<DischargeInvitation[]>> {
+    return apiService.get<DischargeInvitation[]>(
+      `/api/providers/${providerId}/discharge-invitations`
+    );
+  }
+
+  /**
+   * Respond to discharge invitation
+   * NOTE: Backend API endpoint needs to be created: PUT /discharge-invitations/:id/respond
+   */
+  async respondToDischargeInvitation(
+    invitationId: string,
+    data: {
+      response: string;
+      responseNotes?: string;
+    }
+  ): Promise<ApiResponse<DischargeInvitation>> {
+    return apiService.put<DischargeInvitation>(
+      `/api/discharge-invitations/${invitationId}/respond`,
+      data
+    );
+  }
 }
 
 // Export singleton instance

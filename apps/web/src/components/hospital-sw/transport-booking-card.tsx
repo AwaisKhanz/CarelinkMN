@@ -57,26 +57,14 @@ import {
   Search,
 } from "lucide-react";
 import { format as formatDate } from "date-fns";
-import { PAYER_LABELS, VEHICLE_TYPES } from "@/lib/constants/index";
+import {
+  PAYER_LABELS,
+  VEHICLE_TYPES,
+  EQUIPMENT_OPTIONS,
+  BOOKING_STATUS_LABELS,
+} from "@/lib/constants/index";
 import { organizationService } from "@/lib/api/services/organization.service";
 import { OrganizationType } from "@carelink/types";
-
-const EQUIPMENT_OPTIONS = [
-  "Oxygen",
-  "Wheelchair",
-  "Stretcher",
-  "IV Equipment",
-  "Ventilator",
-  "Other",
-];
-
-const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
-  [BookingStatus.PENDING]: "Pending",
-  [BookingStatus.CONFIRMED]: "Confirmed",
-  [BookingStatus.IN_TRANSIT]: "In Transit",
-  [BookingStatus.COMPLETED]: "Completed",
-  [BookingStatus.CANCELLED]: "Cancelled",
-};
 
 interface TransportBookingCardProps {
   caseId: string;

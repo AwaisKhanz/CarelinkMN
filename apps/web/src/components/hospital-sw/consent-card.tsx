@@ -45,19 +45,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Edit, FileText, Calendar, User, CheckCircle2, XCircle } from "lucide-react";
 import { format as formatDate } from "date-fns";
 import { useAuth } from "@/contexts/auth-context";
-
-const CONSENT_TYPES = [
-  { value: ConsentType.REFERRAL, label: "Referral Consent" },
-  { value: ConsentType.DISCHARGE, label: "Discharge Consent" },
-  { value: ConsentType.PHI_RELEASE, label: "PHI Release" },
-  { value: ConsentType.MARKETING, label: "Marketing Consent" },
-];
-
-const CAPTURE_METHODS = [
-  { value: CaptureMethod.ELECTRONIC_SIGNATURE, label: "Electronic Signature" },
-  { value: CaptureMethod.VERBAL_WITH_WITNESS, label: "Verbal with Witness" },
-  { value: CaptureMethod.WRITTEN_SCAN, label: "Written Scan" },
-];
+import { CONSENT_TYPES, CAPTURE_METHODS } from "@/lib/constants/index";
 
 interface ConsentCardProps {
   caseId: string;
@@ -143,9 +131,11 @@ export function ConsentCard({ caseId, canManage }: ConsentCardProps) {
           consentData as UpdateConsentData
         );
       } else {
-        response = await consentService.createConsent(consentData as CreateConsentData);
+        response = await consentService.createConsent(
+          caseId,
+          consentData as CreateConsentData
+        );
       }
-
       if (response.success) {
         toast.success(
           consent ? "Consent updated successfully" : "Consent created successfully"

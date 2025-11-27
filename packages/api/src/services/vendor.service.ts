@@ -302,10 +302,56 @@ export class VendorService {
               id: true,
               caseNumber: true,
               patientInitials: true,
+              socialWorkerId: true,
             },
           },
         },
       });
+
+      // Create notifications for Hospital SW on status changes
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+
+        const dischargeCase = updatedBooking.dischargeCase;
+
+        if (dischargeCase?.socialWorkerId) {
+          // Notification for CONFIRMED status
+          if (status === BookingStatus.CONFIRMED && booking.status !== BookingStatus.CONFIRMED) {
+            await notificationService.createNotification({
+              userId: dischargeCase.socialWorkerId,
+              type: "BOOKING_CONFIRMED",
+              title: "Transport Booking Confirmed",
+              message: `Transport booking for case ${dischargeCase.caseNumber} has been confirmed by the vendor`,
+              metadata: {
+                transportBookingId: bookingId,
+                dischargeCaseId: updatedBooking.dischargeCaseId,
+                confirmationNumber: updatedBooking.confirmationNumber,
+                caseNumber: dischargeCase.caseNumber,
+              },
+            });
+          }
+
+          // Notification for COMPLETED status
+          if (status === BookingStatus.COMPLETED && booking.status !== BookingStatus.COMPLETED) {
+            await notificationService.createNotification({
+              userId: dischargeCase.socialWorkerId,
+              type: "BOOKING_COMPLETED",
+              title: "Transport Completed",
+              message: `Transport for case ${dischargeCase.caseNumber} has been completed`,
+              metadata: {
+                transportBookingId: bookingId,
+                dischargeCaseId: updatedBooking.dischargeCaseId,
+                completedAt: updatedBooking.completedAt,
+                caseNumber: dischargeCase.caseNumber,
+              },
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error("Failed to create Hospital SW notification:", notifError);
+        // Don't fail the update if notification fails
+      }
 
       return this.mapBookingToType(updatedBooking);
     } catch (error) {

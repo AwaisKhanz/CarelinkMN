@@ -81,9 +81,9 @@ export class ConsentController {
       );
 
       if (!consent) {
-        res.status(404).json({
-          success: false,
-          error: "Not Found",
+        res.status(200).json({
+          success: true,
+          data: null,
           message: "Consent not found",
         } as ApiResponse);
         return;
@@ -146,6 +146,49 @@ export class ConsentController {
         error: "Failed to update consent",
         message:
           error instanceof Error ? error.message : "An error occurred while updating consent",
+      } as ApiResponse);
+    }
+  };
+  /**
+   * Revoke consent
+   */
+  revokeConsent = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { id } = req.params;
+      const { revokedReason } = req.body;
+      const consent = await this.consentService.revokeConsent(
+        id,
+        user.id,
+        revokedReason
+      );
+
+      res.status(200).json({
+        success: true,
+        data: consent,
+        message: "Consent revoked successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Revoke consent error:", error);
+      const statusCode =
+        error instanceof Error &&
+        (error.message.includes("not found") || error.message.includes("Access denied"))
+          ? 400
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to revoke consent",
+        message:
+          error instanceof Error ? error.message : "An error occurred while revoking consent",
       } as ApiResponse);
     }
   };
