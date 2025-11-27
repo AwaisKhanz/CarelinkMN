@@ -39,7 +39,17 @@ export class CaseManagerService {
         return null;
       }
 
-      return this.mapCaseManagerToType(caseManager);
+      // Get user's profile image
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { profileImage: true },
+      });
+
+      const mapped = this.mapCaseManagerToType(caseManager);
+      return {
+        ...mapped,
+        profileImage: user?.profileImage || undefined,
+      } as CaseManager;
     } catch (error) {
       console.error("Get case manager by user ID error:", error);
       throw new Error("Failed to retrieve case manager by user ID");
@@ -96,6 +106,16 @@ export class CaseManagerService {
           organization: true,
         },
       });
+
+      // Update user's profile image if provided
+      if (updateData.profileImage !== undefined) {
+        await db.user.update({
+          where: { id: userId },
+          data: {
+            profileImage: updateData.profileImage || null,
+          },
+        });
+      }
 
       return this.mapCaseManagerToType(updatedCaseManager);
     } catch (error) {

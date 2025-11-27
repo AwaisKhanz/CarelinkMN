@@ -25,6 +25,9 @@ import homeRoutes from "./routes/home.routes";
 import amenityRoutes from "./routes/amenity.routes";
 import openingRoutes from "./routes/opening.routes";
 import placementRoutes from "./routes/placement.routes";
+import placementFollowUpRoutes from "./routes/placement-followup.routes";
+import placementDocumentRoutes from "./routes/placement-document.routes";
+import placementFamilyRoutes from "./routes/placement-family.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import uploadRoutes from "./routes/upload.routes";
 import billingRoutes from "./routes/billing.routes";
@@ -163,6 +166,9 @@ app.use("/api/users", authMiddleware.requireAuth, userRoutes);
 // Public routes (no authentication required)
 app.use("/api", organizationRoutes);
 // Protected routes (authentication required)
+app.use("/api", placementRoutes);
+app.use("/api", placementFollowUpRoutes);
+app.use("/api", placementDocumentRoutes);
 app.use("/api", providerRoutes);
 app.use("/api", caseManagerRoutes);
 app.use("/api", hospitalStaffRoutes);
@@ -172,7 +178,8 @@ app.use("/api", publicRoutes);
 app.use("/api", homeRoutes);
 app.use("/api", amenityRoutes);
 app.use("/api", openingRoutes);
-app.use("/api", placementRoutes);
+
+app.use("/api", placementFamilyRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/billing", billingRoutes);

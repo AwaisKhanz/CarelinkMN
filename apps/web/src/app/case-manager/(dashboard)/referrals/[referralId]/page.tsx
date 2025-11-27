@@ -386,9 +386,9 @@ function ReferralDetailPageContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -423,15 +423,17 @@ function ReferralDetailPageContent() {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="shortlist">
+        <TabsList className="w-full sm:w-auto overflow-x-auto flex-nowrap justify-start">
+          <TabsTrigger value="overview" className="whitespace-nowrap">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="shortlist" className="whitespace-nowrap">
             Shortlist ({shortlist.length})
           </TabsTrigger>
-          <TabsTrigger value="messages">
+          <TabsTrigger value="messages" className="whitespace-nowrap">
             Messages ({threads.length})
           </TabsTrigger>
-          <TabsTrigger value="placements">
+          <TabsTrigger value="placements" className="whitespace-nowrap">
             Placements ({placements.length})
           </TabsTrigger>
         </TabsList>

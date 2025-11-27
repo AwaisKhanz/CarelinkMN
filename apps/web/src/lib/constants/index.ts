@@ -947,3 +947,8 @@ export const PLACEMENT_STATUS_CONFIG: Record<
     variant: "healthcareError",
   },
 };
+// ============================================
+// PLACEMENT CONSTANTS
+// ============================================
+
+export * from "./placement";

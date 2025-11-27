@@ -248,6 +248,7 @@ export interface Message {
     lastName: string;
     email: string;
     role: string;
+    profileImage?: string;
   };
   content: string;
   attachments?: MessageAttachment[];
@@ -380,6 +381,13 @@ export enum NotificationType {
   MESSAGE_NEW = "MESSAGE_NEW",
   INVITE_RECEIVED = "INVITE_RECEIVED",
   INVITE_EXPIRING = "INVITE_EXPIRING",
+
+  // PLACEMENT ENHANCEMENTS
+  FOLLOW_UP_REMINDER = "FOLLOW_UP_REMINDER",
+  FOLLOW_UP_DUE = "FOLLOW_UP_DUE",
+  FOLLOW_UP_OVERDUE = "FOLLOW_UP_OVERDUE",
+  DOCUMENT_EXPIRING_SOON = "DOCUMENT_EXPIRING_SOON",
+  DOCUMENT_EXPIRED = "DOCUMENT_EXPIRED",
 }
 
 export interface Notification {
@@ -1019,6 +1027,8 @@ export interface CaseManager {
     phone: string;
     city: string;
     state: string;
+    logo?: string;
+    coverImage?: string;
   };
 }
 
@@ -1033,6 +1043,7 @@ export interface UpdateCaseManagerData {
   isActive?: boolean;
   notificationPreferences?: NotificationPreferences;
   defaultReferralSettings?: DefaultReferralSettings;
+  profileImage?: string;
 }
 
 // Case Manager Dashboard
@@ -1990,3 +2001,98 @@ export interface GetRequestsResponse {
   pages: number;
 }
 
+// ============================================
+// PLACEMENT FOLLOW-UP TYPES
+// ============================================
+
+export enum FollowUpType {
+  DAY_1_CHECKIN = "DAY_1_CHECKIN",
+  DAY_7_CHECKIN = "DAY_7_CHECKIN",
+  DAY_30_CHECKIN = "DAY_30_CHECKIN",
+  DAY_90_CHECKIN = "DAY_90_CHECKIN",
+  CUSTOM = "CUSTOM",
+}
+
+export enum FollowUpOutcome {
+  POSITIVE = "POSITIVE",
+  CONCERNS = "CONCERNS",
+  NEEDS_ATTENTION = "NEEDS_ATTENTION",
+  NO_RESPONSE = "NO_RESPONSE",
+}
+
+export interface PlacementFollowUp {
+  id: string;
+  placementId: string;
+  type: FollowUpType;
+  scheduledAt: string;
+  completedAt?: string;
+  completedBy?: string;
+  notes?: string;
+  outcome?: FollowUpOutcome;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// PLACEMENT DOCUMENT TYPES
+// ============================================
+
+export enum DocumentCategory {
+  MEDICAL_RECORDS = "MEDICAL_RECORDS",
+  INSURANCE = "INSURANCE",
+  IDENTIFICATION = "IDENTIFICATION",
+  CARE_PLAN = "CARE_PLAN",
+  CONSENT_FORM = "CONSENT_FORM",
+  PHOTO = "PHOTO",
+  OTHER = "OTHER",
+}
+
+export interface PlacementDocument {
+  id: string;
+  placementId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  category: DocumentCategory;
+  storageUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  expiresAt?: string;
+  notes?: string;
+}
+
+// ============================================
+// PLACEMENT FAMILY TYPES
+// ============================================
+
+export interface PlacementFamilyContact {
+  id: string;
+  placementId: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone?: string;
+  isPrimary: boolean;
+  canReceiveUpdates: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum UpdateCategory {
+  GENERAL = "GENERAL",
+  HEALTH = "HEALTH",
+  ACTIVITY = "ACTIVITY",
+  MILESTONE = "MILESTONE",
+  PHOTO = "PHOTO",
+}
+
+export interface PlacementUpdate {
+  id: string;
+  placementId: string;
+  title: string;
+  message: string;
+  category: UpdateCategory;
+  photos: string[];
+  createdBy: string;
+  createdAt: string;
+}

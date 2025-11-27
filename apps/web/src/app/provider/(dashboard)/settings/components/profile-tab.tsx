@@ -58,6 +58,7 @@ export function ProfileTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [logoFiles, setLogoFiles] = useState<UploadedFile[]>([]);
   const [coverImageFiles, setCoverImageFiles] = useState<UploadedFile[]>([]);
+  const [profileImageFiles, setProfileImageFiles] = useState<UploadedFile[]>([]);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -141,6 +142,35 @@ export function ProfileTab() {
     }
   }, [contextProvider, form]);
 
+  // Load user profile image
+  useEffect(() => {
+    const loadUserProfileImage = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user?.profileImage) {
+            const imageUrl = data.user.profileImage.toLowerCase();
+            let imageMimeType = "image/jpeg";
+            if (imageUrl.includes(".png")) imageMimeType = "image/png";
+            else if (imageUrl.includes(".gif")) imageMimeType = "image/gif";
+            else if (imageUrl.includes(".webp")) imageMimeType = "image/webp";
+
+            setProfileImageFiles([{
+              url: data.user.profileImage,
+              fileName: "profile-image",
+              isPrimary: true,
+              mimeType: imageMimeType,
+            }]);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading profile image:", error);
+      }
+    };
+    loadUserProfileImage();
+  }, []);
+
   const handleSubmit = async (data: ProfileFormData) => {
     if (!providerId) return;
 
@@ -164,6 +194,21 @@ export function ProfileTab() {
       }
 
       await providerService.updateProviderProfile(providerId, updateData);
+      
+      // Update user profile image if uploaded
+      if (profileImageFiles.length > 0 && profileImageFiles[0].url) {
+        try {
+          await fetch('/api/users/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileImage: profileImageFiles[0].url }),
+          });
+        } catch (profileErr) {
+          console.error("Error updating profile image:", profileErr);
+          // Don't fail the whole save if profile image update fails
+        }
+      }
+      
       toast.success("Profile updated successfully!");
 
       // Refresh provider data from context after update
@@ -398,13 +443,38 @@ export function ProfileTab() {
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
             <CardDescription>
-              Update your provider profile details
+              Update your personal and provider profile details
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Profile Picture */}
+            <div className="space-y-2">
+              <Label>Profile Picture</Label>
+              <FileUploader
+                documentType="image"
+                folder="users/profile-images"
+                accept="image/*"
+                maxSize={5 * 1024 * 1024} // 5MB
+                maxFiles={1}
+                multiple={false}
+                files={profileImageFiles}
+                onFilesChange={setProfileImageFiles}
+                label="Upload Profile Picture"
+                description="Upload your personal profile picture (JPG, PNG, max 5MB)"
+                showPreview={true}
+                previewSize="md"
+                variant="healthcare"
+              />
+              <p className="text-xs text-muted-foreground">
+                This image will be displayed in the sidebar and messages
+              </p>
+            </div>
+
+            <Separator />
+
             {/* Logo */}
             <div className="space-y-2">
-              <Label>Logo</Label>
+              <Label>Organization Logo</Label>
               <FileUploader
                 documentType="image"
                 folder="providers/logos"

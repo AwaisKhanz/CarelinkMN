@@ -31,12 +31,14 @@ import {
   Briefcase,
   Heart,
   ClipboardList,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { UserRole, SubscriptionTier } from "@carelink/types";
 import { getDashboardPath } from "@/lib/routing";
 import { useProviderSafe } from "@/contexts/provider-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { providerService } from "@/lib/api";
@@ -100,6 +102,11 @@ const getNavItems = (
           title: "Organizations",
           href: "/admin/organizations",
           icon: Building2,
+        },
+        {
+          title: "Placements",
+          href: "/admin/placements",
+          icon: MapPin,
         },
         {
           title: "Onboarding Reviews",
@@ -524,15 +531,12 @@ export function Sidebar({ className }: SidebarProps) {
           {/* User Info */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center space-x-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={providerLogo || undefined}
-                  alt={`${user.firstName} ${user.lastName}`}
-                />
-                <AvatarFallback>
-                  <UserIcon className="h-5 w-5 text-muted-foreground" />
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                profileImage={(user as any)?.profileImage}
+                organizationLogo={(user?.organization as any)?.logo}
+                firstName={user.firstName}
+                lastName={user.lastName}
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-foreground truncate">

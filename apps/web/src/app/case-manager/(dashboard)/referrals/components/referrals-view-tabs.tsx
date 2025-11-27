@@ -7,14 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Table, LayoutGrid, Download, Loader2 } from "lucide-react";
+import { Download, Loader2, LayoutGrid, List } from "lucide-react";
 import { ReactNode } from "react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 interface ReferralsViewTabsProps {
-  viewMode: "table" | "kanban";
-  onViewModeChange: (mode: "table" | "kanban") => void;
   totalReferrals: number;
   onExportCSV: () => void;
   canExport: boolean;
@@ -25,8 +24,6 @@ interface ReferralsViewTabsProps {
 }
 
 export function ReferralsViewTabs({
-  viewMode,
-  onViewModeChange,
   totalReferrals,
   onExportCSV,
   canExport,
@@ -36,63 +33,60 @@ export function ReferralsViewTabs({
   hasExportPermission = true,
 }: ReferralsViewTabsProps) {
   return (
-    <Card variant="healthcare">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Referrals</CardTitle>
+    <Tabs defaultValue="table" className="space-y-4">
+      <div className="flex items-center justify-between">
+        <TabsList>
+          <TabsTrigger value="table">
+            <List className="h-4 w-4 mr-2" />
+            List View
+          </TabsTrigger>
+          <TabsTrigger value="kanban">
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Kanban Board
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex items-center gap-2">
+          {hasExportPermission && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExportCSV}
+              disabled={!canExport || isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <TabsContent value="table" className="space-y-4">
+        <Card variant="healthcare">
+          <CardHeader>
+            <CardTitle>Referrals List</CardTitle>
             <CardDescription>
               {totalReferrals} referral{totalReferrals !== 1 ? "s" : ""} found
             </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as "table" | "kanban")}>
-              <TabsList>
-                <TabsTrigger value="table">
-                  <Table className="h-4 w-4 mr-2" />
-                  Table
-                </TabsTrigger>
-                <TabsTrigger value="kanban">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Pipeline
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {hasExportPermission && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onExportCSV}
-                disabled={!canExport || isExporting}
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as "table" | "kanban")}>
-          <TabsContent value="table" className="mt-0">
+          </CardHeader>
+          <CardContent>
             {tableView}
-          </TabsContent>
-          <TabsContent value="kanban" className="mt-0">
-            {kanbanView}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="kanban" className="space-y-4">
+        {kanbanView}
+      </TabsContent>
+    </Tabs>
   );
 }
-
-

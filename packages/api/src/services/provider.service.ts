@@ -1021,7 +1021,7 @@ export class ProviderService {
         providerId,
       };
 
-      if (status) {
+      if (status && status !== "all") {
         shortlistWhere.status = status as any;
       }
 

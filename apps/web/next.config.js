@@ -52,7 +52,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self'",
               "connect-src 'self' http://localhost:3001 ws://localhost:3001 https://api.mapbox.com",
-              "frame-src 'self'",
+              "frame-src 'self' https://*.supabase.co",
             ].join("; "),
           },
         ],
@@ -89,6 +89,10 @@ const nextConfig = {
       {
         source: "/api/onboarding/:path*",
         destination: "http://localhost:3001/api/onboarding/:path*",
+      },
+      {
+        source: "/api/placements/:path*",
+        destination: "http://localhost:3001/api/placements/:path*",
       },
       {
         source: "/api/health",

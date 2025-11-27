@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageMetadata } from "../../use-page-metadata";
-import { dischargeCaseService, DischargeCase } from "@/lib/api";
+import { dischargeCaseService, DischargeCase, placementService, Placement } from "@/lib/api";
 import { toast } from "sonner";
 import {
   DischargeStatus,
@@ -90,6 +90,7 @@ import {
   useDischargeCaseInvitations,
   useDischargeChecklist,
 } from "@/hooks/use-hospital-sw-data";
+import { PlacementsTab } from "./components";
 
 function DischargeCaseDetailPageContent() {
   const params = useParams();
@@ -140,6 +141,34 @@ function DischargeCaseDetailPageContent() {
     isLoading: isLoadingChecklist,
     refetch: refetchChecklist,
   } = useDischargeChecklist(caseId);
+
+  // Fetch placements for this discharge case
+  const [placements, setPlacements] = useState<Placement[]>([]);
+  const [isLoadingPlacements, setIsLoadingPlacements] = useState(false);
+
+  const fetchPlacements = async () => {
+    setIsLoadingPlacements(true);
+    try {
+      const response = await placementService.getPlacements({
+        dischargeCaseId: caseId,
+        page: 1,
+        limit: 50,
+      });
+      if (response.success && response.data) {
+        setPlacements(response.data.placements || []);
+      }
+    } catch (err) {
+      console.error("Error fetching placements:", err);
+    } finally {
+      setIsLoadingPlacements(false);
+    }
+  };
+
+  useEffect(() => {
+    if (caseId) {
+      fetchPlacements();
+    }
+  }, [caseId]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -413,6 +442,14 @@ function DischargeCaseDetailPageContent() {
             {invitations.length > 0 && (
               <Badge variant="outline" className="ml-2">
                 {invitations.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="placements">
+            Placements
+            {placements.length > 0 && (
+              <Badge variant="outline" className="ml-2">
+                {placements.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -844,6 +881,15 @@ function DischargeCaseDetailPageContent() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Placements Tab */}
+        <TabsContent value="placements" className="space-y-4">
+          <PlacementsTab
+            dischargeCaseId={caseId}
+            placements={placements}
+            isLoading={isLoadingPlacements}
+          />
         </TabsContent>
 
         {/* Checklist Tab */}

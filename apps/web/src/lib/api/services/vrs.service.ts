@@ -242,6 +242,15 @@ export interface VRSAnalytics {
   totalClients: number;
   totalActiveJobs: number;
   placementsThisQuarter: number;
+  retentionRate?: number;
+  placementsByMonth?: Array<{
+    month: string;
+    count: number;
+  }>;
+  jobsByIndustry?: Array<{
+    industry: string;
+    count: number;
+  }>;
   retention: Array<{
     day90Status: RetentionStatus | null;
     _count: {

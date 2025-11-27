@@ -13,7 +13,6 @@ import { ReferralStatus, Urgency, Payer, NotificationType } from "@carelink/type
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   ReferralsFilters,
-  ReferralsKanban,
   ReferralsTable,
   ReferralsViewTabs,
   ReferralsBulkActions,
@@ -21,6 +20,7 @@ import {
   BatchAddToShortlistDialog,
   BatchMessageDialogList,
 } from "./components";
+import { ReferralsKanban } from "./components/referrals-kanban";
 import { LoadingState, ErrorState, PageHeader, StatsGrid } from "@/components/shared";
 import { Plus, RefreshCw } from "lucide-react";
 import {
@@ -63,7 +63,6 @@ function CaseManagerReferralsPageContent() {
   const [payerFilter, setPayerFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState<string>("");
   const debouncedSearch = useDebounce(searchInput, 500);
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -448,6 +447,24 @@ function CaseManagerReferralsPageContent() {
   //   return <LoadingState message="Loading referrals..." fullHeight />;
   // }
 
+  const handleStatusChange = async (referralId: string, newStatus: ReferralStatus) => {
+    try {
+      const response = await referralService.updateReferral(referralId, {
+        status: newStatus,
+      });
+
+      if (response.success) {
+        // Optimistic update or refresh
+        await fetchReferrals();
+      } else {
+        throw new Error(response.message || "Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      throw error; // Re-throw for the component to handle
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -540,8 +557,6 @@ function CaseManagerReferralsPageContent() {
       )}
 
       <ReferralsViewTabs
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         totalReferrals={pagination.total}
         onExportCSV={handleExportCSV}
         canExport={pagination.total > 0}
@@ -562,32 +577,7 @@ function CaseManagerReferralsPageContent() {
             referrals={referrals}
             isLoading={isLoading}
             onReferralClick={handleViewReferral}
-            onStatusChange={async (referralId, newStatus) => {
-              // Optimistic update
-              setReferrals((prev) =>
-                prev.map((r) =>
-                  r.id === referralId ? { ...r, status: newStatus } : r
-                )
-              );
-
-              try {
-                const response = await referralService.updateReferral(referralId, {
-                  status: newStatus,
-                });
-                if (response.success) {
-                  // Refresh to get latest data
-                  await fetchReferrals();
-                } else {
-                  // Revert optimistic update on error
-                  await fetchReferrals();
-                  throw new Error(response.message || "Failed to update status");
-                }
-              } catch (err) {
-                // Revert optimistic update on error
-                await fetchReferrals();
-                throw err;
-              }
-            }}
+            onStatusChange={canUpdateReferrals ? handleStatusChange : undefined}
           />
         }
       />

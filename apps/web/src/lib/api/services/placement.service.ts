@@ -1,12 +1,20 @@
 import { apiService } from "../config";
 import { PlacementStatus } from "@carelink/types";
 import { normalizeDate } from "@/lib/utils/date";
-import type {
+import {
   ApiResponse,
   PaginatedPlacements,
   Placement,
   CreatePlacementPayload,
   UpdatePlacementPayload,
+  PlacementFollowUp,
+  PlacementDocument,
+  PlacementFamilyContact,
+  PlacementUpdate,
+  FollowUpType,
+  FollowUpOutcome,
+  DocumentCategory,
+  UpdateCategory,
 } from "@carelink/types";
 
 export interface GetPlacementsParams {
@@ -77,6 +85,21 @@ export class PlacementService {
     notes?: string;
   }): Promise<ApiResponse<Placement>> {
     return await apiService.post<Placement>("/api/placements/from-referral", data);
+  }
+
+  async createPlacementFromDischargeCase(data: {
+    dischargeCaseId: string;
+    providerId: string;
+    homeId: string;
+    openingId: string;
+    placementDate: string;
+    moveInDate?: string;
+    notes?: string;
+  }): Promise<ApiResponse<Placement>> {
+    return await apiService.post<Placement>(
+      "/api/placements/from-discharge-case",
+      data
+    );
   }
 
   async getPlacements(
@@ -154,6 +177,156 @@ export class PlacementService {
     return await apiService.get<any[]>(
       `/api/placements/${placementId}/packet/access-logs`
     );
+  }
+
+  // Follow-up methods
+  async getFollowUps(placementId: string): Promise<ApiResponse<PlacementFollowUp[]>> {
+    return await apiService.get<PlacementFollowUp[]>(
+      `/api/placements/${placementId}/follow-ups`
+    );
+  }
+
+  async createFollowUp(
+    placementId: string,
+    data: { type: FollowUpType; scheduledDate: string; notes?: string }
+  ): Promise<ApiResponse<PlacementFollowUp>> {
+    return await apiService.post<PlacementFollowUp>(
+      `/api/placements/${placementId}/follow-ups`,
+      data
+    );
+  }
+
+  async completeFollowUp(
+    followUpId: string,
+    data: { notes: string; outcome: FollowUpOutcome }
+  ): Promise<ApiResponse<PlacementFollowUp>> {
+    return await apiService.patch<PlacementFollowUp>(
+      `/api/follow-ups/${followUpId}/complete`,
+      data
+    );
+  }
+
+  async getUpcomingFollowUps(providerId: string): Promise<ApiResponse<PlacementFollowUp[]>> {
+    return await apiService.get<PlacementFollowUp[]>(
+      `/api/follow-ups/upcoming?providerId=${providerId}`
+    );
+  }
+
+  async deleteFollowUp(followUpId: string): Promise<ApiResponse<void>> {
+    return await apiService.delete<void>(`/api/follow-ups/${followUpId}`);
+  }
+
+  // Document methods
+  async getDocuments(placementId: string, category?: DocumentCategory): Promise<ApiResponse<PlacementDocument[]>> {
+    const url = category
+      ? `/api/placements/${placementId}/documents?category=${category}`
+      : `/api/placements/${placementId}/documents`;
+    return await apiService.get<PlacementDocument[]>(url);
+  }
+
+  async uploadDocument(
+    placementId: string,
+    data: {
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      category: DocumentCategory;
+      storageUrl: string;
+      notes?: string;
+      expiresAt?: string;
+    }
+  ): Promise<ApiResponse<PlacementDocument>> {
+    return await apiService.post<PlacementDocument>(
+      `/api/placements/${placementId}/documents`,
+      data
+    );
+  }
+
+  async getDocumentById(documentId: string): Promise<ApiResponse<PlacementDocument>> {
+    return await apiService.get<PlacementDocument>(`/api/documents/${documentId}`);
+  }
+
+  async deleteDocument(documentId: string): Promise<ApiResponse<void>> {
+    return await apiService.delete<void>(`/api/documents/${documentId}`);
+  }
+
+  async getExpiringDocuments(
+    placementId: string,
+    days: number = 30
+  ): Promise<ApiResponse<PlacementDocument[]>> {
+    return await apiService.get<PlacementDocument[]>(
+      `/api/placements/${placementId}/documents/expiring?days=${days}`
+    );
+  }
+
+  // Family communication methods
+  async getFamilyContacts(placementId: string): Promise<ApiResponse<PlacementFamilyContact[]>> {
+    return await apiService.get<PlacementFamilyContact[]>(
+      `/api/placements/${placementId}/family-contacts`
+    );
+  }
+
+  async addFamilyContact(
+    placementId: string,
+    data: {
+      name: string;
+      relationship: string;
+      email: string;
+      phone?: string;
+      isPrimary?: boolean;
+      canReceiveUpdates?: boolean;
+    }
+  ): Promise<ApiResponse<PlacementFamilyContact>> {
+    return await apiService.post<PlacementFamilyContact>(
+      `/api/placements/${placementId}/family-contacts`,
+      data
+    );
+  }
+
+  async updateFamilyContact(
+    contactId: string,
+    data: Partial<{
+      name: string;
+      relationship: string;
+      email: string;
+      phone?: string;
+      isPrimary?: boolean;
+      canReceiveUpdates?: boolean;
+    }>
+  ): Promise<ApiResponse<PlacementFamilyContact>> {
+    return await apiService.patch<PlacementFamilyContact>(
+      `/api/family-contacts/${contactId}`,
+      data
+    );
+  }
+
+  async deleteFamilyContact(contactId: string): Promise<ApiResponse<void>> {
+    return await apiService.delete<void>(`/api/family-contacts/${contactId}`);
+  }
+
+  async getUpdates(placementId: string): Promise<ApiResponse<PlacementUpdate[]>> {
+    return await apiService.get<PlacementUpdate[]>(
+      `/api/placements/${placementId}/updates`
+    );
+  }
+
+  async createUpdate(
+    placementId: string,
+    data: {
+      title: string;
+      message: string;
+      category: UpdateCategory;
+      photos?: string[];
+    }
+  ): Promise<ApiResponse<PlacementUpdate>> {
+    return await apiService.post<PlacementUpdate>(
+      `/api/placements/${placementId}/updates`,
+      data
+    );
+  }
+
+  async deleteUpdate(updateId: string): Promise<ApiResponse<void>> {
+    return await apiService.delete<void>(`/api/updates/${updateId}`);
   }
 }
 

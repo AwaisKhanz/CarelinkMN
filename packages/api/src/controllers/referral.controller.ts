@@ -502,10 +502,13 @@ export class ReferralController {
         return;
       }
 
+      const { providerIds, notes } = req.body;
+
       const shortlist = await this.referralService.batchAddToShortlist(
         referralId,
         user.id,
-        req.body
+        providerIds,
+        notes
       );
 
       res.status(201).json({

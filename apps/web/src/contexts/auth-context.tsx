@@ -14,6 +14,7 @@ export interface User {
   role: UserRole;
   status?: string;
   emailVerified: boolean;
+  profileImage?: string;
   organizationId?: string;
   organization?: {
     id: string;
@@ -162,6 +163,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("auth_token");
       apiService.setAuthToken(null);
       setIsLoading(false);
+      
+      // Redirect to login page
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/signin";
+      }
     }
   };
 

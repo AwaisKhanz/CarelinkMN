@@ -121,6 +121,7 @@ export class SocketServer {
       this.setupMessageEvents(authSocket);
       this.setupNotificationEvents(authSocket);
       this.setupPresenceEvents(authSocket);
+      this.setupPlacementEvents(authSocket);
     });
   }
 
@@ -202,6 +203,23 @@ export class SocketServer {
   }
 
   /**
+   * Setup placement event handlers
+   */
+  private setupPlacementEvents(socket: AuthenticatedSocket) {
+    // Join placement room
+    socket.on("placement:join", (placementId: string) => {
+      socket.join(`placement:${placementId}`);
+      console.log(`User ${socket.userId} joined placement ${placementId}`);
+    });
+
+    // Leave placement room
+    socket.on("placement:leave", (placementId: string) => {
+      socket.leave(`placement:${placementId}`);
+      console.log(`User ${socket.userId} left placement ${placementId}`);
+    });
+  }
+
+  /**
    * Broadcast presence update
    */
   private broadcastPresence(userId: string, status: "online" | "offline" | "away" | "busy") {
@@ -231,6 +249,13 @@ export class SocketServer {
    */
   public emitDataUpdate(organizationId: string, event: string, data: any) {
     this.io.to(`org:${organizationId}`).emit(event, data);
+  }
+
+  /**
+   * Emit event to placement-specific room
+   */
+  public emitToPlacement(placementId: string, event: string, data: any) {
+    this.io.to(`placement:${placementId}`).emit(event, data);
   }
 
   /**

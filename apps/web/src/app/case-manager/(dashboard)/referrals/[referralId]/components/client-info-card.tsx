@@ -22,10 +22,10 @@ export function ClientInfoCard({ referral }: ClientInfoCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Initials</p>
-            <p className="font-medium">{referral.clientInitials}</p>
+            <p className="font-medium break-words">{referral.clientInitials}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Age</p>
@@ -33,7 +33,7 @@ export function ClientInfoCard({ referral }: ClientInfoCardProps) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Gender</p>
-            <p className="font-medium">
+            <p className="font-medium break-words">
               {GENDER_LABELS[referral.clientGender] || referral.clientGender}
             </p>
           </div>
@@ -42,5 +42,3 @@ export function ClientInfoCard({ referral }: ClientInfoCardProps) {
     </Card>
   );
 }
-
-

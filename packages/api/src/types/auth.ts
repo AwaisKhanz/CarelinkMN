@@ -193,6 +193,7 @@ export interface SessionUser {
   role: UserRole;
   emailVerified: boolean;
   organizationId?: string;
+  profileImage?: string;
   organization?: {
     id: string;
     name: string;

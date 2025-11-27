@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useSocket } from "@/hooks/use-socket";
 
 export interface MessageCenterProps {
   // Filter parameters
@@ -108,7 +109,6 @@ export function MessageCenter({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThread?.id]);
-
   const fetchThreads = useCallback(async () => {
     // Only show full loading on initial load (when threads.length === 0)
     // For subsequent searches/filters, use isSearching to show loading in thread list only
@@ -150,6 +150,40 @@ export function MessageCenter({
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
+
+  // Socket integration for real-time updates
+  const { joinThread, leaveThread } = useSocket({
+    onNewMessage: useCallback((newMessage: Message) => {
+      console.log("Received new message via socket:", newMessage);
+      
+      // Only update if the message is for the currently selected thread
+      if (selectedThread?.id === newMessage.threadId) {
+        setMessages((prev) => {
+          // Avoid duplicates
+          if (prev.some((m) => m.id === newMessage.id)) {
+            return prev;
+          }
+          return [...prev, newMessage];
+        });
+      }
+
+      // Refresh thread list to update last message and unread counts
+      fetchThreads();
+    }, [selectedThread?.id, fetchThreads]),
+  });
+
+  // Join/leave thread rooms when selected thread changes
+  useEffect(() => {
+    if (selectedThread?.id && joinThread) {
+      joinThread(selectedThread.id);
+      
+      return () => {
+        if (leaveThread) {
+          leaveThread(selectedThread.id);
+        }
+      };
+    }
+  }, [selectedThread?.id, joinThread, leaveThread]);
 
   const fetchThreadMessages = async (threadId: string) => {
     try {
@@ -254,7 +288,7 @@ export function MessageCenter({
           providerId,
           referralId: referralId || undefined,
           dischargeCaseId: dischargeCaseId || undefined,
-          initialMessage: messageContent.trim(),
+          initialMessage: messageContent.trim() || " ",
           attachments: attachments.length > 0 ? attachments : undefined,
         });
 
@@ -290,7 +324,7 @@ export function MessageCenter({
     try {
       const response = await messagingService.sendMessage({
         threadId: selectedThread.id,
-        content: messageContent.trim(),
+        content: messageContent.trim() || " ",
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
@@ -421,52 +455,70 @@ export function MessageCenter({
   }
 
   return (
-    <div className={cn("flex gap-4")} style={{ height: containerHeight }}>
+    <div 
+      className="flex h-[calc(100vh-8rem)] overflow-hidden border rounded-xl bg-background shadow-sm"
+      style={{ height: containerHeight }}
+    >
       {/* Thread List Sidebar */}
-      <ThreadList
-        threads={threads}
-        selectedThread={selectedThread}
-        onThreadSelect={handleThreadSelect}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        getThreadContext={getThreadContext}
-        getThreadTitle={getThreadTitle}
-        isLoading={isSearching}
-        selectedThreads={selectedThreads}
-        onThreadToggle={handleThreadToggle}
-        onSelectAll={handleSelectAll}
-        onDeselectAll={handleDeselectAll}
-        onBatchMessage={() => setBatchMessageDialogOpen(true)}
-      />
+      <div 
+        className={cn(
+          "w-full md:w-80 lg:w-96 border-r flex flex-col bg-muted/5 transition-all duration-200",
+          selectedThread ? "hidden md:flex" : "flex"
+        )}
+      >
+        <ThreadList
+          threads={threads}
+          selectedThread={selectedThread}
+          onThreadSelect={handleThreadSelect}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          getThreadContext={getThreadContext}
+          getThreadTitle={getThreadTitle}
+          isLoading={isSearching}
+          selectedThreads={selectedThreads}
+          onThreadToggle={handleThreadToggle}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
+          onBatchMessage={() => setBatchMessageDialogOpen(true)}
+        />
+      </div>
 
       {/* Message View */}
-      <MessageView
-        thread={selectedThread}
-        messages={messages}
-        messageContent={messageContent}
-        onMessageContentChange={setMessageContent}
-        attachments={attachments}
-        onRemoveAttachment={handleRemoveAttachment}
-        isSending={isSending}
-        uploadingAttachment={uploadingAttachment}
-        onSendMessage={handleSendMessage}
-        onFileSelect={handleFileSelect}
-        fileInputRef={fileInputRef}
-        messagesEndRef={messagesEndRef}
-        currentUserId={user?.id}
-        onUpdateStatus={handleUpdateStatus}
-        getThreadContext={getThreadContext}
-        getThreadTitle={getThreadTitle}
-        providerId={providerId}
-        referralId={referralId}
-        dischargeCaseId={dischargeCaseId}
-        canCreateThread={!!providerId}
-      />
+      <div 
+        className={cn(
+          "flex-1 flex flex-col min-w-0 bg-background transition-all duration-200",
+          !selectedThread && !providerId ? "hidden md:flex" : "flex"
+        )}
+      >
+        <MessageView
+          thread={selectedThread}
+          messages={messages}
+          messageContent={messageContent}
+          onMessageContentChange={setMessageContent}
+          attachments={attachments}
+          onRemoveAttachment={handleRemoveAttachment}
+          isSending={isSending}
+          uploadingAttachment={uploadingAttachment}
+          onSendMessage={handleSendMessage}
+          onFileSelect={handleFileSelect}
+          fileInputRef={fileInputRef}
+          messagesEndRef={messagesEndRef}
+          currentUserId={user?.id}
+          onUpdateStatus={handleUpdateStatus}
+          getThreadContext={getThreadContext}
+          getThreadTitle={getThreadTitle}
+          providerId={providerId}
+          referralId={referralId}
+          dischargeCaseId={dischargeCaseId}
+          canCreateThread={!!providerId}
+          onBack={() => setSelectedThread(null)}
+        />
+      </div>
 
       {/* Batch Message Dialog */}
       <Dialog

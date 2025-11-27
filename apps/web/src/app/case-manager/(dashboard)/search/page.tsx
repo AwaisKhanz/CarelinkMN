@@ -9,7 +9,6 @@ import {
   providerService,
   Provider,
   GetProvidersParams,
-  aiSearchService,
 } from "@/lib/api";
 import { openingService } from "@/lib/api";
 import { referralService } from "@/lib/api";
@@ -26,7 +25,6 @@ import {
   Filter,
   AlertCircle,
   Plus,
-  Sparkles,
   X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -87,7 +85,7 @@ function CaseManagerSearchPageContent() {
   const { user } = useAuth();
   const caseManagerId = useCaseManagerId();
   const { setTitle, setDescription } = usePageMetadata();
-  const { canUseAISearch, hasCapability } = useRolePermissions();
+  const { hasCapability } = useRolePermissions();
   const canManageShortlist = hasCapability(
     CASE_MANAGER_CAPABILITIES.SHORTLIST_MANAGE
   );
@@ -125,11 +123,6 @@ function CaseManagerSearchPageContent() {
   const [shortlistNotes, setShortlistNotes] = useState("");
   const [isAddingToShortlist, setIsAddingToShortlist] = useState(false);
 
-  // CareBot AI Search
-  const [useAISearch, setUseAISearch] = useState(false);
-  const [isParsingQuery, setIsParsingQuery] = useState(false);
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-
   useEffect(() => {
     setTitle("Search Providers");
     setDescription(
@@ -138,63 +131,6 @@ function CaseManagerSearchPageContent() {
         : "Find providers for your referrals"
     );
   }, [setTitle, setDescription, referralId, referralNumber]);
-
-  const handleAISearch = useCallback(
-    async (query: string) => {
-      if (!user?.id) return;
-
-      setIsParsingQuery(true);
-      setAiExplanation(null);
-      try {
-        const response = await aiSearchService.parseQuery(query);
-        if (response.success && response.data) {
-          const filters = response.data.filters;
-          const explanation = response.data.explanation;
-
-          // Store explanation for display
-          if (explanation) {
-            setAiExplanation(explanation);
-          }
-
-          // Apply parsed filters
-          if (filters.counties && filters.counties.length > 0) {
-            setSelectedCounties(filters.counties);
-          }
-          if (filters.cities && filters.cities.length > 0) {
-            // Cities can be used for additional filtering if needed
-          }
-          if (filters.licenseTypes && filters.licenseTypes.length > 0) {
-            setSelectedLicenseTypes(filters.licenseTypes);
-          }
-          if (filters.payers && filters.payers.length > 0) {
-            setSelectedPayers(filters.payers as Payer[]);
-          }
-          if (filters.maxDistance) {
-            // Max distance can be used for filtering if needed
-          }
-          if (filters.hasAvailability) {
-            setAvailabilityFilter("available");
-          }
-
-          toast.success("AI search filters applied!");
-        }
-      } catch (err) {
-        console.error("AI search error:", err);
-        // Fallback to regular search - don't show error, just use manual filters
-        setAiExplanation(null);
-      } finally {
-        setIsParsingQuery(false);
-      }
-    },
-    [user?.id]
-  );
-
-  // Handle AI search query parsing
-  useEffect(() => {
-    if (useAISearch && debouncedSearch && debouncedSearch.length > 10) {
-      handleAISearch(debouncedSearch);
-    }
-  }, [debouncedSearch, useAISearch, handleAISearch]);
 
   useEffect(() => {
     if (caseManagerId || user?.id) {
@@ -467,7 +403,6 @@ function CaseManagerSearchPageContent() {
     setSelectedServices([]);
     setSelectedPayers([]);
     setAvailabilityFilter("all");
-    setAiExplanation(null);
   };
 
   // Option mapping for MultiSelect
@@ -550,66 +485,14 @@ function CaseManagerSearchPageContent() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              {useAISearch && (
-                <Sparkles className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary w-4 h-4" />
-              )}
               <Input
-                placeholder={
-                  useAISearch
-                    ? "Try: '144D homes in Hennepin County accepting MA'"
-                    : "Search by provider name, city, or keywords..."
-                }
+                placeholder="Search by organization name or license type..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={useAISearch ? "pl-10 pr-10" : "pl-10"}
-                disabled={isParsingQuery}
+                className="pl-10"
               />
-              {isParsingQuery && (
-                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-primary" />
-              )}
             </div>
-            
-            {/* AI Toggle */}
-            {canUseAISearch && (
-              <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/30 min-w-fit">
-                <input
-                  type="checkbox"
-                  id="ai-search"
-                  checked={useAISearch}
-                  onChange={(e) => setUseAISearch(e.target.checked)}
-                  className="h-4 w-4 rounded border-border accent-primary"
-                />
-                <Label
-                  htmlFor="ai-search"
-                  className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  CareBot AI
-                </Label>
-              </div>
-            )}
           </div>
-
-          {/* AI Explanation */}
-          {aiExplanation && (
-            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-2">
-              <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs font-medium text-foreground mb-1">
-                  CareBot Explanation
-                </p>
-                <p className="text-xs text-muted-foreground">{aiExplanation}</p>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-5 w-5 -mt-1 -mr-1"
-                onClick={() => setAiExplanation(null)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
 
           {/* Filters Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

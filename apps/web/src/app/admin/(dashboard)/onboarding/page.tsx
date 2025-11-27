@@ -130,7 +130,7 @@ function OnboardingListPageContent() {
     switch (status) {
       case OnboardingReviewStatus.APPROVED:
         return (
-          <Badge variant="success" className="flex items-center gap-1 w-fit">
+          <Badge variant="healthcareSuccess" className="flex items-center gap-1 w-fit">
             <CheckCircle className="w-3 h-3" /> Approved
           </Badge>
         );
@@ -142,7 +142,7 @@ function OnboardingListPageContent() {
         );
       case OnboardingReviewStatus.NEEDS_CHANGES:
         return (
-          <Badge variant="warning" className="flex items-center gap-1 w-fit">
+          <Badge variant="healthcareWarning" className="flex items-center gap-1 w-fit">
             <AlertCircle className="w-3 h-3" /> Needs Changes
           </Badge>
         );

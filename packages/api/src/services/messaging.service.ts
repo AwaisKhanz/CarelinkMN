@@ -177,6 +177,7 @@ export class MessagingService {
                   lastName: true,
                   email: true,
                   role: true,
+                  profileImage: true,
                 },
               },
             },
@@ -341,6 +342,7 @@ export class MessagingService {
                 lastName: true,
                 email: true,
                 role: true,
+                profileImage: true,
               },
             },
             attachments: true,
@@ -365,6 +367,7 @@ export class MessagingService {
         lastName: true,
         email: true,
         role: true,
+        profileImage: true,
       },
     });
 
@@ -589,13 +592,29 @@ export class MessagingService {
               : "General inquiry";
 
           for (const recipientId of recipientIds) {
+            // Get recipient's role to generate correct URL
+            const recipient = await db.user.findUnique({
+              where: { id: recipientId },
+              select: { role: true }
+            });
+            
+            const messagesPath = recipient?.role === "PROVIDER_OWNER" || recipient?.role === "PROVIDER_STAFF"
+              ? "/provider/messages"
+              : recipient?.role === "CASE_MANAGER"
+                ? "/case-manager/messages"
+                : recipient?.role === "HOSPITAL_SW"
+                  ? "/hospital-sw/messages"
+                  : recipient?.role === "VENDOR"
+                    ? "/vendor/messages"
+                    : "/messages";
+            
             await notificationService.createNotification({
               userId: recipientId,
               type: NotificationType.MESSAGE_NEW,
               title: "New Message Thread",
               message: `New conversation started regarding ${contextInfo}.`,
-              channels: ["IN_APP", "EMAIL"],
-              actionUrl: `/messages?threadId=${result.id}`,
+              channels: ["IN_APP"],
+              actionUrl: `${messagesPath}?threadId=${result.id}`,
             });
           }
         }
@@ -685,6 +704,7 @@ export class MessagingService {
               lastName: true,
               email: true,
               role: true,
+              profileImage: true,
             },
           },
           attachments: true,
@@ -784,13 +804,29 @@ export class MessagingService {
               : "General inquiry";
 
           for (const recipientId of recipientIds) {
+            // Get recipient's role to generate correct URL
+            const recipient = await db.user.findUnique({
+              where: { id: recipientId },
+              select: { role: true }
+            });
+            
+            const messagesPath = recipient?.role === "PROVIDER_OWNER" || recipient?.role === "PROVIDER_STAFF"
+              ? "/provider/messages"
+              : recipient?.role === "CASE_MANAGER"
+                ? "/case-manager/messages"
+                : recipient?.role === "HOSPITAL_SW"
+                  ? "/hospital-sw/messages"
+                  : recipient?.role === "VENDOR"
+                    ? "/vendor/messages"
+                    : "/messages";
+            
             await notificationService.createNotification({
               userId: recipientId,
               type: NotificationType.MESSAGE_NEW,
               title: "New Message",
               message: `You have a new message regarding ${contextInfo}.`,
-              channels: ["IN_APP", "EMAIL"],
-              actionUrl: `/messages?threadId=${threadId}`,
+              channels: ["IN_APP"],
+              actionUrl: `${messagesPath}?threadId=${threadId}`,
             });
           }
         }

@@ -66,6 +66,8 @@ import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { CountiesMultiSelect } from "@/components/settings/counties-multi-select";
 import { CareLevelsMultiSelect } from "@/components/settings/care-levels-multi-select";
 import { ServicesNeededMultiSelect } from "@/components/settings/services-needed-multi-select";
+import { OrganizationBrandingSection } from "@/components/settings/organization-branding-section";
+import { organizationService } from "@/lib/api";
 
 const profileSchema = z.object({
   firstName: z
@@ -90,6 +92,7 @@ const profileSchema = z.object({
   licenseExpiry: z.date().optional().nullable(),
   licenseDocumentUrl: z.string().url().optional().or(z.literal("")),
   licenseFileName: z.string().optional(),
+  profileImage: z.string().url().optional().or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -111,6 +114,7 @@ function CaseManagerSettingsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [profileImageFiles, setProfileImageFiles] = useState<UploadedFile[]>([]);
 
   // Default referral settings state
   const [defaultReferralSettings, setDefaultReferralSettings] =
@@ -141,6 +145,26 @@ function CaseManagerSettingsPageContent() {
     setTitle("Case Manager Settings");
     setDescription("Manage your profile and preferences");
   }, [setTitle, setDescription]);
+
+  // Load profile image from user context on mount
+  useEffect(() => {
+    if ((user as any)?.profileImage) {
+      const imageUrl = (user as any).profileImage.toLowerCase();
+      let imageMimeType = "image/jpeg";
+      if (imageUrl.includes(".png")) imageMimeType = "image/png";
+      else if (imageUrl.includes(".gif")) imageMimeType = "image/gif";
+      else if (imageUrl.includes(".webp")) imageMimeType = "image/webp";
+
+      setProfileImageFiles([
+        {
+          url: (user as any).profileImage,
+          fileName: "profile-image",
+          isPrimary: true,
+          mimeType: imageMimeType,
+        },
+      ]);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Use case manager from context if available
@@ -194,6 +218,24 @@ function CaseManagerSettingsPageContent() {
           if (data.defaultReferralSettings) {
             setDefaultReferralSettings(data.defaultReferralSettings);
           }
+
+          // Set profile image if it exists
+          if ((data as any).profileImage) {
+            const imageUrl = (data as any).profileImage.toLowerCase();
+            let imageMimeType = "image/jpeg"; // default
+            if (imageUrl.includes(".png")) imageMimeType = "image/png";
+            else if (imageUrl.includes(".gif")) imageMimeType = "image/gif";
+            else if (imageUrl.includes(".webp")) imageMimeType = "image/webp";
+
+            setProfileImageFiles([
+              {
+                url: (data as any).profileImage,
+                fileName: "profile-image",
+                isPrimary: true,
+                mimeType: imageMimeType,
+              },
+            ]);
+          }
         } else {
           setError(response.message || "Failed to load case manager profile");
           toast.error(response.message || "Failed to load profile");
@@ -229,6 +271,7 @@ function CaseManagerSettingsPageContent() {
           uploadedFiles[0]?.url || data.licenseDocumentUrl || undefined,
         licenseFileName:
           uploadedFiles[0]?.fileName || data.licenseFileName || undefined,
+        profileImage: profileImageFiles[0]?.url || undefined,
         defaultReferralSettings: defaultReferralSettings,
       };
 
@@ -381,6 +424,33 @@ function CaseManagerSettingsPageContent() {
                 your email.
               </p>
             </div>
+
+            <Separator />
+
+            {/* Profile Image */}
+            <div className="space-y-2">
+              <Label>Profile Picture</Label>
+              <FileUploader
+                documentType="image"
+                folder="users/profile-images"
+                accept="image/*"
+                maxSize={5 * 1024 * 1024} // 5MB
+                maxFiles={1}
+                multiple={false}
+                files={profileImageFiles}
+                onFilesChange={setProfileImageFiles}
+                label="Upload Profile Picture"
+                description="Upload your profile picture (JPG, PNG, max 5MB)"
+                showPreview={true}
+                previewSize="md"
+                variant="healthcare"
+              />
+              <p className="text-xs text-muted-foreground">
+                This image will be displayed in messages and other parts of the application
+              </p>
+            </div>
+
+            <Separator />
 
             <div>
               <Label htmlFor="phone">Phone Number</Label>
@@ -588,6 +658,22 @@ function CaseManagerSettingsPageContent() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Organization Branding */}
+        <OrganizationBrandingSection
+          organizationId={caseManager.organization?.id}
+          organizationName={caseManager.organization?.name}
+          currentLogo={(caseManager.organization as any)?.logo}
+          currentCoverImage={(caseManager.organization as any)?.coverImage}
+          canEdit={true} // TODO: Add permission check for org admin
+          onSave={async (data) => {
+            if (!caseManager.organization?.id) return;
+            await organizationService.updateOrganization(
+              caseManager.organization.id,
+              data as any
+            );
+          }}
+        />
 
         {/* Default Referral Settings */}
         <Card variant="healthcare">

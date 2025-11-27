@@ -246,7 +246,7 @@ export const MultiSelect = React.forwardRef<
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
-              <CommandList>
+              <CommandList className="max-h-[400px]">
                 <CommandEmpty>{emptyMessage}</CommandEmpty>
                 {filteredOptions.length > 0 && (
                   <CommandGroup>

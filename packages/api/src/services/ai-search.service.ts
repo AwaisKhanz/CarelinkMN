@@ -18,6 +18,10 @@ export class AISearchService {
       this.openai = new OpenAI({
         apiKey: apiKey,
       });
+      console.log('✅ [AI Search] OpenAI client initialized successfully');
+      console.log(`📊 [AI Search] Using model: ${process.env.OPENAI_MODEL || 'gpt-4o-mini'}`);
+    } else {
+      console.warn('⚠️  [AI Search] OPENAI_API_KEY not found - will use fallback keyword matching only');
     }
   }
 
@@ -38,21 +42,31 @@ export class AISearchService {
     hasAvailability?: boolean;
     explanation?: string;
   }> {
+    console.log('🔍 [AI Search] Parsing query:', query);
+    
     // Try OpenAI first if available
     if (this.openai) {
+      console.log('🤖 [AI Search] Using OpenAI API for parsing...');
       try {
         const result = await this.parseQueryWithOpenAI(query);
         if (result) {
+          console.log('✅ [AI Search] OpenAI parsing successful!');
+          console.log('📋 [AI Search] Extracted filters:', JSON.stringify(result, null, 2));
           return result;
         }
       } catch (error) {
-        console.error("OpenAI parsing failed, falling back to basic parsing:", error);
+        console.error("❌ [AI Search] OpenAI parsing failed, falling back to basic parsing:", error);
         // Fall through to basic parsing
       }
+    } else {
+      console.log('⚠️  [AI Search] OpenAI not available, using fallback keyword matching');
     }
 
     // Fallback to basic keyword matching
-    return this.parseQueryBasic(query);
+    console.log('🔤 [AI Search] Using basic keyword matching...');
+    const result = this.parseQueryBasic(query);
+    console.log('📋 [AI Search] Keyword matching result:', JSON.stringify(result, null, 2));
+    return result;
   }
 
   /**
@@ -102,6 +116,9 @@ Important:
 - The explanation should be concise and helpful, explaining what was extracted`;
 
     try {
+      console.log('🌐 [AI Search] Calling OpenAI API...');
+      const startTime = Date.now();
+      
       const completion = await this.openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
         messages: [
@@ -112,8 +129,21 @@ Important:
         response_format: { type: "json_object" },
       });
 
+      const duration = Date.now() - startTime;
+      console.log(`⚡ [AI Search] OpenAI API responded in ${duration}ms`);
+      console.log('📊 [AI Search] Tokens used:', {
+        prompt: completion.usage?.prompt_tokens,
+        completion: completion.usage?.completion_tokens,
+        total: completion.usage?.total_tokens
+      });
+
       const content = completion.choices[0]?.message?.content;
-      if (!content) return null;
+      if (!content) {
+        console.warn('⚠️  [AI Search] OpenAI returned empty content');
+        return null;
+      }
+      
+      console.log('📝 [AI Search] OpenAI raw response:', content);
 
       const parsed = JSON.parse(content);
 

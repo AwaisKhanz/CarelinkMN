@@ -427,6 +427,7 @@ export class AuthService {
       role: user.role as SharedUserRole,
       emailVerified: !!user.emailVerified,
       organizationId: user.organizationId || undefined,
+      profileImage: user.profileImage || undefined,
       organization: (user as any).organization
         ? {
             id: (user as any).organization.id,

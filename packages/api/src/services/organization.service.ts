@@ -55,6 +55,8 @@ export class OrganizationService {
           ...(data.npi !== undefined && { npi: data.npi }),
           ...(data.website !== undefined && { website: data.website }),
           ...(data.fax !== undefined && { fax: data.fax }),
+          ...((data as any).logo !== undefined && { logo: (data as any).logo }),
+          ...((data as any).coverImage !== undefined && { coverImage: (data as any).coverImage }),
         },
       });
       return organization;

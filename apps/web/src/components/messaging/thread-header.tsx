@@ -1,9 +1,6 @@
-"use client";
-
-import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ArrowLeft, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +15,7 @@ interface ThreadHeaderProps {
   onUpdateStatus?: (threadId: string, status: ThreadStatusEnum) => void;
   getThreadContext?: (thread: MessageThread) => string;
   getThreadTitle?: (thread: MessageThread) => string;
+  onBack?: () => void;
 }
 
 export function ThreadHeader({
@@ -25,6 +23,7 @@ export function ThreadHeader({
   onUpdateStatus,
   getThreadContext,
   getThreadTitle,
+  onBack,
 }: ThreadHeaderProps) {
   const getStatusBadge = (status: ThreadStatusEnum) => {
     switch (status) {
@@ -100,25 +99,40 @@ export function ThreadHeader({
   const title = getThreadTitle ? getThreadTitle(thread) : defaultGetThreadTitle(thread);
 
   return (
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <CardTitle>{title}</CardTitle>
-            {getStatusBadge(thread.status)}
-            {getSLABadgeForThread(thread)}
-          </div>
-          <CardDescription>{context}</CardDescription>
-          {thread.initiator && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {thread.initiator.email} • {thread.initiator.role}
-            </p>
+    <div className="p-4 border-b bg-background/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden -ml-2 shrink-0 h-8 w-8" 
+              onClick={onBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h2 className="text-lg font-semibold truncate">{title}</h2>
+              <div className="flex items-center gap-2 shrink-0">
+                {getStatusBadge(thread.status)}
+                {getSLABadgeForThread(thread)}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">{context}</p>
+            {thread.initiator && (
+              <p className="text-xs text-muted-foreground mt-1 truncate">
+                {thread.initiator.email} • {thread.initiator.role}
+              </p>
+            )}
+          </div>
         </div>
+        
         {onUpdateStatus && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="shrink-0">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -148,7 +162,7 @@ export function ThreadHeader({
           </DropdownMenu>
         )}
       </div>
-    </CardHeader>
+    </div>
   );
 }
 

@@ -3,6 +3,7 @@ import { db } from "@carelink/database";
 import * as cron from "node-cron";
 import { ScheduledJobService } from "./services/scheduled-job.service";
 import { initializeSocketServer } from "./websocket/socket.server";
+import { getJobScheduler } from "./jobs";
 
 const PORT = process.env.PORT || 3001;
 const scheduledJobService = new ScheduledJobService();
@@ -56,6 +57,9 @@ const startServer = async () => {
         console.error("[Cron] Error running scheduled jobs:", error);
       }
     });
+
+    // Start placement notification jobs
+    getJobScheduler().start();
 
     console.log("✅ Scheduled jobs initialized (running every hour)");
   } catch (error) {

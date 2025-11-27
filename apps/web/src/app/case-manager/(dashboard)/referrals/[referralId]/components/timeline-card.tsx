@@ -155,32 +155,32 @@ export function TimelineCard({ referral }: TimelineCardProps) {
                       <div className="h-3 w-3 rounded-full bg-primary border-2 border-background" />
                     </div>
                     <div className="bg-muted/40 border border-border rounded-lg p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
                           <EventIcon className={cn("h-4 w-4 mt-0.5 shrink-0", iconColor)} />
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm text-foreground">
+                            <h4 className="font-semibold text-sm text-foreground break-words">
                               {event.title}
                             </h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed mt-1">
+                            <p className="text-sm text-muted-foreground leading-relaxed mt-1 break-words">
                               {event.description}
                             </p>
                             {event.userName && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                                <User className="h-3 w-3" />
-                                {event.userName}
+                                <User className="h-3 w-3 shrink-0" />
+                                <span className="break-words">{event.userName}</span>
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-xs text-muted-foreground block">
+                        <div className="text-left sm:text-right shrink-0">
+                          <span className="text-xs text-muted-foreground block whitespace-nowrap">
                             {format(new Date(event.timestamp), "MMM d, yyyy")}
                           </span>
-                          <span className="text-xs text-muted-foreground block">
+                          <span className="text-xs text-muted-foreground block whitespace-nowrap">
                             {format(new Date(event.timestamp), "h:mm a")}
                           </span>
-                          <span className="text-xs text-muted-foreground block mt-1">
+                          <span className="text-xs text-muted-foreground block mt-1 whitespace-nowrap">
                             {formatDistanceToNow(new Date(event.timestamp), {
                               addSuffix: true,
                             })}

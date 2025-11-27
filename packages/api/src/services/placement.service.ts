@@ -44,6 +44,22 @@ export class PlacementService {
     placementId: string
   ): Promise<boolean> {
     try {
+      // Check if user is Admin or Super Admin (they have system-wide access)
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+        // Admin and Super Admin can access all placements
+        const placementExists = await db.placement.findUnique({
+          where: { id: placementId },
+          select: { id: true },
+        });
+        return !!placementExists;
+      }
+
+      // For other users, check if they belong to the provider's organization
       const placement = await db.placement.findFirst({
         where: {
           id: placementId,
@@ -593,12 +609,93 @@ export class PlacementService {
         }
       } catch (notifError) {
         console.error("Failed to create placement notifications:", notifError);
-        // Don't throw - notification failure shouldn't break placement creation
+      // Don't throw - notification failure shouldn't break placement creation
       }
 
       return result;
     } catch (error) {
       console.error("Create placement from referral error:", error);
+      throw error;
+    }
+  }
+
+  // Create placement from discharge case (hospital SW workflow)
+  async createPlacementFromDischargeCase(
+    data: {
+      dischargeCaseId: string;
+      providerId: string;
+      homeId: string;
+      openingId: string;
+      placementDate: string;
+      moveInDate?: string;
+      notes?: string;
+    },
+    userId: string
+  ): Promise<any> {
+    try {
+      // Verify discharge case exists and get social worker
+      const dischargeCase = await db.dischargeCase.findUnique({
+        where: { id: data.dischargeCaseId },
+        include: {
+          socialWorker: {
+            select: {
+              id: true,
+              organizationId: true,
+            },
+          },
+          invitations: {
+            where: {
+              providerId: data.providerId,
+            },
+            select: {
+              response: true,
+              providerId: true,
+            },
+          },
+        },
+      });
+
+      if (!dischargeCase) {
+        throw new Error("Discharge case not found");
+      }
+
+      // Verify user is the social worker or has access to the discharge case
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true, organizationId: true },
+      });
+
+      const isHospitalSW = user?.role === "HOSPITAL_SW";
+      const isSocialWorker = dischargeCase.socialWorkerId === userId;
+      const sameOrganization = user?.organizationId === dischargeCase.socialWorker?.organizationId;
+
+      if (!isHospitalSW || (!isSocialWorker && !sameOrganization)) {
+        throw new Error("Access denied: You don't have permission to create placement for this discharge case");
+      }
+
+      // Verify provider was invited and accepted
+      const invitation = dischargeCase.invitations.find(
+        (inv) => inv.providerId === data.providerId
+      );
+
+      if (!invitation || invitation.response !== "ACCEPTED") {
+        throw new Error("Provider must be invited and accept before creating placement");
+      }
+
+      // Create placement using the standard createPlacement method
+      const placement = await this.createPlacement(
+        {
+          openingId: data.openingId,
+          dischargeCaseId: data.dischargeCaseId,
+          placementDate: data.placementDate,
+          moveInDate: data.moveInDate,
+        },
+        userId
+      );
+
+      return placement;
+    } catch (error) {
+      console.error("Create placement from discharge case error:", error);
       throw error;
     }
   }
@@ -640,25 +737,37 @@ export class PlacementService {
         };
       }
 
-      // If providerId is provided, verify access
+      // If providerId is provided, verify access (skip for Admin/Super Admin)
       if (providerId) {
-        const hasAccess = await this.verifyProviderAccess(userId, providerId);
-        if (!hasAccess) {
-          throw new Error("Access denied");
+        // Admin and Super Admin have system-wide access
+        const isSystemAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+        
+        if (!isSystemAdmin) {
+          const hasAccess = await this.verifyProviderAccess(userId, providerId);
+          if (!hasAccess) {
+            throw new Error("Access denied");
+          }
         }
+        
         where.providerId = providerId;
         // Remove dischargeCase filter if providerId is specified (provider takes precedence)
         delete where.dischargeCase;
       }
 
       if (openingId) {
-        const hasAccess = await this.openingService.verifyOpeningAccess(
-          userId,
-          openingId
-        );
-        if (!hasAccess) {
-          throw new Error("Access denied");
+        // Admin and Super Admin have system-wide access
+        const isSystemAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+        
+        if (!isSystemAdmin) {
+          const hasAccess = await this.openingService.verifyOpeningAccess(
+            userId,
+            openingId
+          );
+          if (!hasAccess) {
+            throw new Error("Access denied");
+          }
         }
+        
         where.openingId = openingId;
       }
 
@@ -1005,6 +1114,18 @@ export class PlacementService {
           console.error("Failed to create placement confirmation notification:", notifError);
           // Don't throw - notification failure shouldn't break placement update
         }
+
+        // Schedule default follow-ups when placement is confirmed
+        if (placement.moveInDate) {
+          try {
+            const { PlacementFollowUpService } = await import("./placement-followup.service");
+            const followUpService = new PlacementFollowUpService();
+            await followUpService.scheduleDefaultFollowUps(placementId);
+          } catch (followUpError) {
+            console.error("Failed to schedule follow-ups:", followUpError);
+            // Don't throw - follow-up scheduling failure shouldn't break placement update
+          }
+        }
       }
 
       return placement;
@@ -1152,6 +1273,7 @@ export class PlacementService {
   // Generate placement packet (placeholder - will be implemented with document generation)
   async generatePacket(placementId: string, userId: string): Promise<{
     packetUrl: string;
+    accessToken: string;
   }> {
     try {
       const hasAccess = await this.verifyPlacementAccess(userId, placementId);
@@ -1167,20 +1289,31 @@ export class PlacementService {
         throw new Error("Placement not found");
       }
 
-      // TODO: Implement packet generation logic
-      // For now, return a placeholder URL
-      const packetUrl = `/api/placements/${placementId}/packet/download`;
+      // Generate PDF using PlacementPacketService
+      const { PlacementPacketService } = await import("./placement-packet.service");
+      const packetService = new PlacementPacketService();
+      
+      // Generate the PDF
+      const pdfBuffer = await packetService.generatePacketPDF(placementId);
 
-      // Update placement with packet generation timestamp
+      // Generate unique access token
+      const crypto = await import("crypto");
+      const accessToken = crypto.randomBytes(32).toString("hex");
+
+      // Store PDF in memory cache (in production, use Redis or S3)
+      // For now, we'll just store the token and regenerate on download
+      const packetUrl = `/api/placements/${placementId}/packet/download?token=${accessToken}`;
+
+      // Update placement with packet generation timestamp and access token
       await db.placement.update({
         where: { id: placementId },
         data: {
           packetGeneratedAt: new Date(),
-          packetUrl,
+          packetUrl: accessToken, // Store token in packetUrl field for validation
         },
       });
 
-      return { packetUrl };
+      return { packetUrl, accessToken };
     } catch (error) {
       console.error("Generate packet error:", error);
       throw error;
@@ -1215,6 +1348,59 @@ export class PlacementService {
     } catch (error) {
       console.error("Get packet access logs error:", error);
       throw error;
+    }
+  }
+
+  // Verify packet access with token
+  async verifyPacketAccess(
+    placementId: string,
+    token: string
+  ): Promise<any | null> {
+    try {
+      const placement = await db.placement.findUnique({
+        where: { id: placementId },
+        select: {
+          id: true,
+          packetUrl: true, // This stores the access token
+          packetGeneratedAt: true,
+        },
+      });
+
+      if (!placement || !placement.packetUrl) {
+        return null;
+      }
+
+      // Verify token matches
+      if (placement.packetUrl !== token) {
+        return null;
+      }
+
+      return placement;
+    } catch (error) {
+      console.error("Verify packet access error:", error);
+      return null;
+    }
+  }
+
+  // Log packet access
+  async logPacketAccess(
+    placementId: string,
+    userId: string,
+    ipAddress: string,
+    userAgent?: string
+  ): Promise<void> {
+    try {
+      await db.packetAccessLog.create({
+        data: {
+          placementId,
+          accessedBy: userId,
+          ipAddress,
+          userAgent,
+        },
+      });
+    } catch (error) {
+      console.error("Log packet access error:", error);
+      // Don't throw - logging failure shouldn't break the download
     }
   }
 }

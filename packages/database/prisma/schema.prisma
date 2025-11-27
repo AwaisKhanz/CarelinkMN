@@ -25,6 +25,7 @@ model User {
   phoneVerified  DateTime?
   role           UserRole
   status         UserStatus    @default(PENDING_VERIFICATION)
+  profileImage   String? // Profile picture URL
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
@@ -134,6 +135,10 @@ model Organization {
 
   // Settings
   settings Json @default("{}")
+
+  // Branding
+  logo       String? // Organization logo URL
+  coverImage String? // Organization cover/banner image URL
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -977,6 +982,12 @@ model Placement {
   confirmedAt DateTime?
   completedAt DateTime?
 
+  // Relations for new features
+  followUps      PlacementFollowUp[]
+  documents      PlacementDocument[]
+  familyContacts PlacementFamilyContact[]
+  updates        PlacementUpdate[]
+
   @@index([referralId])
   @@index([dischargeCaseId])
   @@index([providerId])
@@ -991,6 +1002,131 @@ enum PlacementStatus {
   COMPLETED
   CANCELLED
 
+  @@schema("core")
+}
+
+model PlacementFollowUp {
+  id          String   @id @default(uuid())
+  placementId String
+  placement   Placement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  
+  type        FollowUpType
+  scheduledAt DateTime
+  completedAt DateTime?
+  completedBy String?
+  
+  notes       String? @db.Text
+  outcome     FollowUpOutcome?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([placementId])
+  @@index([scheduledAt])
+  @@index([completedAt])
+  @@schema("core")
+}
+
+enum FollowUpType {
+  DAY_1_CHECKIN
+  DAY_7_CHECKIN
+  DAY_30_CHECKIN
+  DAY_90_CHECKIN
+  CUSTOM
+  
+  @@schema("core")
+}
+
+enum FollowUpOutcome {
+  POSITIVE
+  CONCERNS
+  NEEDS_ATTENTION
+  NO_RESPONSE
+  
+  @@schema("core")
+}
+
+model PlacementDocument {
+  id          String   @id @default(uuid())
+  placementId String
+  placement   Placement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  
+  fileName    String
+  fileType    String
+  fileSize    Int
+  category    DocumentCategory
+  
+  uploadedBy  String
+  uploadedAt  DateTime @default(now())
+  
+  storageUrl  String
+  expiresAt   DateTime?
+  
+  notes       String?
+  
+  @@index([placementId])
+  @@index([category])
+  @@schema("core")
+}
+
+enum DocumentCategory {
+  MEDICAL_RECORDS
+  INSURANCE
+  IDENTIFICATION
+  CARE_PLAN
+  CONSENT_FORM
+  PHOTO
+  OTHER
+  
+  @@schema("core")
+}
+
+model PlacementFamilyContact {
+  id          String   @id @default(uuid())
+  placementId String
+  placement   Placement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  
+  name        String
+  relationship String
+  email       String
+  phone       String?
+  
+  isPrimary   Boolean @default(false)
+  canReceiveUpdates Boolean @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([placementId])
+  @@schema("core")
+}
+
+model PlacementUpdate {
+  id          String   @id @default(uuid())
+  placementId String
+  placement   Placement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  
+  title       String
+  message     String @db.Text
+  category    UpdateCategory
+  
+  createdBy   String
+  createdAt   DateTime @default(now())
+  
+  photos      String[]
+  
+  @@index([placementId])
+  @@index([createdAt])
+  @@schema("core")
+}
+
+enum UpdateCategory {
+  GENERAL
+  HEALTH
+  ACTIVITY
+  MILESTONE
+  PHOTO
+  
   @@schema("core")
 }
 
@@ -1183,6 +1319,13 @@ enum NotificationType {
   MESSAGE_NEW
   INVITE_RECEIVED
   INVITE_EXPIRING
+
+  // PLACEMENT ENHANCEMENTS
+  FOLLOW_UP_REMINDER
+  FOLLOW_UP_DUE
+  FOLLOW_UP_OVERDUE
+  DOCUMENT_EXPIRING_SOON
+  DOCUMENT_EXPIRED
 
   @@schema("messaging")
 }

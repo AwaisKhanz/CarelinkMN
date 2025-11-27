@@ -47,14 +47,24 @@ export function AISearchInput({
       return;
     }
 
+    console.log('✨ [Frontend] AI Search triggered');
+    console.log('📝 [Frontend] Query:', value);
+    
     setIsParsing(true);
     setAiExplanation(null);
 
     try {
+      console.log('🌐 [Frontend] Calling AI search API...');
       const response = await publicService.parseQuery(value);
+
+      console.log('📦 [Frontend] API Response:', response);
 
       if (response.success && response.data) {
         const { filters, explanation } = response.data;
+
+        console.log('✅ [Frontend] AI parsing successful!');
+        console.log('🎯 [Frontend] Filters received:', filters);
+        console.log('💬 [Frontend] Explanation:', explanation);
 
         if (filters && Object.keys(filters).length > 0) {
           setAiExplanation(explanation || "Filters applied successfully");
@@ -62,18 +72,21 @@ export function AISearchInput({
           onFiltersApplied?.(filters);
           toast.success("AI search filters applied");
         } else {
+          console.warn('⚠️  [Frontend] No filters extracted from query');
           toast.info("No specific filters found in your query");
         }
       } else {
+        console.error('❌ [Frontend] API returned error:', response.message);
         toast.error(response.message || "Failed to parse query");
       }
     } catch (error) {
-      console.error("AI search error:", error);
+      console.error('❌ [Frontend] AI search error:', error);
       toast.error(
         error instanceof Error ? error.message : "Failed to parse query"
       );
     } finally {
       setIsParsing(false);
+      console.log('🏁 [Frontend] AI search complete');
     }
   }, [value, onFiltersApplied]);
 

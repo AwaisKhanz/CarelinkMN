@@ -50,6 +50,8 @@ export function SubscriptionGuard({
 
   const isLoading = tierLoading || subscriptionLoading;
 
+  console.log(tier, requiredPlan);
+
   useEffect(() => {
     if (isLoading) return;
 

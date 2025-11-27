@@ -140,6 +140,77 @@ export class PlacementController {
     }
   }
 
+  async createPlacementFromDischargeCase(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: errors.array()[0].msg,
+        } as ApiResponse);
+        return;
+      }
+
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const {
+        dischargeCaseId,
+        providerId,
+        homeId,
+        openingId,
+        placementDate,
+        moveInDate,
+        notes,
+      } = req.body;
+
+      const placement = await this.placementService.createPlacementFromDischargeCase(
+        {
+          dischargeCaseId,
+          providerId,
+          homeId,
+          openingId,
+          placementDate,
+          moveInDate,
+          notes,
+        },
+        user.id
+      );
+
+      res.status(201).json({
+        success: true,
+        data: placement,
+        message: "Placement created successfully from discharge case",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Create placement from discharge case error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("Access denied")
+          ? 403
+          : error instanceof Error && error.message.includes("not found")
+          ? 404
+          : error instanceof Error && error.message.includes("No spots available")
+          ? 400
+          : error instanceof Error && error.message.includes("not available")
+          ? 400
+          : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Placement creation failed",
+        message:
+          error instanceof Error ? error.message : "An error occurred while creating placement from discharge case",
+      } as ApiResponse);
+    }
+  }
+
   async getPlacements(req: Request, res: Response): Promise<void> {
     try {
       const errors = validationResult(req);
@@ -457,6 +528,79 @@ export class PlacementController {
         error: "Packet generation failed",
         message:
           error instanceof Error ? error.message : "An error occurred while generating packet",
+      } as ApiResponse);
+    }
+  }
+
+  async downloadPacket(req: Request, res: Response): Promise<void> {
+    try {
+      const { placementId } = req.params;
+      const { token } = req.query;
+
+      console.log("Download packet request:", {
+        placementId,
+        token,
+        query: req.query,
+        url: req.url,
+      });
+
+      if (!token || typeof token !== "string") {
+        res.status(400).json({
+          success: false,
+          error: "Invalid request",
+          message: "Access token is required",
+        } as ApiResponse);
+        return;
+      }
+
+      // Verify placement exists and token matches
+      const placement = await this.placementService.verifyPacketAccess(
+        placementId,
+        token
+      );
+
+      if (!placement) {
+        res.status(403).json({
+          success: false,
+          error: "Access denied",
+          message: "Invalid or expired access token",
+        } as ApiResponse);
+        return;
+      }
+
+      // Generate PDF
+      const { PlacementPacketService } = await import(
+        "../services/placement-packet.service"
+      );
+      const packetService = new PlacementPacketService();
+      const pdfBuffer = await packetService.generatePacketPDF(placementId);
+
+      // Log access
+      const user = (req as unknown as AuthenticatedRequest).user;
+      await this.placementService.logPacketAccess(
+        placementId,
+        user?.id || "anonymous",
+        req.ip || "unknown",
+        req.get("user-agent") || undefined
+      );
+
+      // Set response headers for PDF download
+      const filename = `placement-packet-${placement.id}-${new Date().toISOString().split("T")[0]}.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", pdfBuffer.length);
+
+      // Send PDF
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Download packet error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Download failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while downloading packet",
       } as ApiResponse);
     }
   }

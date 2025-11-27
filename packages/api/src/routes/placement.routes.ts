@@ -10,6 +10,22 @@ const router: Router = Router();
 const placementController = new PlacementController();
 const authMiddleware = new AuthMiddleware();
 
+// Download placement packet - Defined first to avoid auth middleware issues
+router.get(
+  "/placements/:placementId/packet/download",
+  (req, res, next) => {
+    console.log("Download route hit:", req.path);
+    console.log("Headers:", req.headers);
+    next();
+  },
+  validate([
+    param("placementId").isUUID().withMessage("Invalid placement ID"),
+    query("token").notEmpty().withMessage("Access token is required"),
+  ]),
+  // No auth required - token-based access
+  placementController.downloadPacket.bind(placementController)
+);
+
 // Create a new placement
 router.post(
   "/placements",
@@ -82,6 +98,41 @@ router.post(
   placementController.createPlacementFromReferral.bind(placementController)
 );
 
+// Create placement from discharge case (hospital SW workflow)
+router.post(
+  "/placements/from-discharge-case",
+  [
+    body("dischargeCaseId")
+      .isUUID()
+      .withMessage("Invalid discharge case ID"),
+    body("providerId")
+      .isUUID()
+      .withMessage("Invalid provider ID"),
+    body("homeId")
+      .isUUID()
+      .withMessage("Invalid home ID"),
+    body("openingId")
+      .isUUID()
+      .withMessage("Invalid opening ID"),
+    body("placementDate")
+      .isISO8601()
+      .withMessage("Placement date must be a valid date"),
+    body("moveInDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Move-in date must be a valid date"),
+    body("notes")
+      .optional()
+      .isString()
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage("Notes must be less than 1000 characters"),
+  ],
+  validate([]),
+  authMiddleware.requireAuth,
+  placementController.createPlacementFromDischargeCase.bind(placementController)
+);
+
 // Get placements with filters
 router.get(
   "/placements",
@@ -127,6 +178,7 @@ router.get(
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
     HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    "system:view", // Allow Admin/Super Admin access
   ]),
   placementController.getPlacements.bind(placementController)
 );
@@ -142,6 +194,7 @@ router.get(
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
     CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    "system:view", // Allow Admin/Super Admin access
   ]),
   placementController.getPlacementById.bind(placementController)
 );
@@ -214,6 +267,8 @@ router.post(
   authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
   placementController.generatePacket.bind(placementController)
 );
+
+
 
 // Get packet access logs
 router.get(

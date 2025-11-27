@@ -26,6 +26,7 @@ import {
   Download,
   History,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { placementService, Placement, PlacementStatus } from "@/lib/api";
@@ -49,6 +50,12 @@ import {
 import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { usePermissions } from "@/hooks/use-permissions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FollowUpsTab } from "./components/follow-ups-tab";
+import { DocumentsTab } from "./components/documents-tab";
+import { FamilyTab } from "./components/family-tab";
+import { UpdatesTab } from "./components/updates-tab";
+import { ExpiringDocumentsWidget } from "./components/expiring-documents-widget";
 
 const placementsGateConfig = PROVIDER_FEATURE_GATES.placements;
 
@@ -151,9 +158,12 @@ function PlacementDetailContent() {
   };
 
   const handleDownloadPacket = () => {
-    if (placement?.packetUrl) {
-      window.open(placement.packetUrl, "_blank");
-      // Log access (this would typically be done on the backend when the URL is accessed)
+    if (placement?.packetUrl && placementId) {
+      // packetUrl contains the access token, construct the download URL
+      const downloadUrl = `/api/placements/${placementId}/packet/download?token=${placement.packetUrl}`;
+      window.open(downloadUrl, "_blank");
+    } else {
+      toast.error("No packet available. Please generate a packet first.");
     }
   };
 
@@ -367,21 +377,7 @@ function PlacementDetailContent() {
             <CardContent className="space-y-3">
               {canManagePlacements && (
                 <>
-                  <Button
-                    className="w-full justify-start"
-                    variant="healthcare"
-                    onClick={() =>
-                      router.push(
-                        `/provider/placements/${placement.id}/edit?step=details`
-                      )
-                    }
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Update Placement Details
-                  </Button>
-
                   {/* Packet Generation Section */}
-                  <Separator className="my-3" />
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold">Placement Packet</h4>
                     {!placement.packetGeneratedAt ? (
@@ -422,6 +418,24 @@ function PlacementDetailContent() {
                         </Button>
                         <Button
                           className="w-full justify-start"
+                          variant="outline"
+                          onClick={handleGeneratePacket}
+                          disabled={isGeneratingPacket}
+                        >
+                          {isGeneratingPacket ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Regenerating...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Regenerate Packet
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          className="w-full justify-start"
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowAccessLogs(true)}
@@ -436,56 +450,127 @@ function PlacementDetailContent() {
               )}
             </CardContent>
           </Card>
+
+          {/* Expiring Documents Widget */}
+          {placementId && <ExpiringDocumentsWidget placementId={placementId} />}
         </div>
 
         <Separator />
 
-        <Card variant="healthcare">
-          <CardHeader>
-            <CardTitle>Placement Timeline</CardTitle>
-            <CardDescription>
-              Key events and follow-ups associated with this placement
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="border-l-2 border-primary/20 pl-6 space-y-6">
-              {timeline.length > 0 ? (
-                timeline.map((event) => (
-                  <div key={event.id} className="relative">
-                    <div className="absolute -left-[1.45rem] top-1">
-                      <div className="h-3 w-3 rounded-full bg-primary" />
+        {/* Tabbed Interface for Post-Placement Features */}
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="followups">Follow-ups</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="family">Family</TabsTrigger>
+            <TabsTrigger value="updates">Updates</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 mt-6">
+            <Card variant="healthcare">
+              <CardHeader>
+                <CardTitle>Placement Information</CardTitle>
+                <CardDescription>
+                  Detailed information about this placement
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground">Placement Date</p>
+                      <p className="font-medium">
+                        {placement.placementDate
+                          ? format(new Date(placement.placementDate), "MMM dd, yyyy")
+                          : "Not set"}
+                      </p>
                     </div>
-                    <div className="bg-muted/40 border border-border rounded-lg p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-sm text-foreground">
-                          {event.title}
-                        </h4>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(event.date), "MMM dd, yyyy")}
-                        </span>
-                      </div>
-                      {event.description && (
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {event.description}
-                        </p>
-                      )}
-                      {event.assignedTo && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          Assigned to: {event.assignedTo}
-                        </div>
-                      )}
+                    <div>
+                      <p className="text-muted-foreground">Move-In Date</p>
+                      <p className="font-medium">
+                        {placement.moveInDate
+                          ? format(new Date(placement.moveInDate), "MMM dd, yyyy")
+                          : "Not set"}
+                      </p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  No timeline events recorded yet.
+                  <Separator />
+                  <div>
+                    <p className="text-muted-foreground mb-2">Status</p>
+                    <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+                  </div>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="followups" className="mt-6">
+            <FollowUpsTab placementId={placement.id} />
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-6">
+            <DocumentsTab placementId={placement.id} />
+          </TabsContent>
+
+          <TabsContent value="family" className="mt-6">
+            <FamilyTab placementId={placement.id} />
+          </TabsContent>
+
+          <TabsContent value="updates" className="mt-6">
+            <UpdatesTab placementId={placement.id} />
+          </TabsContent>
+
+          <TabsContent value="timeline" className="mt-6">
+            <Card variant="healthcare">
+              <CardHeader>
+                <CardTitle>Placement Timeline</CardTitle>
+                <CardDescription>
+                  Key events and follow-ups associated with this placement
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border-l-2 border-primary/20 pl-6 space-y-6">
+                  {timeline.length > 0 ? (
+                    timeline.map((event) => (
+                      <div key={event.id} className="relative">
+                        <div className="absolute -left-[1.45rem] top-1">
+                          <div className="h-3 w-3 rounded-full bg-primary" />
+                        </div>
+                        <div className="bg-muted/40 border border-border rounded-lg p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-sm text-foreground">
+                              {event.title}
+                            </h4>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(event.date), "MMM dd, yyyy")}
+                            </span>
+                          </div>
+                          {event.description && (
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {event.description}
+                            </p>
+                          )}
+                          {event.assignedTo && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              Assigned to: {event.assignedTo}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No timeline events recorded yet.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Packet Access Logs Dialog */}
         <Dialog open={showAccessLogs} onOpenChange={setShowAccessLogs}>
