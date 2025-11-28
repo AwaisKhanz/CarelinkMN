@@ -87,6 +87,30 @@ export class ConsentService {
         include: this.getDefaultInclude(),
       });
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify Hospital SW if this is for a discharge case
+        if (data.dischargeCaseId) {
+          const dischargeCase = await db.dischargeCase.findUnique({
+            where: { id: data.dischargeCaseId },
+            select: { socialWorkerId: true }
+          });
+          
+          if (dischargeCase?.socialWorkerId) {
+            socketServer.getIO().to(`user:${dischargeCase.socialWorkerId}`).emit("consent:captured", {
+              consentId: consent.id,
+              dischargeCaseId: data.dischargeCaseId,
+              consentType: data.consentType,
+            });
+          }
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
+
       return this.mapConsentToType(consent);
     } catch (error) {
       console.error("Create consent error:", error);

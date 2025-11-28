@@ -109,6 +109,8 @@ function ProviderReferralsPageContent() {
     }
   }, [providerId, statusFilter, urgencyFilter, pagination.page]);
 
+
+
   const fetchReferrals = useCallback(async () => {
     if (!providerId) return;
 
@@ -164,10 +166,18 @@ function ProviderReferralsPageContent() {
       }
     };
 
+    const handleReferralReceived = (data: any) => {
+      console.log("Socket event: referral received", data);
+      fetchReferrals();
+      toast.info("New referral received");
+    };
+
     socket.on("notification:new", handleNotification);
+    socket.on("referral:received", handleReferralReceived);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("referral:received", handleReferralReceived);
     };
   }, [socket, fetchReferrals]);
 

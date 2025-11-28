@@ -46,6 +46,51 @@ export class VendorService {
     }
   }
 
+  // Search/List vendors
+  async searchVendors(params: {
+    search?: string;
+    organizationId?: string;
+    category?: string;
+    limit?: number;
+  }): Promise<Vendor[]> {
+    try {
+      const where: Prisma.VendorWhereInput = {};
+
+      if (params.organizationId) {
+        where.organizationId = params.organizationId;
+      }
+
+      if (params.category) {
+        where.category = params.category as any;
+      }
+
+      if (params.search) {
+        where.OR = [
+          { businessName: { contains: params.search, mode: "insensitive" } },
+          { description: { contains: params.search, mode: "insensitive" } },
+        ];
+      }
+
+      const vendors = await db.vendor.findMany({
+        where,
+        include: {
+          organization: true,
+        },
+        take: params.limit || 20,
+        orderBy: [
+          { isSponsoredVendor: "desc" },
+          { isVerified: "desc" },
+          { createdAt: "desc" },
+        ],
+      });
+
+      return vendors.map((vendor) => this.mapVendorToType(vendor));
+    } catch (error) {
+      console.error("Search vendors error:", error);
+      throw new Error("Failed to search vendors");
+    }
+  }
+
   // Get vendor by vendor ID
   async getVendorById(vendorId: string): Promise<Vendor | null> {
     try {

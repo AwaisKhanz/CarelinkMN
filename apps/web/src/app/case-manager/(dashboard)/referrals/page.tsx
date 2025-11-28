@@ -174,10 +174,22 @@ function CaseManagerReferralsPageContent() {
       }
     };
 
+    const handleDataUpdate = (data: any) => {
+      console.log("Socket event: data update", data);
+      fetchReferrals();
+      toast.info("Referral list updated");
+    };
+
     socket.on("notification:new", handleNotification);
+    socket.on("referral:updated", handleDataUpdate);
+    socket.on("placement:created", handleDataUpdate);
+    socket.on("placement:updated", handleDataUpdate);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("referral:updated", handleDataUpdate);
+      socket.off("placement:created", handleDataUpdate);
+      socket.off("placement:updated", handleDataUpdate);
     };
   }, [socket, fetchReferrals]);
 

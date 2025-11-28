@@ -177,10 +177,20 @@ function PlacementsPageContent() {
       }
     };
 
+    const handlePlacementUpdate = (data: any) => {
+      console.log("Socket event: placement update", data);
+      fetchPlacements();
+      toast.info("Placement list updated");
+    };
+
     socket.on("notification:new", handleNotification);
+    socket.on("placement:created", handlePlacementUpdate);
+    socket.on("placement:updated", handlePlacementUpdate);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("placement:created", handlePlacementUpdate);
+      socket.off("placement:updated", handlePlacementUpdate);
     };
   }, [socket, fetchPlacements]);
 

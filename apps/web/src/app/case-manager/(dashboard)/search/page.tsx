@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { usePageMetadata } from "../use-page-metadata";
 import { useCaseManagerId } from "@/hooks/use-case-manager-data";
 import {
@@ -147,6 +148,8 @@ function CaseManagerSearchPageContent() {
     availabilityFilter,
     pagination.page,
   ]);
+
+
 
   const fetchProviders = useCallback(async () => {
     if (!caseManagerId && !user?.id) return;
@@ -328,6 +331,28 @@ function CaseManagerSearchPageContent() {
     pagination.page,
     pagination.limit,
   ]);
+
+  // Listen for real-time opening updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOpeningUpdate = (data: any) => {
+      console.log("Socket event: opening update", data);
+      fetchProviders();
+      toast.info("Search results updated");
+    };
+
+    socket.on("opening:created", handleOpeningUpdate);
+    socket.on("opening:updated", handleOpeningUpdate);
+    socket.on("opening:deleted", handleOpeningUpdate);
+
+    return () => {
+      socket.off("opening:created", handleOpeningUpdate);
+      socket.off("opening:updated", handleOpeningUpdate);
+      socket.off("opening:deleted", handleOpeningUpdate);
+    };
+  }, [socket, fetchProviders]);
 
   const handleSelectProvider = (providerId: string) => {
     setSelectedProviders((prev) =>

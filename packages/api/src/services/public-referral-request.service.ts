@@ -349,4 +349,213 @@ export class PublicReferralRequestService {
       throw new Error("Failed to retrieve request statistics");
     }
   }
+
+  // Get queue of pending requests for case managers
+  async getQueue(filters?: {
+    status?: RequestStatus;
+    urgency?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    try {
+      const { status = RequestStatus.PENDING, urgency, page = 1, limit = 20 } = filters || {};
+
+      const where: Prisma.PublicReferralRequestWhereInput = {
+        status,
+      };
+
+      if (urgency) {
+        where.urgency = urgency as any;
+      }
+
+      const [requests, total] = await Promise.all([
+        db.publicReferralRequest.findMany({
+          where,
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            assignedCaseManager: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: [
+            { urgency: "desc" }, // URGENT first
+            { createdAt: "asc" }, // Oldest first
+          ],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        db.publicReferralRequest.count({ where }),
+      ]);
+
+      return {
+        requests,
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      console.error("Get queue error:", error);
+      throw new Error("Failed to retrieve request queue");
+    }
+  }
+
+  // Claim a request (assign to case manager) and convert to referral
+  async claimRequest(id: string, caseManagerId: string) {
+    try {
+      const existing = await db.publicReferralRequest.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new Error("Request not found");
+      }
+
+      // Only allow claiming if status is PENDING
+      if (existing.status !== RequestStatus.PENDING) {
+        throw new Error("Request is not available for claiming");
+      }
+
+      // Get case manager user and organization
+      const caseManager = await db.user.findUnique({
+        where: { id: caseManagerId },
+        include: {
+          organization: true,
+        },
+      });
+
+      if (!caseManager || !caseManager.organizationId) {
+        throw new Error("Case manager or organization not found");
+      }
+
+      // Find case manager profile
+      const caseManagerProfile = await db.caseManager.findFirst({
+        where: {
+          organizationId: caseManager.organizationId,
+          email: caseManager.email,
+        },
+      });
+
+      // Create referral from public request
+      const referral = await db.referral.create({
+        data: {
+          caseManagerId: caseManagerId,
+          caseManagerProfileId: caseManagerProfile?.id,
+          organizationId: caseManager.organizationId,
+          clientAge: existing.recipientAge,
+          clientGender: existing.recipientGender,
+          clientInitials: existing.recipientInitials,
+          careLevels: [], // Public requests don't have this detail
+          servicesNeeded: [], // Will be determined during referral process
+          mobilityLevel: null,
+          behavioralNeeds: [],
+          medicalNeeds: [],
+          preferredCounties: existing.preferredCounties,
+          preferredCities: [],
+          maxDistance: null,
+          primaryPayer: existing.primaryPayer as any,
+          secondaryPayer: existing.secondaryPayer as any,
+          targetMoveDate: null,
+          urgency: existing.urgency as any,
+          internalNotes: `Converted from public request #${existing.requestNumber}\n\nOriginal care needs: ${existing.careNeeds}\n\nContact: ${existing.contactName} (${existing.contactEmail}${existing.contactPhone ? `, ${existing.contactPhone}` : ""})`,
+        },
+        include: {
+          caseManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+            },
+          },
+          caseManagerProfile: true,
+        },
+      });
+
+      // Update public request with conversion info
+      const request = await db.publicReferralRequest.update({
+        where: { id },
+        data: {
+          status: RequestStatus.CONVERTED,
+          assignedCaseManagerId: caseManagerId,
+          assignedAt: new Date(),
+          convertedToReferralId: referral.id,
+          convertedAt: new Date(),
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          assignedCaseManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          convertedToReferral: {
+            select: {
+              id: true,
+              referralNumber: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      // Notify the requester that their request has been converted
+      await this.notificationService.createNotification({
+        userId: existing.userId,
+        type: NotificationType.REQUEST_STATUS_UPDATE,
+        title: "Request Converted to Referral",
+        message: `Your referral request for ${existing.recipientInitials} has been assigned to a case manager and converted to referral #${referral.referralNumber}`,
+        actionUrl: `/public/requests/${id}`,
+        actionLabel: "View Request",
+        metadata: { 
+          requestId: id, 
+          status: RequestStatus.CONVERTED,
+          referralId: referral.id,
+          referralNumber: referral.referralNumber
+        }
+      });
+
+      // Return both the request and the new referral ID
+      return {
+        ...request,
+        referralId: referral.id,
+      };
+    } catch (error) {
+      console.error("Claim request error:", error);
+      throw error;
+    }
+  }
 }

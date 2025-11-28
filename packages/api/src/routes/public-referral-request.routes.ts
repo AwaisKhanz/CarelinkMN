@@ -14,6 +14,36 @@ router.use(authMiddleware.requireAuth);
 // GET /api/public-requests/stats - Get request statistics
 router.get("/stats", controller.getStats);
 
+// GET /api/public-requests/queue - Get queue for case managers
+router.get(
+  "/queue",
+  [
+    query("status")
+      .optional()
+      .isString()
+      .withMessage("Status must be a string"),
+    query("urgency")
+      .optional()
+      .isString()
+      .withMessage("Urgency must be a string"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer")
+      .toInt(),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100")
+      .toInt(),
+  ],
+  validate([]),
+  controller.getQueue
+);
+
+// POST /api/public-requests/:id/claim - Claim a request (case managers)
+router.post("/:id/claim", controller.claimRequest);
+
 // GET /api/public-requests - List user's requests
 router.get(
   "/",

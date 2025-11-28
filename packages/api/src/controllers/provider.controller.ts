@@ -39,6 +39,7 @@ export class ProviderController {
     this.getProviderStats = this.getProviderStats.bind(this);
     this.respondToReferral = this.respondToReferral.bind(this);
     this.searchProviders = this.searchProviders.bind(this);
+    this.getProviderDischargeInvitations = this.getProviderDischargeInvitations.bind(this);
   }
 
   // Create new provider
@@ -1341,6 +1342,69 @@ export class ProviderController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving providers",
+      } as ApiResponse);
+    }
+  }
+
+  // Get provider discharge invitations
+  async getProviderDischargeInvitations(req: Request, res: Response): Promise<void> {
+    try {
+      const { providerId } = req.params;
+      const { page, limit, status } = req.query;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Verify user has access to this provider
+      const hasAccess = await this.providerService.verifyProviderAccess(
+        user.id,
+        providerId
+      );
+      if (!hasAccess) {
+        res.status(403).json({
+          success: false,
+          error: "Access denied",
+          message: "You do not have access to this provider",
+        } as ApiResponse);
+        return;
+      }
+
+      const parsedPage = page ? parseInt(page as string, 10) : 1;
+      const parsedLimit = limit ? parseInt(limit as string, 10) : 20;
+
+      const { DischargeCaseService } = await import("../services/discharge-case.service");
+      const dischargeCaseService = new DischargeCaseService();
+
+      const invitations = await dischargeCaseService.getProviderDischargeInvitations(
+        providerId,
+        {
+          page: parsedPage,
+          limit: parsedLimit,
+          status: status as string | undefined,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: invitations,
+        message: "Discharge invitations retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get provider discharge invitations error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve discharge invitations",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving discharge invitations",
       } as ApiResponse);
     }
   }

@@ -39,6 +39,7 @@ import {
 const DEFAULT_SORT_OPTION = SORT_OPTIONS[0].value;
 import { buildSearchUrl, parseSearchUrl } from "@/lib/utils/public";
 import { useAuth } from "@/contexts/auth-context";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export default function PublicSearchPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function PublicSearchPage() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [filters, setFilters] = useState<Partial<PublicSearchParams>>({});
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.GRID);
   const [sortBy, setSortBy] = useState<SortOption>(DEFAULT_SORT_OPTION);
@@ -81,7 +83,7 @@ export default function PublicSearchPage() {
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set("search", searchQuery);
+    if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
     if (filters && Object.keys(filters).length > 0) {
       const filterParams = buildSearchUrl({
         search: searchQuery,
@@ -102,7 +104,7 @@ export default function PublicSearchPage() {
 
     const newUrl = `/public/search${params.toString() ? `?${params.toString()}` : ""}`;
     router.replace(newUrl, { scroll: false });
-  }, [searchQuery, filters, sortBy, page, pageSize, router]);
+  }, [debouncedSearchQuery, filters, sortBy, page, pageSize, router]);
 
   // Fetch providers
   const fetchProviders = useCallback(async () => {
@@ -111,7 +113,7 @@ export default function PublicSearchPage() {
 
     try {
       const searchParams: PublicSearchParams = {
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined,
         ...filters,
         sortBy: filters.sortBy || DEFAULT_SORT_OPTION,
         page,
@@ -137,7 +139,7 @@ export default function PublicSearchPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, filters, sortBy, page, pageSize]);
+  }, [debouncedSearchQuery, filters, sortBy, page, pageSize]);
 
   useEffect(() => {
     fetchProviders();
@@ -278,7 +280,6 @@ export default function PublicSearchPage() {
             onChange={setSearchQuery}
             onFiltersApplied={handleAIFiltersApplied}
             placeholder="Search by name, location, services, or use AI to describe what you're looking for..."
-            disabled={isLoading}
           />
         </div>
       </Card>
@@ -301,19 +302,22 @@ export default function PublicSearchPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-muted-foreground">
-                {isLoading ? (
-                  "Searching..."
-                ) : totalResults > 0 ? (
-                  <>
-                    Found{" "}
-                    <span className="font-semibold text-foreground">
-                      {totalResults}
-                    </span>{" "}
-                    provider{totalResults !== 1 ? "s" : ""}
-                  </>
-                ) : (
-                  "No providers found"
-                )}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></span>
+                      Searching...
+                    </span>
+                  ) : totalResults > 0 ? (
+                    <>
+                      Found{" "}
+                      <span className="font-semibold text-foreground">
+                        {totalResults}
+                      </span>{" "}
+                      provider{totalResults !== 1 ? "s" : ""}
+                    </>
+                  ) : (
+                    "No providers found"
+                  )}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -381,8 +385,8 @@ export default function PublicSearchPage() {
           )}
 
           {/* Results Grid/List */}
-          {!isLoading && providers.length > 0 && (
-            <>
+          {providers.length > 0 && (
+            <div className={isLoading ? "opacity-50 transition-opacity" : ""}>
               <div
                 className={
                   viewMode === VIEW_MODES.GRID
@@ -449,7 +453,7 @@ export default function PublicSearchPage() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

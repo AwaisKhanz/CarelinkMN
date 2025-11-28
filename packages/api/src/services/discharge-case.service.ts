@@ -615,7 +615,7 @@ export class DischargeCaseService {
             const { NotificationService } = await import("./notification.service");
             const notificationService = new NotificationService();
             
-            // Get provider owner user
+            // Find the provider owner to notify
             const providerOwner = await db.user.findFirst({
               where: {
                 organizationId: provider?.organizationId,
@@ -623,8 +623,15 @@ export class DischargeCaseService {
               },
             });
 
+            console.log(`[NOTIFICATION DEBUG] Provider ${providerId}:`, {
+              hasProvider: !!provider,
+              organizationId: provider?.organizationId,
+              foundProviderOwner: !!providerOwner,
+              providerOwnerId: providerOwner?.id,
+            });
+
             if (providerOwner) {
-              await notificationService.createNotification({
+              const notificationResult = await notificationService.createNotification({
                 userId: providerOwner.id,
                 type: "DISCHARGE_INVITATION_RECEIVED",
                 title: "New Discharge Case Invitation",
@@ -635,9 +642,24 @@ export class DischargeCaseService {
                   caseNumber: dischargeCase.caseNumber,
                 },
               });
+              console.log(`[NOTIFICATION DEBUG] Created notification:`, notificationResult);
+
+              // Emit specific socket event for data refresh
+              try {
+                const { getSocketServer } = await import("../websocket/socket.server");
+                const socketServer = getSocketServer();
+                socketServer.getIO().to(`user:${providerOwner.id}`).emit("discharge-invitation:received", {
+                  invitationId: invitation.id,
+                  dischargeCaseId: caseId,
+                });
+              } catch (socketError) {
+                console.warn("Failed to emit socket event:", socketError);
+              }
+            } else {
+              console.warn(`[NOTIFICATION DEBUG] No PROVIDER_OWNER found for organization ${provider?.organizationId}`);
             }
           } catch (notifError) {
-            console.error("Failed to create notification:", notifError);
+            console.error("[NOTIFICATION ERROR] Failed to create notification:", notifError);
             // Don't fail the invitation if notification fails
           }
 
@@ -662,6 +684,283 @@ export class DischargeCaseService {
     } catch (error) {
       console.error("Send provider invitations error:", error);
       throw new Error("Failed to send invitations");
+    }
+  }
+
+  /**
+   * Get provider discharge invitations
+   */
+  async getProviderDischargeInvitations(
+    providerId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+    }
+  ): Promise<{ invitations: DischargeInvitation[]; pagination: any }> {
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 20;
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.DischargeInvitationWhereInput = {
+        providerId,
+        ...(params?.status && { response: params.status as any }),
+      };
+
+      const [invitations, total] = await Promise.all([
+        db.dischargeInvitation.findMany({
+          where,
+          orderBy: { invitedAt: "desc" },
+          skip,
+          take: limit,
+          include: {
+            dischargeCase: true,
+          },
+        }),
+        db.dischargeInvitation.count({ where }),
+      ]);
+
+      // Fetch provider data for each invitation
+      const invitationsWithProviders = await Promise.all(
+        invitations.map(async (inv) => {
+          const provider = await db.provider.findUnique({
+            where: { id: inv.providerId },
+            include: {
+              organization: { select: { id: true, name: true } },
+              homes: {
+                select: { id: true, name: true, city: true, state: true },
+              },
+            },
+          });
+          return { ...inv, provider };
+        })
+      );
+
+      return {
+        invitations: await Promise.all(
+          invitationsWithProviders.map((inv) =>
+            this.mapDischargeInvitationToType(inv)
+          )
+        ),
+        pagination: {
+          total,
+          pages: Math.ceil(total / limit),
+          page,
+          limit,
+        },
+      };
+    } catch (error) {
+      console.error("Get provider discharge invitations error:", error);
+      throw new Error("Failed to retrieve provider invitations");
+    }
+  }
+
+  /**
+   * Provider responds to discharge invitation
+   */
+  async respondToDischargeInvitation(
+    invitationId: string,
+    userId: string,
+    response: string,
+    responseNotes?: string
+  ): Promise<DischargeInvitation> {
+    try {
+      // Get the invitation
+      const invitation = await db.dischargeInvitation.findUnique({
+        where: { id: invitationId },
+        include: {
+          dischargeCase: {
+            select: {
+              id: true,
+              caseNumber: true,
+              socialWorkerId: true,
+            },
+          },
+        },
+      });
+
+      if (!invitation) {
+        throw new Error("Invitation not found");
+      }
+
+      // Verify user has access to this provider
+      const provider = await db.provider.findUnique({
+        where: { id: invitation.providerId },
+        include: {
+          organization: {
+            select: {
+              users: {
+                where: { id: userId },
+                select: { id: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!provider || !provider.organization?.users?.length) {
+        throw new Error("Access denied: You do not have access to this provider");
+      }
+
+      // Check if already responded
+      if (invitation.respondedAt) {
+        throw new Error("You have already responded to this invitation");
+      }
+
+      // Update the invitation
+      const updatedInvitation = await db.dischargeInvitation.update({
+        where: { id: invitationId },
+        data: {
+          response: response as any,
+          responseNotes,
+          respondedAt: new Date(),
+        },
+        include: {
+          dischargeCase: true,
+        },
+      });
+
+      // Create notification for Hospital SW
+      try {
+        const { NotificationService } = await import("./notification.service");
+        const notificationService = new NotificationService();
+
+        console.log(`[NOTIFICATION DEBUG] Response notification:`, {
+          hasSocialWorkerId: !!invitation.dischargeCase?.socialWorkerId,
+          socialWorkerId: invitation.dischargeCase?.socialWorkerId,
+          response,
+          caseNumber: invitation.dischargeCase?.caseNumber,
+        });
+
+        if (invitation.dischargeCase?.socialWorkerId) {
+          const notificationResult = await notificationService.createNotification({
+            userId: invitation.dischargeCase.socialWorkerId,
+            type: "DISCHARGE_INVITE_RESPONSE",
+            title: "Provider Responded to Discharge Invitation",
+            message: `A provider has ${response.toLowerCase()} the invitation for case ${invitation.dischargeCase.caseNumber}`,
+            metadata: {
+              invitationId,
+              dischargeCaseId: invitation.dischargeCaseId,
+              response,
+              caseNumber: invitation.dischargeCase.caseNumber,
+            },
+          });
+          console.log(`[NOTIFICATION DEBUG] Created response notification:`, notificationResult);
+
+          // Emit specific socket event for data refresh
+          try {
+            const { getSocketServer } = await import("../websocket/socket.server");
+            const socketServer = getSocketServer();
+            socketServer.getIO().to(`user:${invitation.dischargeCase.socialWorkerId}`).emit("discharge-invitation:responded", {
+              invitationId,
+              dischargeCaseId: invitation.dischargeCaseId,
+              response,
+            });
+
+            // If accepted, we no longer automatically create a placement.
+            // The Hospital SW will manually select which accepted provider to create a placement with.
+          } catch (socketError) {
+            console.warn("Failed to emit socket event:", socketError);
+          }
+        } else {
+          console.warn(`[NOTIFICATION DEBUG] No socialWorkerId found for discharge case`);
+        }
+      } catch (notifError) {
+        console.error("[NOTIFICATION ERROR] Failed to create Hospital SW notification:", notifError);
+        // Don't fail the response if notification fails
+      }
+
+      return this.mapDischargeInvitationToType(updatedInvitation);
+    } catch (error) {
+      console.error("Respond to discharge invitation error:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to respond to invitation");
+    }
+  }
+
+  /**
+   * Create a placement from an accepted invitation
+   */
+  async createPlacementFromInvitation(
+    invitationId: string,
+    userId: string
+  ): Promise<Placement> {
+    try {
+      const invitation = await db.dischargeInvitation.findUnique({
+        where: { id: invitationId },
+        include: {
+          dischargeCase: true,
+        },
+      });
+
+      if (!invitation) {
+        throw new Error("Invitation not found");
+      }
+
+      // Verify user access (Hospital SW)
+      if (invitation.dischargeCase.socialWorkerId !== userId) {
+        // Also allow admins
+        const user = await db.user.findUnique({ where: { id: userId } });
+        if (user?.role !== "ADMIN" && user?.role !== "SUPER_ADMIN") {
+           throw new Error("Access denied");
+        }
+      }
+
+      if (invitation.response !== InviteResponse.ACCEPTED) {
+        throw new Error("Cannot create placement: Invitation not accepted");
+      }
+
+      // Check if placement already exists
+      const existingPlacement = await db.placement.findUnique({
+        where: { dischargeCaseId: invitation.dischargeCaseId },
+      });
+
+      if (existingPlacement) {
+        throw new Error("Placement already exists for this case");
+      }
+
+      // Find a valid opening
+      const opening = await db.opening.findFirst({
+        where: {
+          providerId: invitation.providerId,
+          status: "OPEN",
+        },
+      });
+
+      if (!opening) {
+        throw new Error("No open openings found for this provider");
+      }
+
+      const placement = await db.placement.create({
+        data: {
+          dischargeCaseId: invitation.dischargeCaseId,
+          providerId: invitation.providerId,
+          openingId: opening.id,
+          status: "PENDING",
+          placementDate: new Date(),
+        },
+      });
+
+      // Emit socket event
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        socketServer.getIO().to(`user:${userId}`).emit("placement:created", {
+          placement,
+          dischargeCaseId: invitation.dischargeCaseId,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
+
+      return placement as unknown as Placement;
+    } catch (error) {
+      console.error("Create placement from invitation error:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to create placement from invitation");
     }
   }
 

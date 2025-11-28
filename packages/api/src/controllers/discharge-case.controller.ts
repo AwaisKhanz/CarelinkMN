@@ -26,6 +26,8 @@ export class DischargeCaseController {
     this.triggerAIMatching = this.triggerAIMatching.bind(this);
     this.getProviderMatchScore = this.getProviderMatchScore.bind(this);
     this.getTopMatchedProviders = this.getTopMatchedProviders.bind(this);
+    this.respondToDischargeInvitation = this.respondToDischargeInvitation.bind(this);
+    this.createPlacementFromInvitation = this.createPlacementFromInvitation.bind(this);
   }
 
   /**
@@ -271,8 +273,8 @@ export class DischargeCaseController {
           ? 404
           : error instanceof Error &&
             error.message.includes("Cannot delete")
-          ? 400
-          : 500;
+            ? 400
+            : 500;
       res.status(statusCode).json({
         success: false,
         error: "Failed to delete discharge case",
@@ -657,5 +659,109 @@ export class DischargeCaseController {
       } as ApiResponse);
     }
   }
+
+  /**
+   * Provider responds to discharge invitation
+   * PUT /api/discharge-invitations/:id/respond
+   */
+  async respondToDischargeInvitation(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          message: "Please check your input data",
+          details: errors.array(),
+        } as ApiResponse);
+        return;
+      }
+
+      const user = (req as unknown as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const { id } = req.params;
+      const { response, responseNotes } = req.body;
+
+      const updatedInvitation = await this.dischargeCaseService.respondToDischargeInvitation(
+        id,
+        user.id,
+        response,
+        responseNotes
+      );
+
+      res.status(200).json({
+        success: true,
+        data: updatedInvitation,
+        message: "Response submitted successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Respond to discharge invitation error:", error);
+      const statusCode =
+        error instanceof Error && error.message.includes("not found")
+          ? 404
+          : error instanceof Error && error.message.includes("access denied")
+            ? 403
+            : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Failed to respond to invitation",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while responding to the invitation",
+      } as ApiResponse);
+    }
+  }
+      /**
+   * Create a placement from an accepted invitation
+   * POST /api/discharge-cases/invitations/:invitationId/placement
+   */
+  async createPlacementFromInvitation(req: Request, res: Response): Promise < void> {
+        try {
+          const user = (req as unknown as AuthenticatedRequest).user;
+          if(!user) {
+            res.status(401).json({
+              success: false,
+              error: "Unauthorized",
+              message: "User not authenticated",
+            } as ApiResponse);
+            return;
+          }
+
+      const { invitationId } = req.params;
+
+          const placement = await this.dischargeCaseService.createPlacementFromInvitation(
+            invitationId,
+            user.id
+          );
+
+          res.status(201).json({
+            success: true,
+            data: placement,
+            message: "Placement created successfully",
+          } as ApiResponse);
+        } catch(error) {
+          console.error("Create placement from invitation error:", error);
+          res.status(500).json({
+            success: false,
+            error: "Failed to create placement",
+            message:
+              error instanceof Error
+                ? error.message
+                : "An error occurred while creating the placement",
+          } as ApiResponse);
+    }
+  }
 }
+  
+
+
 

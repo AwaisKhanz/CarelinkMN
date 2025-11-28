@@ -22,6 +22,20 @@ router.get(
   vendorController.getVendorByUserId
 );
 
+// Search/List vendors
+router.get(
+  "/vendors",
+  [
+    query("search").optional().isString().withMessage("Search must be a string"),
+    query("organizationId").optional().isUUID().withMessage("Invalid organization ID"),
+    query("category").optional().isString().withMessage("Category must be a string"),
+    query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("Limit must be between 1 and 100"),
+  ],
+  validate([]),
+  authMiddleware.requireAuth,
+  vendorController.searchVendors
+);
+
 // Get vendor by vendor ID
 router.get(
   "/vendors/:vendorId",

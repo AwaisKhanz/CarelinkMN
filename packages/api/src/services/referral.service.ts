@@ -718,6 +718,31 @@ export class ReferralService {
         console.error("Failed to create shortlist notifications:", notifError);
       }
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify provider users
+        for (const providerId of data.providerIds) {
+          const provider = await db.provider.findUnique({
+            where: { id: providerId },
+            include: { organization: { include: { users: true } } }
+          });
+          
+          if (provider?.organization?.users) {
+            provider.organization.users.forEach(u => {
+              socketServer.getIO().to(`user:${u.id}`).emit("referral:received", {
+                referralId,
+                providerId
+              });
+            });
+          }
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit referral socket event:", socketError);
+      }
+
       return result;
     } catch (error) {
       console.error("Add to shortlist error:", error);
@@ -804,6 +829,23 @@ export class ReferralService {
           },
         },
       });
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify Case Manager
+        if (updated.referral.caseManagerId) {
+          socketServer.getIO().to(`user:${updated.referral.caseManagerId}`).emit("referral:updated", {
+            referralId: updated.referralId,
+            providerId: updated.providerId,
+            status: updated.status
+          });
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit referral socket event:", socketError);
+      }
 
       return await this.mapShortlistToType(updated, provider ?? undefined);
     } catch (error) {
@@ -1185,7 +1227,9 @@ export class ReferralService {
                 } as PlacementReferralInfo
               : undefined,
           };
-          return placement;
+
+
+      return placement;
         });
 
       return {

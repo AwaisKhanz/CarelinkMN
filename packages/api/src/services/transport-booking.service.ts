@@ -125,6 +125,41 @@ export class TransportBookingService {
         // Don't fail the booking if notification fails
       }
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify Hospital SW and Vendor
+        const recipientIds: string[] = [];
+        
+        // Add Hospital SW (social worker)
+        if (dischargeCase.socialWorkerId) {
+          recipientIds.push(dischargeCase.socialWorkerId);
+        }
+        
+        // Add Vendor owner
+        const vendorOwnerForSocket = await db.user.findFirst({
+          where: {
+            organizationId: vendor.organizationId,
+            role: "VENDOR",
+          },
+        });
+        
+        if (vendorOwnerForSocket) {
+          recipientIds.push(vendorOwnerForSocket.id);
+        }
+        
+        recipientIds.forEach(userId => {
+          socketServer.getIO().to(`user:${userId}`).emit("transport:booking-created", {
+            bookingId: transportBooking.id,
+            dischargeCaseId: data.dischargeCaseId,
+          });
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
+
       return this.mapTransportBookingToType(transportBooking);
     } catch (error) {
       console.error("Create transport booking error:", error);
@@ -249,6 +284,20 @@ export class TransportBookingService {
         data: updateData,
         include: this.getDefaultInclude(),
       });
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        socketServer.getIO().emit("transport:booking-updated", {
+          bookingId,
+          dischargeCaseId: existingBooking.dischargeCaseId,
+          status: data.status,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
 
       return this.mapTransportBookingToType(transportBooking);
     } catch (error) {

@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { HomeController } from "../controllers/home.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS, CASE_MANAGER_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, CASE_MANAGER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 
 const router: Router = Router();
 const homeController = new HomeController();
@@ -110,6 +110,7 @@ router.get(
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
     CASE_MANAGER_PERMISSIONS.REFERRALS_UPDATE, // Allow Case Managers to view homes for placement creation
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_UPDATE, // Allow Hospital SW to view homes for placement creation
   ]),
   homeController.getProviderHomes.bind(homeController)
 );

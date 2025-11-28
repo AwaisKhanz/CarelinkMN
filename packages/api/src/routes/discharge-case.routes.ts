@@ -624,5 +624,33 @@ router.get(
   dischargeCaseController.getTopMatchedProviders.bind(dischargeCaseController)
 );
 
+// Provider responds to discharge invitation
+router.put(
+  "/discharge-invitations/:id/respond",
+  [
+    param("id").isUUID().withMessage("Invitation ID must be a valid UUID"),
+    body("response")
+      .isIn(["ACCEPTED", "DECLINED", "NO_AVAILABILITY"])
+      .withMessage("Response must be ACCEPTED, DECLINED, or NO_AVAILABILITY"),
+    body("responseNotes")
+      .optional()
+      .isString()
+      .withMessage("Response notes must be a string"),
+  ],
+  validate([]),
+  dischargeCaseController.respondToDischargeInvitation.bind(dischargeCaseController)
+);
+
+// Create placement from invitation
+router.post(
+  "/discharge-cases/invitations/:invitationId/placement",
+  authMiddleware.requirePermission(HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_UPDATE),
+  [
+    param("invitationId").isUUID().withMessage("Invitation ID must be a valid UUID"),
+  ],
+  validate([]),
+  dischargeCaseController.createPlacementFromInvitation.bind(dischargeCaseController)
+);
+
 export default router;
 

@@ -279,29 +279,29 @@ export class VRSService {
     if (params.employerId) queryParams.append("employerId", params.employerId);
 
     return apiService.get<ClientsResponse>(
-      `/vrs/clients?${queryParams.toString()}`
+      `/api/vrs/clients?${queryParams.toString()}`
     );
   }
 
   async getClientById(clientId: string): Promise<ApiResponse<VRSClient>> {
-    return apiService.get<VRSClient>(`/vrs/clients/${clientId}`);
+    return apiService.get<VRSClient>(`/api/vrs/clients/${clientId}`);
   }
 
   async createClient(
     data: CreateClientData
   ): Promise<ApiResponse<VRSClient>> {
-    return apiService.post<VRSClient>("/vrs/clients", data);
+    return apiService.post<VRSClient>("/api/vrs/clients", data);
   }
 
   async updateClient(
     clientId: string,
     data: UpdateClientData
   ): Promise<ApiResponse<VRSClient>> {
-    return apiService.put<VRSClient>(`/vrs/clients/${clientId}`, data);
+    return apiService.put<VRSClient>(`/api/vrs/clients/${clientId}`, data);
   }
 
   async deleteClient(clientId: string): Promise<ApiResponse<void>> {
-    return apiService.delete<void>(`/vrs/clients/${clientId}`);
+    return apiService.delete<void>(`/api/vrs/clients/${clientId}`);
   }
 
   // ============================================
@@ -317,25 +317,25 @@ export class VRSService {
     if (params.search) queryParams.append("search", params.search);
 
     return apiService.get<EmployersResponse>(
-      `/vrs/employers?${queryParams.toString()}`
+      `/api/vrs/employers?${queryParams.toString()}`
     );
   }
 
   async getEmployerById(employerId: string): Promise<ApiResponse<VRSEmployer>> {
-    return apiService.get<VRSEmployer>(`/vrs/employers/${employerId}`);
+    return apiService.get<VRSEmployer>(`/api/vrs/employers/${employerId}`);
   }
 
   async createEmployer(
     data: CreateEmployerData
   ): Promise<ApiResponse<VRSEmployer>> {
-    return apiService.post<VRSEmployer>("/vrs/employers", data);
+    return apiService.post<VRSEmployer>("/api/vrs/employers", data);
   }
 
   async updateEmployer(
     employerId: string,
     data: UpdateEmployerData
   ): Promise<ApiResponse<VRSEmployer>> {
-    return apiService.put<VRSEmployer>(`/vrs/employers/${employerId}`, data);
+    return apiService.put<VRSEmployer>(`/api/vrs/employers/${employerId}`, data);
   }
 
   // ============================================
@@ -350,22 +350,22 @@ export class VRSService {
     if (params.status) queryParams.append("status", params.status);
     if (params.employerId) queryParams.append("employerId", params.employerId);
 
-    return apiService.get<JobsResponse>(`/vrs/jobs?${queryParams.toString()}`);
+    return apiService.get<JobsResponse>(`/api/vrs/jobs?${queryParams.toString()}`);
   }
 
   async getJobById(jobId: string): Promise<ApiResponse<VRSJob>> {
-    return apiService.get<VRSJob>(`/vrs/jobs/${jobId}`);
+    return apiService.get<VRSJob>(`/api/vrs/jobs/${jobId}`);
   }
 
   async createJob(data: CreateJobData): Promise<ApiResponse<VRSJob>> {
-    return apiService.post<VRSJob>("/vrs/jobs", data);
+    return apiService.post<VRSJob>("/api/vrs/jobs", data);
   }
 
   async updateJob(
     jobId: string,
     data: UpdateJobData
   ): Promise<ApiResponse<VRSJob>> {
-    return apiService.put<VRSJob>(`/vrs/jobs/${jobId}`, data);
+    return apiService.put<VRSJob>(`/api/vrs/jobs/${jobId}`, data);
   }
 
   // ============================================
@@ -381,7 +381,7 @@ export class VRSService {
     if (params.status) queryParams.append("status", params.status);
 
     return apiService.get<PlacementsResponse>(
-      `/vrs/placements?${queryParams.toString()}`
+      `/api/vrs/placements?${queryParams.toString()}`
     );
   }
 
@@ -391,7 +391,7 @@ export class VRSService {
     placementDate: string | Date;
     startDate?: string | Date;
   }): Promise<ApiResponse<VRSPlacement>> {
-    return apiService.post<VRSPlacement>("/vrs/placements", data);
+    return apiService.post<VRSPlacement>("/api/vrs/placements", data);
   }
 
   async updatePlacementRetention(
@@ -399,7 +399,7 @@ export class VRSService {
     data: UpdateRetentionData
   ): Promise<ApiResponse<VRSPlacement>> {
     return apiService.put<VRSPlacement>(
-      `/vrs/placements/${placementId}/retention`,
+      `/api/vrs/placements/${placementId}/retention`,
       data
     );
   }
@@ -409,7 +409,7 @@ export class VRSService {
   // ============================================
 
   async getAnalytics(): Promise<ApiResponse<VRSAnalytics>> {
-    return apiService.get<VRSAnalytics>("/vrs/analytics");
+    return apiService.get<VRSAnalytics>("/api/vrs/analytics");
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -86,6 +87,10 @@ function ProviderProfilePageContent() {
     fetchProvider();
   }, [fetchProvider]);
 
+  const handleSendMessage = () => {
+    router.push(`/hospital-sw/messages?providerId=${providerId}`);
+  };
+
   if (isLoading) {
     return (
       <LoadingState
@@ -139,6 +144,12 @@ function ProviderProfilePageContent() {
         subtitle="Provider details and information"
         backPath="/hospital-sw/providers"
         badges={headerBadges}
+        actions={
+          <Button variant="outline" onClick={handleSendMessage}>
+            <Mail className="h-4 w-4 mr-2" />
+            Send Message
+          </Button>
+        }
       />
 
       {/* Provider Info */}

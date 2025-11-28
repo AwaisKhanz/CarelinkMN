@@ -86,11 +86,11 @@ const roleOptions: RoleOption[] = [
     label: "Hospital Social Worker",
     description: "Coordinate hospital discharges",
   },
-  {
-    value: UserRole.VRS_SPECIALIST,
-    label: "VRS Specialist",
-    description: "Vocational rehabilitation services",
-  },
+  // {
+  //   value: UserRole.VRS_SPECIALIST,
+  //   label: "VRS Specialist",
+  //   description: "Vocational rehabilitation services",
+  // },
   {
     value: UserRole.VENDOR,
     label: "Vendor",

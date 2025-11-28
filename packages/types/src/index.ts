@@ -2015,6 +2015,7 @@ export interface ReferralRequestStats {
 
 export interface GetRequestsParams {
   status?: string;
+  urgency?: string;
   page?: number;
   limit?: number;
 }

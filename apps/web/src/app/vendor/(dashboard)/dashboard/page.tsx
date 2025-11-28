@@ -113,12 +113,12 @@ export default function VendorDashboardPage() {
         <StatsGrid
           isLoading={isLoading}
           stats={[
-            {
-              label: "Total Leads",
-              value: stats.totalLeads,
-              description: `${stats.newLeads} new`,
-              icon: <Package className="h-4 w-4 text-muted-foreground" />,
-            },
+            // {
+            //   label: "Total Leads",
+            //   value: stats.totalLeads,
+            //   description: `${stats.newLeads} new`,
+            //   icon: <Package className="h-4 w-4 text-muted-foreground" />,
+            // },
             {
               label: "Pending Bookings",
               value: stats.pendingBookings,
@@ -131,14 +131,14 @@ export default function VendorDashboardPage() {
               description: "This month",
               icon: <FileText className="h-4 w-4 text-muted-foreground" />,
             },
-            {
-              label: "Conversion Rate",
-              value: `${stats.conversionRate}%`,
-              description: "Lead to booking",
-              icon: <Users className="h-4 w-4 text-muted-foreground" />,
-            },
+            // {
+            //   label: "Conversion Rate",
+            //   value: `${stats.conversionRate}%`,
+            //   description: "Lead to booking",
+            //   icon: <Users className="h-4 w-4 text-muted-foreground" />,
+            // },
           ]}
-          columns={4}
+          columns={2}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -156,14 +156,14 @@ export default function VendorDashboardPage() {
                 <Package className="mr-2 h-4 w-4" />
                 Manage Profile
               </Button>
-              <Button
+              {/* <Button
                 variant="healthcareSecondary"
                 className="w-full justify-start"
                 onClick={() => router.push("/vendor/leads")}
               >
                 <Users className="mr-2 h-4 w-4" />
                 View Leads
-              </Button>
+              </Button> */}
               <Button
                 variant="healthcareSecondary"
                 className="w-full justify-start"

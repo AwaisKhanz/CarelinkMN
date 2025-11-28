@@ -64,6 +64,7 @@ import {
   BOOKING_STATUS_LABELS,
 } from "@/lib/constants/index";
 import { organizationService } from "@/lib/api/services/organization.service";
+import { vendorService } from "@/lib/api/services/vendor.service";
 import { OrganizationType } from "@carelink/types";
 
 interface TransportBookingCardProps {
@@ -137,18 +138,36 @@ export function TransportBookingCard({ caseId, canManage }: TransportBookingCard
     setSearchingVendors(true);
     try {
       // Search for organizations with type VENDOR (transport vendors)
-      const vendors = await organizationService.searchOrganizations({
+      const orgs = await organizationService.searchOrganizations({
         query: search,
         type: OrganizationType.VENDOR,
         limit: 20,
       });
-      setAvailableVendors(
-        vendors.map((org) => ({
-          id: org.id,
-          name: org.name,
-          type: org.type,
-        }))
-      );
+      
+      // For each organization, find the corresponding vendor record
+      const vendorPromises = orgs.map(async (org) => {
+        try {
+          // Fetch vendor by organization ID using vendorService
+          const response = await vendorService.searchVendors({
+            organizationId: org.id,
+          });
+          
+          if (response.success && response.data && response.data.length > 0) {
+            const vendor = response.data[0];
+            return {
+              id: vendor.id, // Use vendor ID, not organization ID
+              name: org.name,
+              type: org.type,
+            };
+          }
+        } catch (err) {
+          console.error(`Error fetching vendor for org ${org.id}:`, err);
+        }
+        return null;
+      });
+      
+      const vendors = (await Promise.all(vendorPromises)).filter((v) => v !== null);
+      setAvailableVendors(vendors as Array<{ id: string; name: string; type?: string }>);
     } catch (err) {
       console.error("Error searching vendors:", err);
       toast.error("Failed to search vendors");

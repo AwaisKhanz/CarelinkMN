@@ -26,6 +26,7 @@ import {
   Send,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { referralService, providerService } from "@/lib/api";
 import { usePageMetadata } from "../../use-page-metadata";
 import { format, formatDistanceToNow } from "date-fns";
@@ -92,6 +93,26 @@ function ReferralDetailContent() {
       fetchReferral();
     }
   }, [referralId]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket || !referralId) return;
+
+    const handleReferralUpdate = (data: any) => {
+      if (data.referralId === referralId) {
+        console.log("Socket event: referral updated", data);
+        fetchReferral();
+        toast.info("Referral updated");
+      }
+    };
+
+    socket.on("referral:updated", handleReferralUpdate);
+
+    return () => {
+      socket.off("referral:updated", handleReferralUpdate);
+    };
+  }, [socket, referralId]);
 
   const fetchReferral = async () => {
     if (!referralId || !providerId) return;

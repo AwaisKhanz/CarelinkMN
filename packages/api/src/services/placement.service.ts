@@ -59,20 +59,74 @@ export class PlacementService {
         return !!placementExists;
       }
 
-      // For other users, check if they belong to the provider's organization
+      // Check if user is Hospital SW and the placement is for their discharge case
+      if (user?.role === "HOSPITAL_SW") {
+        const placement = await db.placement.findFirst({
+          where: {
+            id: placementId,
+            dischargeCase: {
+              socialWorkerId: userId,
+            },
+          },
+        });
+        if (placement) {
+          return true;
+        }
+      }
+
+      // Check if user is Case Manager and the placement is for their referral
+      if (user?.role === "CASE_MANAGER") {
+        const placement = await db.placement.findFirst({
+          where: {
+            id: placementId,
+            referral: {
+              caseManagerId: userId,
+            },
+          },
+        });
+        if (placement) {
+          return true;
+        }
+      }
+
+      // For other users (Provider staff), check if they belong to the provider's organization
+      // First, get the user's organization
+      const userWithOrg = await db.user.findUnique({
+        where: { id: userId },
+        select: { organizationId: true, role: true },
+      });
+
+      console.log("verifyPlacementAccess - User:", { userId, organizationId: userWithOrg?.organizationId, role: userWithOrg?.role });
+
+      if (!userWithOrg?.organizationId) {
+        console.log("verifyPlacementAccess - User has no organizationId, denying access");
+        return false;
+      }
+
+      // Check if the placement's provider belongs to the same organization
       const placement = await db.placement.findFirst({
         where: {
           id: placementId,
           provider: {
-            organization: {
-              users: {
-                some: {
-                  id: userId,
-                },
-              },
+            organizationId: userWithOrg.organizationId,
+          },
+        },
+        include: {
+          provider: {
+            select: {
+              id: true,
+              organizationId: true,
             },
           },
         },
+      });
+
+      console.log("verifyPlacementAccess - Placement found:", { 
+        found: !!placement, 
+        placementId,
+        providerId: placement?.provider?.id,
+        providerOrgId: placement?.provider?.organizationId,
+        userOrgId: userWithOrg.organizationId
       });
 
       return !!placement;
@@ -111,7 +165,8 @@ export class PlacementService {
   // Create a new placement
   async createPlacement(
     data: CreatePlacementData,
-    userId: string
+    userId: string,
+    userRole?: string
   ): Promise<any> {
     try {
       // Get opening to verify access and get providerId
@@ -127,12 +182,16 @@ export class PlacementService {
       }
 
       // Verify user has access to opening's provider
-      const hasAccess = await this.verifyProviderAccess(
-        userId,
-        opening.providerId
-      );
-      if (!hasAccess) {
-        throw new Error("Access denied");
+      // Skip check for Hospital SW and Case Manager who can create placements for any provider
+      const canBypassCheck = userRole === 'HOSPITAL_SW' || userRole === 'CASE_MANAGER';
+      if (!canBypassCheck) {
+        const hasAccess = await this.verifyProviderAccess(
+          userId,
+          opening.providerId
+        );
+        if (!hasAccess) {
+          throw new Error("Access denied");
+        }
       }
 
       // Verify opening has available spots
@@ -358,6 +417,49 @@ export class PlacementService {
         }
       } catch (notifError) {
         console.error("Failed to create placement notification:", notifError);
+      }
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Determine recipients for socket event
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { role: true }
+        });
+        const isCaseManager = user?.role === "CASE_MANAGER" || user?.role === "HOSPITAL_SW";
+
+        if (isCaseManager) {
+          // Notify provider users
+          const provider = await db.provider.findUnique({
+            where: { id: opening.providerId },
+            include: { organization: { include: { users: true } } }
+          });
+          
+          if (provider?.organization?.users) {
+            provider.organization.users.forEach(u => {
+              socketServer.getIO().to(`user:${u.id}`).emit("placement:created", {
+                placementId: result.id,
+                referralId: result.referralId,
+                dischargeCaseId: result.dischargeCaseId
+              });
+            });
+          }
+        } else {
+          // Notify Case Manager / Social Worker
+          const recipientId = result.referral?.caseManagerId || result.dischargeCase?.socialWorkerId;
+          if (recipientId) {
+            socketServer.getIO().to(`user:${recipientId}`).emit("placement:created", {
+              placementId: result.id,
+              referralId: result.referralId,
+              dischargeCaseId: result.dischargeCaseId
+            });
+          }
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit placement socket event:", socketError);
       }
 
       return result;
@@ -609,7 +711,30 @@ export class PlacementService {
         }
       } catch (notifError) {
         console.error("Failed to create placement notifications:", notifError);
-      // Don't throw - notification failure shouldn't break placement creation
+        // Don't throw - notification failure shouldn't break placement creation
+      }
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify provider users
+        const provider = await db.provider.findUnique({
+          where: { id: data.providerId },
+          include: { organization: { include: { users: true } } }
+        });
+        
+        if (provider?.organization?.users) {
+          provider.organization.users.forEach(u => {
+            socketServer.getIO().to(`user:${u.id}`).emit("placement:created", {
+              placementId: result.id,
+              referralId: data.referralId
+            });
+          });
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit placement socket event:", socketError);
       }
 
       return result;
@@ -690,7 +815,8 @@ export class PlacementService {
           placementDate: data.placementDate,
           moveInDate: data.moveInDate,
         },
-        userId
+        userId,
+        user?.role // Pass user role to bypass provider access check
       );
 
       return placement;
@@ -1128,6 +1254,51 @@ export class PlacementService {
         }
       }
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Determine recipients for socket event
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { role: true }
+        });
+        const isCaseManager = user?.role === "CASE_MANAGER" || user?.role === "HOSPITAL_SW";
+
+        if (isCaseManager) {
+          // Notify provider users
+          const provider = await db.provider.findUnique({
+            where: { id: placement.providerId },
+            include: { organization: { include: { users: true } } }
+          });
+          
+          if (provider?.organization?.users) {
+            provider.organization.users.forEach(u => {
+              socketServer.getIO().to(`user:${u.id}`).emit("placement:updated", {
+                placementId: placement.id,
+                referralId: placement.referralId,
+                dischargeCaseId: placement.dischargeCaseId,
+                status: placement.status
+              });
+            });
+          }
+        } else {
+          // Notify Case Manager / Social Worker
+          const recipientId = placement.referral?.caseManagerId || placement.dischargeCase?.socialWorkerId;
+          if (recipientId) {
+            socketServer.getIO().to(`user:${recipientId}`).emit("placement:updated", {
+              placementId: placement.id,
+              referralId: placement.referralId,
+              dischargeCaseId: placement.dischargeCaseId,
+              status: placement.status
+            });
+          }
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit placement socket event:", socketError);
+      }
+
       return placement;
     } catch (error) {
       console.error("Update placement error:", error);
@@ -1312,6 +1483,55 @@ export class PlacementService {
           packetUrl: accessToken, // Store token in packetUrl field for validation
         },
       });
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Notify all relevant users about the update
+        // We can use the same logic as updatePlacement, or just emit to the placement room if we had one
+        // For now, we'll emit to the provider and case manager
+        
+        const fullPlacement = await db.placement.findUnique({
+          where: { id: placementId },
+          include: {
+            provider: { include: { organization: { include: { users: true } } } },
+            referral: { select: { caseManagerId: true } },
+            dischargeCase: { select: { socialWorkerId: true } }
+          }
+        });
+
+        if (fullPlacement) {
+          const recipientIds: string[] = [];
+          
+          // Provider users
+          if (fullPlacement.provider.organization.users) {
+            recipientIds.push(...fullPlacement.provider.organization.users.map(u => u.id));
+          }
+          
+          // Case Manager
+          if (fullPlacement.referral?.caseManagerId) {
+            recipientIds.push(fullPlacement.referral.caseManagerId);
+          }
+          
+          // Social Worker
+          if (fullPlacement.dischargeCase?.socialWorkerId) {
+            recipientIds.push(fullPlacement.dischargeCase.socialWorkerId);
+          }
+          
+          recipientIds.forEach(uid => {
+            socketServer.getIO().to(`user:${uid}`).emit("placement:updated", {
+              placementId,
+              referralId: fullPlacement.referralId,
+              dischargeCaseId: fullPlacement.dischargeCaseId,
+              action: "packet_generated"
+            });
+          });
+        }
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
 
       return { packetUrl, accessToken };
     } catch (error) {

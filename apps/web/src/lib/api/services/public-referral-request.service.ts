@@ -20,7 +20,7 @@ export const publicReferralRequestService = {
   async createRequest(
     data: CreateReferralRequestData
   ): Promise<ApiResponse<ReferralRequest>> {
-    return apiService.post<ReferralRequest>("/public-requests", data);
+    return apiService.post<ReferralRequest>("/api/public-requests", data);
   },
 
   /**
@@ -43,7 +43,7 @@ export const publicReferralRequestService = {
 
     const query = searchParams.toString();
     return apiService.get<GetRequestsResponse>(
-      `/public-requests${query ? `?${query}` : ""}`
+      `/api/public-requests${query ? `?${query}` : ""}`
     );
   },
 
@@ -51,7 +51,7 @@ export const publicReferralRequestService = {
    * Get a single request by ID (auth required)
    */
   async getRequest(id: string): Promise<ApiResponse<ReferralRequest>> {
-    return apiService.get<ReferralRequest>(`/public-requests/${id}`);
+    return apiService.get<ReferralRequest>(`/api/public-requests/${id}`);
   },
 
   /**
@@ -61,20 +61,54 @@ export const publicReferralRequestService = {
     id: string,
     data: UpdateReferralRequestData
   ): Promise<ApiResponse<ReferralRequest>> {
-    return apiService.put<ReferralRequest>(`/public-requests/${id}`, data);
+    return apiService.put<ReferralRequest>(`/api/public-requests/${id}`, data);
   },
 
   /**
    * Cancel a request (auth required)
    */
   async cancelRequest(id: string): Promise<ApiResponse<void>> {
-    return apiService.delete<void>(`/public-requests/${id}`);
+    return apiService.delete<void>(`/api/public-requests/${id}`);
   },
 
   /**
    * Get request statistics (auth required)
    */
   async getStats(): Promise<ApiResponse<ReferralRequestStats>> {
-    return apiService.get<ReferralRequestStats>("/public-requests/stats");
+    return apiService.get<ReferralRequestStats>("/api/public-requests/stats");
+  },
+
+  /**
+   * Get queue of pending requests (Case Managers only)
+   */
+  async getQueue(
+    params?: GetRequestsParams
+  ): Promise<ApiResponse<GetRequestsResponse>> {
+    const searchParams = new URLSearchParams();
+
+    if (params?.status) {
+      searchParams.append("status", params.status);
+    }
+    if (params?.urgency) {
+      searchParams.append("urgency", params.urgency);
+    }
+    if (params?.page) {
+      searchParams.append("page", params.page.toString());
+    }
+    if (params?.limit) {
+      searchParams.append("limit", params.limit.toString());
+    }
+
+    const query = searchParams.toString();
+    return apiService.get<GetRequestsResponse>(
+      `/api/public-requests/queue${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Claim a request (Case Managers only)
+   */
+  async claimRequest(id: string): Promise<ApiResponse<ReferralRequest>> {
+    return apiService.post<ReferralRequest>(`/api/public-requests/${id}/claim`, {});
   },
 };

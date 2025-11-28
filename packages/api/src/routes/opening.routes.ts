@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { OpeningController } from "../controllers/opening.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS, CASE_MANAGER_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, CASE_MANAGER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 import { OpeningStatus, Gender, Payer } from "@prisma/client";
 
 const router: Router = Router();
@@ -101,7 +101,8 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
-    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW, // Allow Hospital SW to view openings for placement creation
   ]),
   openingController.getOpenings.bind(openingController)
 );
@@ -128,7 +129,8 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.DASHBOARD_VIEW,
-    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW
+    CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW, // Allow Hospital SW to view opening details
   ]),
   openingController.getOpeningById.bind(openingController)
 );

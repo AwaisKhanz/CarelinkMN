@@ -19,6 +19,8 @@ export class PublicReferralRequestController {
     this.updateRequest = this.updateRequest.bind(this);
     this.cancelRequest = this.cancelRequest.bind(this);
     this.getStats = this.getStats.bind(this);
+    this.getQueue = this.getQueue.bind(this);
+    this.claimRequest = this.claimRequest.bind(this);
   }
 
   // Create a new referral request
@@ -280,6 +282,109 @@ export class PublicReferralRequestController {
           error instanceof Error
             ? error.message
             : "An error occurred while retrieving statistics",
+      } as ApiResponse);
+    }
+  }
+
+  // Get queue of pending requests (Case Managers only)
+  async getQueue(req: Request, res: Response): Promise<void> {
+    try {
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Only CASE_MANAGER role can access queue
+      if (user.role !== UserRole.CASE_MANAGER) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "Only case managers can access the request queue",
+        } as ApiResponse);
+        return;
+      }
+
+      const { status, urgency, page, limit } = req.query;
+
+      const result = await this.service.getQueue({
+        status: status as RequestStatus,
+        urgency: urgency as string,
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "Queue retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Get queue error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve queue",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving the queue",
+      } as ApiResponse);
+    }
+  }
+
+  // Claim a request (Case Managers only)
+  async claimRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      // Only CASE_MANAGER role can claim requests
+      if (user.role !== UserRole.CASE_MANAGER) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "Only case managers can claim requests",
+        } as ApiResponse);
+        return;
+      }
+
+      const request = await this.service.claimRequest(id, user.id);
+
+      res.status(200).json({
+        success: true,
+        data: request,
+        message: "Request claimed successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Claim request error:", error);
+      const statusCode =
+        error instanceof Error && error.message === "Request not found"
+          ? 404
+          : error instanceof Error &&
+              error.message === "Request is not available for claiming"
+            ? 400
+            : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: "Request claim failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while claiming the request",
       } as ApiResponse);
     }
   }

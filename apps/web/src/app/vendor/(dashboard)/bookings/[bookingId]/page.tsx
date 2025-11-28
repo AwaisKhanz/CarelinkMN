@@ -72,7 +72,7 @@ export default function VendorBookingDetailPage() {
     setError(null);
     try {
       const response = await vendorService.getVendorBookings(vendorId, {
-        limit: 1000, // Get all to find this booking
+        limit: 100, // Maximum allowed by API
       });
 
       if (response.success && response.data) {

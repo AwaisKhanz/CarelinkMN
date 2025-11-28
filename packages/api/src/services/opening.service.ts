@@ -170,6 +170,26 @@ export class OpeningService {
         },
       });
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Broadcast to all users (Case Managers search openings)
+        socketServer.getIO().emit("opening:created", {
+          openingId: opening.id,
+          providerId: opening.providerId,
+          homeId: opening.homeId,
+          homeName: opening.home.name,
+          city: opening.home.city,
+          state: opening.home.state,
+          spotsAvailable: opening.spotsAvailable,
+          careLevels: opening.careLevels,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit opening socket event:", socketError);
+      }
+
       return opening;
     } catch (error) {
       console.error("Create opening error:", error);
@@ -192,11 +212,11 @@ export class OpeningService {
 
       const where: any = {};
 
-      // If providerId is provided, verify access (skip for Case Managers who can view all)
+      // If providerId is provided, verify access (skip for Case Managers and Hospital SW who can view all)
       if (providerId) {
-        // Case Managers can view openings from any provider
-        const isCaseManager = userRole === 'CASE_MANAGER';
-        if (!isCaseManager) {
+        // Case Managers and Hospital SW can view openings from any provider
+        const canViewAll = userRole === 'CASE_MANAGER' || userRole === 'HOSPITAL_SW';
+        if (!canViewAll) {
           const hasAccess = await this.verifyProviderAccess(userId, providerId);
           if (!hasAccess) {
             throw new Error("Access denied");
@@ -206,9 +226,9 @@ export class OpeningService {
       }
 
       if (homeId) {
-        // Case Managers can view openings from any home
-        const isCaseManager = userRole === 'CASE_MANAGER';
-        if (!isCaseManager) {
+        // Case Managers and Hospital SW can view openings from any home
+        const canViewAll = userRole === 'CASE_MANAGER' || userRole === 'HOSPITAL_SW';
+        if (!canViewAll) {
           const hasAccess = await this.verifyHomeAccess(userId, homeId);
           if (!hasAccess) {
             throw new Error("Access denied");
@@ -519,6 +539,22 @@ export class OpeningService {
         },
       });
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Broadcast to all users
+        socketServer.getIO().emit("opening:updated", {
+          openingId: opening.id,
+          providerId: opening.providerId,
+          homeId: opening.homeId,
+          changes: updateData,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit opening socket event:", socketError);
+      }
+
       return {
         ...opening,
         isFresh: this.isOpeningFresh(opening.freshnessTimestamp),
@@ -575,6 +611,20 @@ export class OpeningService {
       await db.opening.delete({
         where: { id: openingId },
       });
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Broadcast to all users
+        socketServer.getIO().emit("opening:deleted", {
+          openingId,
+          providerId: existingOpening.providerId,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit opening socket event:", socketError);
+      }
 
       return true;
     } catch (error) {

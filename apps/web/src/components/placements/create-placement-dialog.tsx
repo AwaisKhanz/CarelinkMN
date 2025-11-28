@@ -28,23 +28,35 @@ import { CalendarIcon, Loader2, CheckCircle, ArrowRight, ArrowLeft } from "lucid
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { placementService, providerService, homeService, openingService, OpeningStatus } from "@/lib/api";
-import type { ReferralShortlist } from "@/lib/api";
+import { placementService, homeService, openingService, OpeningStatus } from "@/lib/api";
+
+// Define a generic interface for the candidate providers (works for both ReferralShortlist and DischargeInvitation)
+export interface PlacementCandidate {
+  providerId: string;
+  providerName: string;
+  status: string; // "RESPONDED" | "ACCEPTED" etc.
+  respondedAt?: string | Date | null;
+  responseNotes?: string | null;
+}
 
 interface CreatePlacementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  referralId: string;
-  shortlist: ReferralShortlist[];
+  referralId?: string;
+  dischargeCaseId?: string;
+  candidates: PlacementCandidate[];
   onSuccess: () => void;
+  userRole: "CASE_MANAGER" | "HOSPITAL_SW";
 }
 
 export function CreatePlacementDialog({
   open,
   onOpenChange,
   referralId,
-  shortlist,
+  dischargeCaseId,
+  candidates,
   onSuccess,
+  userRole,
 }: CreatePlacementDialogProps) {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,9 +75,11 @@ export function CreatePlacementDialog({
   const [isLoadingHomes, setIsLoadingHomes] = useState(false);
   const [isLoadingOpenings, setIsLoadingOpenings] = useState(false);
 
-  // Filter shortlist to only show providers who have RESPONDED
-  const respondedProviders = shortlist.filter(
-    (s) => s.status === "RESPONDED"
+  // Filter candidates to only show providers who have RESPONDED or ACCEPTED
+  // For Referrals: status is "RESPONDED"
+  // For Discharge Cases: status is "ACCEPTED" (InviteResponse.ACCEPTED)
+  const eligibleCandidates = candidates.filter(
+    (c) => c.status === "RESPONDED" || c.status === "ACCEPTED"
   );
 
   // Reset form when dialog closes
@@ -164,20 +178,43 @@ export function CreatePlacementDialog({
 
     setIsLoading(true);
     try {
-      const response = await placementService.createPlacementFromReferral({
-        referralId,
-        providerId: selectedProviderId,
-        homeId: selectedHomeId,
-        openingId: selectedOpeningId,
-        placementDate: placementDate.toISOString(),
-        moveInDate: moveInDate?.toISOString(),
-        notes: notes || undefined,
-      });
+      let response;
+      
+      if (referralId) {
+        response = await placementService.createPlacementFromReferral({
+          referralId,
+          providerId: selectedProviderId,
+          homeId: selectedHomeId,
+          openingId: selectedOpeningId,
+          placementDate: placementDate.toISOString(),
+          moveInDate: moveInDate?.toISOString(),
+          notes: notes || undefined,
+        });
+      } else if (dischargeCaseId) {
+        response = await placementService.createPlacementFromDischargeCase({
+          dischargeCaseId,
+          providerId: selectedProviderId,
+          homeId: selectedHomeId,
+          openingId: selectedOpeningId,
+          placementDate: placementDate.toISOString(),
+          moveInDate: moveInDate?.toISOString(),
+          notes: notes || undefined,
+        });
+      } else {
+        throw new Error("Missing referralId or dischargeCaseId");
+      }
 
-      if (response.success) {
+      if (response.success && response.data) {
         toast.success("Placement created successfully");
         onSuccess();
         onOpenChange(false);
+        
+        // Redirect based on role
+        if (userRole === "CASE_MANAGER") {
+          window.location.href = `/case-manager/placements/${response.data.id}`;
+        } else if (userRole === "HOSPITAL_SW") {
+          window.location.href = `/hospital-sw/placements/${response.data.id}`;
+        }
       } else {
         toast.error(response.message || "Failed to create placement");
       }
@@ -195,26 +232,25 @@ export function CreatePlacementDialog({
   const canProceedToStep3 = selectedHomeId !== "";
   const canProceedToStep4 = selectedOpeningId !== "";
 
-  const selectedProvider = respondedProviders.find(
+  const selectedProvider = eligibleCandidates.find(
     (s) => s.providerId === selectedProviderId
   );
   const selectedHome = homes.find((h) => h.id === selectedHomeId);
   const selectedOpening = openings.find((o) => o.id === selectedOpeningId);
 
-  if (respondedProviders.length === 0) {
+  if (eligibleCandidates.length === 0) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create Placement</DialogTitle>
             <DialogDescription>
-              No providers have responded to this referral yet.
+              No providers have responded to this request yet.
             </DialogDescription>
           </DialogHeader>
           <div className="py-6 text-center text-muted-foreground">
             <p>
-              Wait for providers to respond to the referral before creating a
-              placement.
+              Wait for providers to respond before creating a placement.
             </p>
           </div>
           <div className="flex justify-end">
@@ -231,7 +267,7 @@ export function CreatePlacementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create Placement from Referral</DialogTitle>
+          <DialogTitle>Create Placement</DialogTitle>
           <DialogDescription>
             Step {step} of 4: {
               step === 1 ? "Select Provider" :
@@ -256,15 +292,15 @@ export function CreatePlacementDialog({
                     <SelectValue placeholder="Select a provider" />
                   </SelectTrigger>
                   <SelectContent>
-                    {respondedProviders.map((shortlistItem) => (
+                    {eligibleCandidates.map((candidate) => (
                       <SelectItem
-                        key={shortlistItem.providerId}
-                        value={shortlistItem.providerId}
+                        key={candidate.providerId}
+                        value={candidate.providerId}
                       >
-                        {shortlistItem.provider?.organization?.name || "Unknown Provider"}
-                        {shortlistItem.respondedAt && (
+                        {candidate.providerName}
+                        {candidate.respondedAt && (
                           <span className="text-xs text-muted-foreground ml-2">
-                            (Responded {format(new Date(shortlistItem.respondedAt), "MMM d")})
+                            (Responded {format(new Date(candidate.respondedAt), "MMM d")})
                           </span>
                         )}
                       </SelectItem>
@@ -272,7 +308,7 @@ export function CreatePlacementDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Only showing providers who have responded to this referral
+                  Only showing providers who have responded
                 </p>
 
                 {/* Selected Provider Details */}
@@ -283,7 +319,7 @@ export function CreatePlacementDialog({
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Organization:</span>
                         <span className="font-medium">
-                          {selectedProvider.provider?.organization?.name}
+                          {selectedProvider.providerName}
                         </span>
                       </div>
                       {selectedProvider.respondedAt && (
@@ -294,10 +330,10 @@ export function CreatePlacementDialog({
                           </span>
                         </div>
                       )}
-                      {selectedProvider.notes && (
+                      {selectedProvider.responseNotes && (
                         <div className="mt-2 pt-2 border-t border-border">
                           <p className="text-muted-foreground text-xs mb-1">Response Notes:</p>
-                          <p className="text-sm">{selectedProvider.notes}</p>
+                          <p className="text-sm">{selectedProvider.responseNotes}</p>
                         </div>
                       )}
                     </div>
@@ -369,35 +405,6 @@ export function CreatePlacementDialog({
                             </p>
                           </div>
                         </div>
-                        {/* Accessibility Features */}
-                        {(selectedHome.wheelchairAccessible || selectedHome.singleLevel || 
-                          selectedHome.hasElevator || selectedHome.hasRollInShower) && (
-                          <div>
-                            <p className="text-muted-foreground text-xs mb-1">Accessibility</p>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedHome.wheelchairAccessible && (
-                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                  Wheelchair Accessible
-                                </span>
-                              )}
-                              {selectedHome.singleLevel && (
-                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                  Single Level
-                                </span>
-                              )}
-                              {selectedHome.hasElevator && (
-                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                  Elevator
-                                </span>
-                              )}
-                              {selectedHome.hasRollInShower && (
-                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                  Roll-in Shower
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </>
@@ -459,12 +466,6 @@ export function CreatePlacementDialog({
                             </p>
                           </div>
                         </div>
-                        {selectedOpening.description && (
-                          <div>
-                            <p className="text-muted-foreground text-xs mb-1">Description</p>
-                            <p className="text-sm">{selectedOpening.description}</p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </>
@@ -480,7 +481,7 @@ export function CreatePlacementDialog({
               <div className="p-4 bg-muted/50 rounded-lg space-y-2">
                 <h4 className="font-semibold text-sm">Placement Summary</h4>
                 <div className="text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Provider:</span> {selectedProvider?.provider?.organization?.name}</p>
+                  <p><span className="text-muted-foreground">Provider:</span> {selectedProvider?.providerName}</p>
                   <p><span className="text-muted-foreground">Home:</span> {selectedHome?.name}</p>
                   <p><span className="text-muted-foreground">Opening:</span> {selectedOpening?.careLevels?.join(", ") || "Not specified"}</p>
                 </div>

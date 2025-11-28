@@ -18,6 +18,3 @@ export { StatusUpdateDialog } from "./status-update-dialog";
 export { BatchMessageDialog } from "./batch-message-dialog";
 export { DeleteReferralDialog } from "./delete-referral-dialog";
 export { AssignmentDialog } from "./assignment-dialog";
-export { CreatePlacementDialog } from "./create-placement-dialog";
-
-

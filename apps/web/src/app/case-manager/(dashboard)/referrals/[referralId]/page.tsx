@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Edit } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { usePageMetadata } from "../../use-page-metadata";
 import {
   referralService,
@@ -36,8 +37,8 @@ import {
   BatchMessageDialog,
   DeleteReferralDialog,
   AssignmentDialog,
-  CreatePlacementDialog,
 } from "./components";
+import { CreatePlacementDialog } from "@/components/placements/create-placement-dialog";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
@@ -95,6 +96,39 @@ function ReferralDetailPageContent() {
       fetchPlacements();
     }
   }, [referralId]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket || !referralId) return;
+
+    const handleReferralUpdate = (data: any) => {
+      if (data.referralId === referralId) {
+        console.log("Socket event: referral updated", data);
+        fetchReferralData();
+        fetchShortlist();
+        toast.info("Referral updated");
+      }
+    };
+
+    const handlePlacementUpdate = (data: any) => {
+      if (data.referralId === referralId) {
+        console.log("Socket event: placement update", data);
+        fetchPlacements();
+        toast.info("Placement updated");
+      }
+    };
+
+    socket.on("referral:updated", handleReferralUpdate);
+    socket.on("placement:created", handlePlacementUpdate);
+    socket.on("placement:updated", handlePlacementUpdate);
+
+    return () => {
+      socket.off("referral:updated", handleReferralUpdate);
+      socket.off("placement:created", handlePlacementUpdate);
+      socket.off("placement:updated", handlePlacementUpdate);
+    };
+  }, [socket, referralId]);
 
   const fetchReferralData = async () => {
     try {
@@ -543,12 +577,18 @@ function ReferralDetailPageContent() {
         open={createPlacementDialogOpen}
         onOpenChange={setCreatePlacementDialogOpen}
         referralId={referral.id}
-        shortlist={shortlist.filter(s => s.status === ShortlistStatus.RESPONDED)}
+        candidates={shortlist.map(s => ({
+          providerId: s.providerId,
+          providerName: s.provider?.organization?.name || "Unknown Provider",
+          status: s.status,
+          respondedAt: s.respondedAt,
+          responseNotes: s.notes
+        }))}
         onSuccess={() => {
-          setCreatePlacementDialogOpen(false);
           fetchPlacements();
-          fetchReferralData();
+          fetchShortlist();
         }}
+        userRole="CASE_MANAGER"
       />
     </div>
   );

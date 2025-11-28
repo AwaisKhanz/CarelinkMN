@@ -110,13 +110,24 @@ export default function VendorLeadsPage() {
       // Refresh list on relevant notifications
       if (notification.type === NotificationType.NEW_LEAD) {
         fetchLeads();
+        toast.info("New lead received");
       }
     };
 
+    const handleTransportBooking = (data: any) => {
+      console.log("Socket event: transport booking", data);
+      fetchLeads();
+      toast.info("Transport booking updated");
+    };
+
     socket.on("notification:new", handleNotification);
+    socket.on("transport:booking-created", handleTransportBooking);
+    socket.on("transport:booking-updated", handleTransportBooking);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("transport:booking-created", handleTransportBooking);
+      socket.off("transport:booking-updated", handleTransportBooking);
     };
   }, [socket, fetchLeads]);
 

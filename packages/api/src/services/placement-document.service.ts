@@ -95,30 +95,45 @@ export class PlacementDocumentService {
       const isSystemAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
       if (!isSystemAdmin) {
-        // For non-admin users, verify access through organization
-        const placement = await db.placement.findUnique({
-          where: { id: placementId },
-          include: {
-            provider: {
-              include: {
-                organization: {
-                  include: {
-                    users: {
-                      where: { id: userId },
+        // Check if user is Hospital SW and the placement is for their discharge case
+        if (user?.role === "HOSPITAL_SW") {
+          const placement = await db.placement.findFirst({
+            where: {
+              id: placementId,
+              dischargeCase: {
+                socialWorkerId: userId,
+              },
+            },
+          });
+          if (!placement) {
+            throw new Error("Access denied");
+          }
+        } else {
+          // For provider users, verify access through organization
+          const placement = await db.placement.findUnique({
+            where: { id: placementId },
+            include: {
+              provider: {
+                include: {
+                  organization: {
+                    include: {
+                      users: {
+                        where: { id: userId },
+                      },
                     },
                   },
                 },
               },
             },
-          },
-        });
+          });
 
-        if (!placement) {
-          throw new Error("Placement not found");
-        }
+          if (!placement) {
+            throw new Error("Placement not found");
+          }
 
-        if (placement.provider.organization.users.length === 0) {
-          throw new Error("Access denied");
+          if (placement.provider.organization.users.length === 0) {
+            throw new Error("Access denied");
+          }
         }
       } else {
         // For admins, just verify placement exists

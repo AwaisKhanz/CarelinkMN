@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Plus, Package } from "lucide-react";
 import { PlacementItem } from "./placement-item";
-import { CreatePlacementDialog } from "./create-placement-dialog";
 import type { Placement, ReferralShortlist } from "@/lib/api";
 
 interface PlacementsTabProps {
@@ -23,16 +22,8 @@ export function PlacementsTab({
   shortlist = [],
   onRefresh,
 }: PlacementsTabProps) {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
   // Check if there are any providers who have responded
   const hasRespondedProviders = shortlist.some((s) => s.status === "RESPONDED");
-
-  const handlePlacementCreated = () => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
 
   if (isLoading) {
     return (
@@ -60,7 +51,10 @@ export function PlacementsTab({
               <Button
                 variant="healthcare"
                 size="sm"
-                onClick={() => setCreateDialogOpen(true)}
+                onClick={() => {
+                  // TODO: Implement placement creation
+                  alert("Placement creation coming soon!");
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Placement
@@ -81,7 +75,10 @@ export function PlacementsTab({
               {hasRespondedProviders && (
                 <Button
                   variant="healthcare"
-                  onClick={() => setCreateDialogOpen(true)}
+                  onClick={() => {
+                    // TODO: Implement placement creation
+                    alert("Placement creation coming soon!");
+                  }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Placement
@@ -104,14 +101,6 @@ export function PlacementsTab({
           )}
         </CardContent>
       </Card>
-
-      <CreatePlacementDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        referralId={referralId}
-        shortlist={shortlist}
-        onSuccess={handlePlacementCreated}
-      />
     </>
   );
 }

@@ -254,7 +254,7 @@ export class PublicService {
               },
             },
           },
-          orderBy: this.getOrderBy(sortBy),
+          orderBy: this.getOrderBy(sortBy) as Prisma.ProviderOrderByWithRelationInput | Prisma.ProviderOrderByWithRelationInput[],
         }),
         db.provider.count({ where }),
       ]);
@@ -736,24 +736,24 @@ export class PublicService {
   /**
    * Get order by clause based on sort option
    */
-  private getOrderBy(sortBy: string): Prisma.ProviderOrderByWithRelationInput {
+  private getOrderBy(sortBy: string): Prisma.ProviderOrderByWithRelationInput | Prisma.ProviderOrderByWithRelationInput[] {
     switch (sortBy) {
       case "distance":
         // Distance sorting would need to be done in application layer
         // For now, fall back to relevance
-        return {
-          boostLevel: "desc", // Boosted providers first
-          verified: "desc",
-          createdAt: "desc",
-        };
+        return [
+          { boostLevel: "desc" },
+          { verified: "desc" },
+          { createdAt: "desc" },
+        ];
       case "rating":
         // Rating sorting would need rating field
         // For now, fall back to relevance
-        return {
-          boostLevel: "desc", // Boosted providers first
-          verified: "desc",
-          createdAt: "desc",
-        };
+        return [
+          { boostLevel: "desc" },
+          { verified: "desc" },
+          { createdAt: "desc" },
+        ];
       case "newest":
         return {
           createdAt: "desc",
@@ -762,12 +762,12 @@ export class PublicService {
       default:
         // Boost influence: Boosted providers appear higher
         // But verified status and subscription tier still matter
-        return {
-          boostLevel: "desc", // Primary ranking factor (0, 1, 2, 3)
-          verified: "desc",    // Verified providers ranked higher
-          subscriptionTier: "desc", // Higher tiers ranked higher
-          createdAt: "desc",   // Newest first as tiebreaker
-        };
+        return [
+          { boostLevel: "desc" }, // Primary ranking factor (0, 1, 2, 3)
+          { verified: "desc" },    // Verified providers ranked higher
+          { subscriptionTier: "desc" }, // Higher tiers ranked higher
+          { createdAt: "desc" },   // Newest first as tiebreaker
+        ];
     }
   }
 

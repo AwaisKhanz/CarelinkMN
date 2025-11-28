@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { PlacementFollowUpController } from "../controllers/placement-followup.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 import { FollowUpType, FollowUpOutcome } from "@prisma/client";
 
 const router: Router = Router();
@@ -42,6 +42,7 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     "system:view", // Allow Admin/Super Admin access
   ]),
   followUpController.getFollowUps.bind(followUpController)

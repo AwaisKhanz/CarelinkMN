@@ -363,7 +363,7 @@ function AdminUsersPageContent() {
                   <SelectItem value={UserRole.PROVIDER_STAFF}>{USER_ROLE_LABELS.PROVIDER_STAFF}</SelectItem>
                   <SelectItem value={UserRole.CASE_MANAGER}>{USER_ROLE_LABELS.CASE_MANAGER}</SelectItem>
                   <SelectItem value={UserRole.HOSPITAL_SW}>{USER_ROLE_LABELS.HOSPITAL_SW}</SelectItem>
-                  <SelectItem value={UserRole.VRS_SPECIALIST}>{USER_ROLE_LABELS.VRS_SPECIALIST}</SelectItem>
+                  {/* <SelectItem value={UserRole.VRS_SPECIALIST}>{USER_ROLE_LABELS.VRS_SPECIALIST}</SelectItem> */}
                   <SelectItem value={UserRole.VENDOR}>{USER_ROLE_LABELS.VENDOR}</SelectItem>
                 </SelectContent>
               </Select>
@@ -532,7 +532,7 @@ function AdminUsersPageContent() {
                     <SelectItem value={UserRole.PROVIDER_STAFF}>{USER_ROLE_LABELS.PROVIDER_STAFF}</SelectItem>
                     <SelectItem value={UserRole.CASE_MANAGER}>{USER_ROLE_LABELS.CASE_MANAGER}</SelectItem>
                     <SelectItem value={UserRole.HOSPITAL_SW}>{USER_ROLE_LABELS.HOSPITAL_SW}</SelectItem>
-                    <SelectItem value={UserRole.VRS_SPECIALIST}>{USER_ROLE_LABELS.VRS_SPECIALIST}</SelectItem>
+                    {/* <SelectItem value={UserRole.VRS_SPECIALIST}>{USER_ROLE_LABELS.VRS_SPECIALIST}</SelectItem> */}
                     <SelectItem value={UserRole.VENDOR}>{USER_ROLE_LABELS.VENDOR}</SelectItem>
                   </SelectContent>
                 </Select>

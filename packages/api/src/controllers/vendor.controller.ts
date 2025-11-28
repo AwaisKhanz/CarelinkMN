@@ -61,6 +61,44 @@ export class VendorController {
     }
   };
 
+  // Search/List vendors
+  searchVendors = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const user = (req as unknown as AuthenticatedRequest).user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+          message: "User not authenticated",
+        } as ApiResponse);
+        return;
+      }
+
+      const params = {
+        search: req.query.search as string | undefined,
+        organizationId: req.query.organizationId as string | undefined,
+        category: req.query.category as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
+      };
+
+      const vendors = await this.vendorService.searchVendors(params);
+
+      res.status(200).json({
+        success: true,
+        data: vendors,
+        message: "Vendors retrieved successfully",
+      } as ApiResponse);
+    } catch (error) {
+      console.error("Search vendors error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Vendor search failed",
+        message: "An error occurred while searching vendors",
+      } as ApiResponse);
+    }
+  };
+
   // Get vendor by vendor ID
   getVendorById = async (req: Request, res: Response): Promise<void> => {
     try {

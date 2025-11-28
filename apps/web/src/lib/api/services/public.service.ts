@@ -110,7 +110,7 @@ export const publicService = {
 
     const query = searchParams.toString();
     return apiService.get<PublicSearchResponse>(
-      `/public/providers${query ? `?${query}` : ""}`
+      `/api/public/providers${query ? `?${query}` : ""}`
     );
   },
 
@@ -130,7 +130,7 @@ export const publicService = {
 
     const query = searchParams.toString();
     return apiService.get<ProviderPublicProfile>(
-      `/public/providers/${providerId}${query ? `?${query}` : ""}`
+      `/api/public/providers/${providerId}${query ? `?${query}` : ""}`
     );
   },
 
@@ -138,7 +138,7 @@ export const publicService = {
    * Get user's favorites (auth required)
    */
   async getFavorites(): Promise<ApiResponse<GetFavoritesResponse>> {
-    return apiService.get<GetFavoritesResponse>("/public/favorites");
+    return apiService.get<GetFavoritesResponse>("/api/public/favorites");
   },
 
   /**
@@ -147,14 +147,14 @@ export const publicService = {
   async addFavorite(
     data: CreateFavoriteData
   ): Promise<ApiResponse<Favorite>> {
-    return apiService.post<Favorite>("/public/favorites", data);
+    return apiService.post<Favorite>("/api/public/favorites", data);
   },
 
   /**
    * Remove provider from favorites (auth required)
    */
   async removeFavorite(favoriteId: string): Promise<ApiResponse<void>> {
-    return apiService.delete<void>(`/public/favorites/${favoriteId}`);
+    return apiService.delete<void>(`/api/public/favorites/${favoriteId}`);
   },
 
   /**
@@ -164,7 +164,7 @@ export const publicService = {
   async parseQuery(
     query: string
   ): Promise<ApiResponse<CareBotQueryResponse>> {
-    return apiService.post<CareBotQueryResponse>("/public/carebot/parse", {
+    return apiService.post<CareBotQueryResponse>("/api/public/carebot/parse", {
       query,
     });
   },

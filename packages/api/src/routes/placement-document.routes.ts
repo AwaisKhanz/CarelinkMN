@@ -3,7 +3,7 @@ import { body, param, query } from "express-validator";
 import { PlacementDocumentController } from "../controllers/placement-document.controller";
 import { AuthMiddleware } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
-import { PROVIDER_PERMISSIONS } from "../lib/rbac";
+import { PROVIDER_PERMISSIONS, HOSPITAL_SW_PERMISSIONS } from "../lib/rbac";
 import { DocumentCategory } from "@prisma/client";
 
 const router: Router = Router();
@@ -66,6 +66,7 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     "system:view", // Allow Admin/Super Admin access
   ]),
   documentController.getDocuments.bind(documentController)
@@ -85,6 +86,7 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     "system:view", // Allow Admin/Super Admin access
   ]),
   documentController.getExpiringDocuments.bind(documentController)
@@ -98,6 +100,7 @@ router.get(
   authMiddleware.requireAuth,
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     "system:view", // Allow Admin/Super Admin access
   ]),
   documentController.getDocumentById.bind(documentController)

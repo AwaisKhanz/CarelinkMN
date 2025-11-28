@@ -25,8 +25,10 @@ import {
   Clock,
   Send,
   Search,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { useSocket } from "@/contexts/socket-context";
 import { usePageMetadata } from "../../use-page-metadata";
 import { dischargeCaseService, DischargeCase, placementService, Placement } from "@/lib/api";
 import { toast } from "sonner";
@@ -90,7 +92,8 @@ import {
   useDischargeCaseInvitations,
   useDischargeChecklist,
 } from "@/hooks/use-hospital-sw-data";
-import { PlacementsTab } from "./components";
+import { PlacementsTab } from "./components/placements-tab";
+import { CreatePlacementDialog } from "@/components/placements/create-placement-dialog";
 
 function DischargeCaseDetailPageContent() {
   const params = useParams();
@@ -145,7 +148,8 @@ function DischargeCaseDetailPageContent() {
   // Fetch placements for this discharge case
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [isLoadingPlacements, setIsLoadingPlacements] = useState(false);
-
+  const [createPlacementDialogOpen, setCreatePlacementDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fetchPlacements = async () => {
     setIsLoadingPlacements(true);
     try {
@@ -169,6 +173,59 @@ function DischargeCaseDetailPageContent() {
       fetchPlacements();
     }
   }, [caseId]);
+
+  // Listen for real-time updates
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleInvitationResponse = (data: any) => {
+      if (data.dischargeCaseId === caseId) {
+        console.log("Socket event: discharge-invitation:responded", data);
+        refetchInvitations();
+        toast.info(`Provider responded: ${data.response}`);
+      }
+    };
+
+    const handleTransportUpdate = (data: any) => {
+      if (data.dischargeCaseId === caseId) {
+        console.log("Socket event: transport update", data);
+        refetchCase();
+        toast.info("Transport booking updated");
+      }
+    };
+
+    const handleConsentCaptured = (data: any) => {
+      if (data.dischargeCaseId === caseId) {
+        console.log("Socket event: consent captured", data);
+        refetchCase();
+        toast.info("Consent captured");
+      }
+    };
+
+    const handlePlacementCreated = (data: any) => {
+      if (data.dischargeCaseId === caseId) {
+        console.log("Socket event: placement created", data);
+        fetchPlacements();
+        refetchCase();
+        toast.info("Placement created");
+      }
+    };
+
+    socket.on("discharge-invitation:responded", handleInvitationResponse);
+    socket.on("transport:booking-created", handleTransportUpdate);
+    socket.on("transport:booking-updated", handleTransportUpdate);
+    socket.on("consent:captured", handleConsentCaptured);
+    socket.on("placement:created", handlePlacementCreated);
+
+    return () => {
+      socket.off("discharge-invitation:responded", handleInvitationResponse);
+      socket.off("transport:booking-created", handleTransportUpdate);
+      socket.off("transport:booking-updated", handleTransportUpdate);
+      socket.off("consent:captured", handleConsentCaptured);
+      socket.off("placement:created", handlePlacementCreated);
+    };
+  }, [socket, caseId, refetchInvitations, refetchCase, fetchPlacements]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -871,6 +928,8 @@ function DischargeCaseDetailPageContent() {
                                   )}
                                 </>
                               )}
+                              
+                              {/* Create Placement Button - Moved to Placements tab */}
                             </div>
                           </div>
                         </CardContent>
@@ -889,6 +948,7 @@ function DischargeCaseDetailPageContent() {
             dischargeCaseId={caseId}
             placements={placements}
             isLoading={isLoadingPlacements}
+            onCreatePlacement={() => setCreatePlacementDialogOpen(true)}
           />
         </TabsContent>
 
@@ -1109,10 +1169,10 @@ function DischargeCaseDetailPageContent() {
             {!searchingProviders &&
               providerSearch.length >= 2 &&
               availableProviders.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No providers found</p>
-                </div>
-              )}
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No providers found</p>
+              </div>
+            )}
             {selectedProviderIds.length > 0 && (
               <div className="p-3 bg-primary/10 rounded-md">
                 <p className="text-sm font-medium">
@@ -1184,6 +1244,26 @@ function DischargeCaseDetailPageContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Create Placement Dialog */}
+      <CreatePlacementDialog
+        open={createPlacementDialogOpen}
+        onOpenChange={setCreatePlacementDialogOpen}
+        dischargeCaseId={caseId}
+        candidates={invitations
+          .filter(inv => inv.response === InviteResponse.ACCEPTED)
+          .map(inv => ({
+            providerId: inv.providerId,
+            providerName: inv.provider?.organization?.name || "Unknown Provider",
+            status: inv.response || "",
+            respondedAt: inv.respondedAt,
+            responseNotes: inv.responseNotes
+          }))}
+        onSuccess={() => {
+          fetchPlacements();
+          refetchInvitations();
+        }}
+        userRole="HOSPITAL_SW"
+      />
     </div>
   );
 }

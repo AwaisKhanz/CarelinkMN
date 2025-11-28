@@ -4,17 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Package } from "lucide-react";
 import type { Placement } from "@/lib/api";
 import { PlacementItem } from "./placement-item";
+import { Button } from "@/components/ui/button";
 
 interface PlacementsTabProps {
   dischargeCaseId: string;
   placements: Placement[];
   isLoading: boolean;
+  onCreatePlacement?: () => void;
 }
 
 export function PlacementsTab({
   dischargeCaseId,
   placements,
   isLoading,
+  onCreatePlacement,
 }: PlacementsTabProps) {
   if (isLoading) {
     return (
@@ -30,10 +33,20 @@ export function PlacementsTab({
   return (
     <Card variant="healthcare">
       <CardHeader>
-        <CardTitle>Placements</CardTitle>
-        <CardDescription>
-          Placements created from this discharge case
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Placements</CardTitle>
+            <CardDescription>
+              Placements created from this discharge case
+            </CardDescription>
+          </div>
+          {onCreatePlacement && (
+            <Button onClick={onCreatePlacement} variant="healthcare" size="sm">
+              <Package className="h-4 w-4 mr-2" />
+              Create Placement
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {placements.length === 0 ? (

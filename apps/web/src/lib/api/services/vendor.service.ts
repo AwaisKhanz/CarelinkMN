@@ -40,17 +40,36 @@ interface UpdateBookingStatusData {
 
 export const vendorService = {
   /**
+   * Search vendors
+   */
+  async searchVendors(params: {
+    search?: string;
+    organizationId?: string;
+    category?: string;
+    limit?: number;
+  }): Promise<ApiResponse<Vendor[]>> {
+    const queryParams = new URLSearchParams();
+    if (params.search) queryParams.append("search", params.search);
+    if (params.organizationId) queryParams.append("organizationId", params.organizationId);
+    if (params.category) queryParams.append("category", params.category);
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+
+    const query = queryParams.toString();
+    return apiService.get<Vendor[]>(`/api/vendors${query ? `?${query}` : ""}`);
+  },
+
+  /**
    * Get vendor by user ID
    */
   async getVendorByUserId(userId: string): Promise<GetVendorByUserIdResponse> {
-    return apiService.get<Vendor>(`/vendors/by-user/${userId}`);
+    return apiService.get<Vendor>(`/api/vendors/by-user/${userId}`);
   },
 
   /**
    * Get vendor by vendor ID
    */
   async getVendorById(vendorId: string): Promise<GetVendorByIdResponse> {
-    return apiService.get<Vendor>(`/vendors/${vendorId}`);
+    return apiService.get<Vendor>(`/api/vendors/${vendorId}`);
   },
 
   /**
@@ -60,7 +79,7 @@ export const vendorService = {
     vendorId: string,
     data: UpdateVendorData
   ): Promise<UpdateVendorResponse> {
-    return apiService.put<Vendor>(`/vendors/${vendorId}`, data);
+    return apiService.put<Vendor>(`/api/vendors/${vendorId}`, data);
   },
 
   /**
@@ -79,7 +98,7 @@ export const vendorService = {
 
     const query = queryParams.toString();
     return apiService.get<VendorLeadsResponse>(
-      `/vendors/${vendorId}/leads${query ? `?${query}` : ""}`
+      `/api/vendors/${vendorId}/leads${query ? `?${query}` : ""}`
     );
   },
 
@@ -92,7 +111,7 @@ export const vendorService = {
     data: UpdateLeadStatusData
   ): Promise<UpdateLeadStatusResponse> {
     return apiService.put<VendorLead>(
-      `/vendors/${vendorId}/leads/${leadId}/status`,
+      `/api/vendors/${vendorId}/leads/${leadId}/status`,
       data
     );
   },
@@ -112,7 +131,7 @@ export const vendorService = {
 
     const query = queryParams.toString();
     return apiService.get<VendorBookingsResponse>(
-      `/vendors/${vendorId}/bookings${query ? `?${query}` : ""}`
+      `/api/vendors/${vendorId}/bookings${query ? `?${query}` : ""}`
     );
   },
 
@@ -125,7 +144,7 @@ export const vendorService = {
     data: UpdateBookingStatusData
   ): Promise<UpdateBookingStatusResponse> {
     return apiService.put<TransportBooking>(
-      `/vendors/${vendorId}/bookings/${bookingId}/status`,
+      `/api/vendors/${vendorId}/bookings/${bookingId}/status`,
       data
     );
   },
@@ -136,7 +155,7 @@ export const vendorService = {
   async getVendorAnalytics(
     vendorId: string
   ): Promise<GetVendorAnalyticsResponse> {
-    return apiService.get<VendorAnalytics>(`/vendors/${vendorId}/analytics`);
+    return apiService.get<VendorAnalytics>(`/api/vendors/${vendorId}/analytics`);
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePageMetadata } from "../use-page-metadata";
 import { MessageCenter } from "@/components/messaging";
 import { MessageThread } from "@carelink/types";
@@ -10,6 +11,8 @@ import { formatCaseNumber } from "@/lib/utils/hospital-sw";
 
 function HospitalSWMessagesPageContent() {
   const { setTitle, setDescription } = usePageMetadata();
+  const searchParams = useSearchParams();
+  const providerId = searchParams.get("providerId") || undefined;
 
   useEffect(() => {
     setTitle("Messages");
@@ -38,6 +41,7 @@ function HospitalSWMessagesPageContent() {
 
   return (
     <MessageCenter
+      providerId={providerId}
       getThreadContext={getThreadContext}
       getThreadTitle={getThreadTitle}
     />

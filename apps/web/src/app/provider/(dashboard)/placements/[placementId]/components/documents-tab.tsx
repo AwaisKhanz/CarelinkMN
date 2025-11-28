@@ -49,9 +49,10 @@ import {
 
 interface DocumentsTabProps {
   placementId: string;
+  readOnly?: boolean;
 }
 
-export function DocumentsTab({ placementId }: DocumentsTabProps) {
+export function DocumentsTab({ placementId, readOnly = false }: DocumentsTabProps) {
   const [documents, setDocuments] = useState<PlacementDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -186,20 +187,19 @@ export function DocumentsTab({ placementId }: DocumentsTabProps) {
   return (
     <div className="space-y-6">
       {/* Upload Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Placement Documents</h3>
+          <h3 className="text-lg font-medium">Documents</h3>
           <p className="text-sm text-muted-foreground">
-            Manage documents related to this placement
+            Manage placement-related documents
           </p>
         </div>
-        <Button
-          variant="healthcare"
-          onClick={() => setUploadDialogOpen(true)}
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Document
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Document
+          </Button>
+        )}
       </div>
 
       {/* Documents by Category */}
@@ -263,19 +263,24 @@ export function DocumentsTab({ placementId }: DocumentsTabProps) {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(doc.storageUrl, "_blank")}
-                      >
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                    >
+                      <a href={doc.storageUrl} target="_blank" rel="noopener noreferrer">
                         <Download className="h-4 w-4" />
-                      </Button>
+                      </a>
+                    </Button>
+                    {!readOnly && (
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
                         onClick={() => handleDelete(doc.id, doc.fileName)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
+                    )}
                     </div>
                   </div>
                 ))}

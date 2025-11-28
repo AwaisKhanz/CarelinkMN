@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Heart, Clock, TrendingUp } from "lucide-react";
 import {
@@ -35,15 +35,17 @@ export default function PublicDashboardPage() {
   }, [setTitle, setDescription]);
 
   useEffect(() => {
-    if (user?.id) {
-      fetchFavorites();
-      loadRecentSearches();
-    } else {
+    const init = async () => {
+      if (user?.id) {
+        await fetchFavorites();
+        loadRecentSearches();
+      }
       setIsLoading(false);
-    }
+    };
+    init();
   }, [user?.id]);
 
-  const fetchFavorites = async () => {
+  const fetchFavorites = useCallback(async () => {
     try {
       const response = await publicService.getFavorites();
       if (response.success && response.data) {
@@ -52,7 +54,7 @@ export default function PublicDashboardPage() {
     } catch (err) {
       console.error("Error fetching favorites:", err);
     }
-  };
+  }, []);
 
   const loadRecentSearches = () => {
     // Load from localStorage

@@ -97,7 +97,7 @@ function ProviderDischargeInvitationsPageContent() {
       );
 
       if (response.success && response.data) {
-        setInvitations(response.data);
+        setInvitations(response.data.invitations || []);
       } else {
         setError(response.message || "Failed to load invitations");
       }
@@ -130,10 +130,18 @@ function ProviderDischargeInvitationsPageContent() {
       }
     };
 
+    const handleInvitationReceived = (data: any) => {
+      console.log("Socket event: discharge-invitation:received", data);
+      fetchInvitations();
+      // Toast is handled by notification listener, but we can add one here if needed
+    };
+
     socket.on("notification:new", handleNotification);
+    socket.on("discharge-invitation:received", handleInvitationReceived);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("discharge-invitation:received", handleInvitationReceived);
     };
   }, [socket, fetchInvitations]);
 

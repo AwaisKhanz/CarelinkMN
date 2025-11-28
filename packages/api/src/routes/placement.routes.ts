@@ -194,6 +194,7 @@ router.get(
   authMiddleware.requireAnyPermission([
     PROVIDER_PERMISSIONS.RESIDENTS_VIEW,
     CASE_MANAGER_PERMISSIONS.REFERRALS_VIEW,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_VIEW,
     "system:view", // Allow Admin/Super Admin access
   ]),
   placementController.getPlacementById.bind(placementController)
@@ -264,7 +265,10 @@ router.post(
   ],
   validate([]),
   authMiddleware.requireAuth,
-  authMiddleware.requirePermission(PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE),
+  authMiddleware.requireAnyPermission([
+    PROVIDER_PERMISSIONS.PLACEMENTS_MANAGE,
+    HOSPITAL_SW_PERMISSIONS.DISCHARGE_CASES_UPDATE,
+  ]),
   placementController.generatePacket.bind(placementController)
 );
 

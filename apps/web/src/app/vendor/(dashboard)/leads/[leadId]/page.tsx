@@ -63,7 +63,7 @@ export default function VendorLeadDetailPage() {
     setError(null);
     try {
       const response = await vendorService.getVendorLeads(vendorId, {
-        limit: 1000, // Get all to find this lead
+        limit: 100, // Maximum allowed by API
       });
 
       if (response.success && response.data) {

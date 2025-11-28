@@ -9,6 +9,7 @@ import {
   PaginatedDischargeCases,
   AIMatchingResult,
   HospitalSWAnalytics,
+  Placement,
   ApiResponse,
 } from "@carelink/types";
 
@@ -181,8 +182,8 @@ export class DischargeCaseService {
    */
   async getProviderDischargeInvitations(
     providerId: string
-  ): Promise<ApiResponse<DischargeInvitation[]>> {
-    return apiService.get<DischargeInvitation[]>(
+  ): Promise<ApiResponse<{ invitations: DischargeInvitation[]; pagination: any }>> {
+    return apiService.get<{ invitations: DischargeInvitation[]; pagination: any }>(
       `/api/providers/${providerId}/discharge-invitations`
     );
   }
@@ -201,6 +202,17 @@ export class DischargeCaseService {
     return apiService.put<DischargeInvitation>(
       `/api/discharge-invitations/${invitationId}/respond`,
       data
+    );
+  }
+  /**
+   * Create placement from invitation
+   */
+  async createPlacementFromInvitation(
+    invitationId: string
+  ): Promise<ApiResponse<Placement>> {
+    return apiService.post<Placement>(
+      `/api/discharge-cases/invitations/${invitationId}/placement`,
+      {}
     );
   }
 }

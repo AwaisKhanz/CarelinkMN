@@ -259,6 +259,11 @@ const getNavItems = (
           icon: FileText,
         },
         {
+          title: "Public Requests",
+          href: "/case-manager/public-requests",
+          icon: FileText,
+        },
+        {
           title: "Search Providers",
           href: "/case-manager/search",
           icon: Search,
@@ -338,11 +343,11 @@ const getNavItems = (
           href: "/vendor/profile",
           icon: Package,
         },
-        {
-          title: "Leads",
-          href: "/vendor/leads",
-          icon: Users,
-        },
+        // {
+        //   title: "Leads",
+        //   href: "/vendor/leads",
+        //   icon: Users,
+        // },
         {
           title: "Bookings",
           href: "/vendor/bookings",

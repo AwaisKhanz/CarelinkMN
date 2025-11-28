@@ -121,7 +121,7 @@ export default function VendorAnalyticsPage() {
     >
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
+          {/* <StatsCard
             title="Total Leads"
             value={safeAnalytics.totalLeads}
             description={`${safeAnalytics.newLeads} new`}
@@ -132,7 +132,7 @@ export default function VendorAnalyticsPage() {
             value={`${safeAnalytics.conversionRate}%`}
             description={`${safeAnalytics.convertedLeads} converted`}
             isLoading={isLoading}
-          />
+          /> */}
           <StatsCard
             title="Total Bookings"
             value={safeAnalytics.totalBookings}
@@ -150,7 +150,7 @@ export default function VendorAnalyticsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card variant="healthcare">
+          {/* <Card variant="healthcare">
             <CardHeader>
               <CardTitle>Leads by Source</CardTitle>
               <CardDescription>Lead distribution by source</CardDescription>
@@ -182,7 +182,7 @@ export default function VendorAnalyticsPage() {
                 <p className="text-sm text-muted-foreground">No leads data available</p>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card variant="healthcare">
             <CardHeader>
@@ -229,14 +229,14 @@ export default function VendorAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              {/* <div>
                 <div className="text-sm text-muted-foreground">Leads This Month</div>
                 {isLoading ? (
                   <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1" />
                 ) : (
                   <div className="text-2xl font-bold mt-1">{safeAnalytics.leadsThisMonth}</div>
                 )}
-              </div>
+              </div> */}
               <div>
                 <div className="text-sm text-muted-foreground">Bookings This Month</div>
                 {isLoading ? (

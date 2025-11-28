@@ -78,6 +78,46 @@ export class PlacementFamilyService {
         },
       });
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        // Get provider users and case manager/social worker
+        const recipientIds: string[] = [];
+        
+        // Add provider users
+        if (placement.provider.organization.users) {
+          recipientIds.push(...placement.provider.organization.users.map(u => u.id));
+        }
+        
+        // Add case manager or social worker
+        const fullPlacement = await db.placement.findUnique({
+          where: { id: placementId },
+          select: {
+            referral: { select: { caseManagerId: true } },
+            dischargeCase: { select: { socialWorkerId: true } }
+          }
+        });
+        
+        if (fullPlacement?.referral?.caseManagerId) {
+          recipientIds.push(fullPlacement.referral.caseManagerId);
+        }
+        if (fullPlacement?.dischargeCase?.socialWorkerId) {
+          recipientIds.push(fullPlacement.dischargeCase.socialWorkerId);
+        }
+        
+        recipientIds.forEach(userId => {
+          socketServer.getIO().to(`user:${userId}`).emit("family-contact:created", {
+            placementId,
+            contactId: contact.id,
+            name: contact.name
+          });
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
+
       return contact;
     } catch (error) {
       console.error("Add family contact error:", error);
@@ -100,30 +140,45 @@ export class PlacementFamilyService {
       const isSystemAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
       if (!isSystemAdmin) {
-        // For non-admin users, verify access through organization
-        const placement = await db.placement.findUnique({
-          where: { id: placementId },
-          include: {
-            provider: {
-              include: {
-                organization: {
-                  include: {
-                    users: {
-                      where: { id: userId },
+        // Check if user is Hospital SW and the placement is for their discharge case
+        if (user?.role === "HOSPITAL_SW") {
+          const placement = await db.placement.findFirst({
+            where: {
+              id: placementId,
+              dischargeCase: {
+                socialWorkerId: userId,
+              },
+            },
+          });
+          if (!placement) {
+            throw new Error("Access denied");
+          }
+        } else {
+          // For provider users, verify access through organization
+          const placement = await db.placement.findUnique({
+            where: { id: placementId },
+            include: {
+              provider: {
+                include: {
+                  organization: {
+                    include: {
+                      users: {
+                        where: { id: userId },
+                      },
                     },
                   },
                 },
               },
             },
-          },
-        });
+          });
 
-        if (!placement) {
-          throw new Error("Placement not found");
-        }
+          if (!placement) {
+            throw new Error("Placement not found");
+          }
 
-        if (placement.provider.organization.users.length === 0) {
-          throw new Error("Access denied");
+          if (placement.provider.organization.users.length === 0) {
+            throw new Error("Access denied");
+          }
         }
       } else {
         // For admins, just verify placement exists
@@ -207,6 +262,19 @@ export class PlacementFamilyService {
         data,
       });
 
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        socketServer.getIO().emit("family-contact:updated", {
+          placementId: contact.placementId,
+          contactId,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
+
       return updated;
     } catch (error) {
       console.error("Update family contact error:", error);
@@ -252,6 +320,19 @@ export class PlacementFamilyService {
       await db.placementFamilyContact.delete({
         where: { id: contactId },
       });
+
+      // Emit socket event for real-time updates
+      try {
+        const { getSocketServer } = await import("../websocket/socket.server");
+        const socketServer = getSocketServer();
+        
+        socketServer.getIO().emit("family-contact:deleted", {
+          placementId: contact.placementId,
+          contactId,
+        });
+      } catch (socketError) {
+        console.warn("Failed to emit socket event:", socketError);
+      }
     } catch (error) {
       console.error("Delete family contact error:", error);
       throw error instanceof Error ? error : new Error("Failed to delete family contact");
@@ -340,30 +421,45 @@ export class PlacementFamilyService {
       const isSystemAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
       if (!isSystemAdmin) {
-        // For non-admin users, verify access through organization
-        const placement = await db.placement.findUnique({
-          where: { id: placementId },
-          include: {
-            provider: {
-              include: {
-                organization: {
-                  include: {
-                    users: {
-                      where: { id: userId },
+        // Check if user is Hospital SW and the placement is for their discharge case
+        if (user?.role === "HOSPITAL_SW") {
+          const placement = await db.placement.findFirst({
+            where: {
+              id: placementId,
+              dischargeCase: {
+                socialWorkerId: userId,
+              },
+            },
+          });
+          if (!placement) {
+            throw new Error("Access denied");
+          }
+        } else {
+          // For provider users, verify access through organization
+          const placement = await db.placement.findUnique({
+            where: { id: placementId },
+            include: {
+              provider: {
+                include: {
+                  organization: {
+                    include: {
+                      users: {
+                        where: { id: userId },
+                      },
                     },
                   },
                 },
               },
             },
-          },
-        });
+          });
 
-        if (!placement) {
-          throw new Error("Placement not found");
-        }
+          if (!placement) {
+            throw new Error("Placement not found");
+          }
 
-        if (placement.provider.organization.users.length === 0) {
-          throw new Error("Access denied");
+          if (placement.provider.organization.users.length === 0) {
+            throw new Error("Access denied");
+          }
         }
       } else {
         // For admins, just verify placement exists
