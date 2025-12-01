@@ -15,6 +15,9 @@ COPY packages ./packages
 # Install dependencies
 RUN pnpm install
 
+# Generate Prisma Client
+RUN pnpm --filter @carelink/database db:generate
+
 # Build the application
 RUN pnpm build
 
