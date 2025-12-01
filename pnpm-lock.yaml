@@ -337,8 +337,8 @@ importers:
         specifier: ^14.0.0
         version: 14.25.0
       uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
+        specifier: ^8.3.2
+        version: 8.3.2
       winston:
         specifier: ^3.11.0
         version: 3.18.3
@@ -3906,7 +3906,7 @@ packages:
     resolution: {integrity: sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==}
     deprecated: This is a stub types definition. uuid provides its own type definitions, so you do not need this installed.
     dependencies:
-      uuid: 9.0.1
+      uuid: 8.3.2
     dev: true
 
   /@types/ws@8.18.1:
@@ -8922,8 +8922,8 @@ packages:
     dev: false
     optional: true
 
-  /uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+  /uuid@8.3.2:
+    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
 
   /v8-compile-cache-lib@3.0.1:
