@@ -279,9 +279,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.78.0
         version: 2.78.0
-      '@types/uuid':
-        specifier: ^11.0.0
-        version: 11.0.0
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -382,6 +379,9 @@ importers:
       '@types/pdfkit':
         specifier: ^0.13.5
         version: 0.13.9
+      '@types/uuid':
+        specifier: ^11.0.0
+        version: 11.0.0
       nodemon:
         specifier: ^3.0.2
         version: 3.1.10
@@ -3907,7 +3907,7 @@ packages:
     deprecated: This is a stub types definition. uuid provides its own type definitions, so you do not need this installed.
     dependencies:
       uuid: 9.0.1
-    dev: false
+    dev: true
 
   /@types/ws@8.18.1:
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -8925,7 +8925,6 @@ packages:
   /uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
-    dev: false
 
   /v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
