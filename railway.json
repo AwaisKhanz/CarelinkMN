@@ -1,14 +1,25 @@
+```json
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pnpm install && pnpm --filter @carelink/database db:generate && pnpm build"
+    "buildCommand": "pnpm install && pnpm --filter @carelink/database db:generate && pnpm build",
+    "watchPatterns": [
+      "apps/**",
+      "packages/**",
+      "pnpm-lock.yaml",
+      "package.json",
+      "turbo.json",
+      "nixpacks.toml",
+      "railway.json"
+    ]
   },
   "deploy": {
-    "startCommand": "node packages/api/dist/index.js & cd apps/web && node_modules/.bin/next start",
+    "startCommand": "node packages/api/dist/index.js & (cd apps/web && node_modules/.bin/next start)",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
 }
+```
