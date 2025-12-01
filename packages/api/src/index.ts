@@ -5,7 +5,7 @@ import { ScheduledJobService } from "./services/scheduled-job.service";
 import { initializeSocketServer } from "./websocket/socket.server";
 import { getJobScheduler } from "./jobs";
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.API_PORT || process.env.PORT || 3001;
 const scheduledJobService = new ScheduledJobService();
 
 // Graceful shutdown handler
