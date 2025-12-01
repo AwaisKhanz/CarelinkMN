@@ -1,5 +1,5 @@
 # Multi-stage build for CareLinkMN
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install pnpm
 RUN npm install -g pnpm@8
@@ -13,7 +13,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/*/package.json ./packages/*/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy source code
 COPY . .
@@ -22,7 +22,7 @@ COPY . .
 RUN pnpm build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install pnpm
 RUN npm install -g pnpm@8
@@ -36,7 +36,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/*/package.json ./packages/*/
 
 # Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --prod
 
 # Copy built application
 COPY --from=base /app/apps/web/.next ./apps/web/.next
