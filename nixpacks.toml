@@ -1,14 +1,14 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "pnpm"]
+nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["pnpm install --frozen-lockfile"]
+cmds = ["pnpm install"]
 
 [phases.build]
-cmds = ["pnpm build"]
+cmds = ["pnpm --filter @carelink/database db:generate", "pnpm build"]
 
 [start]
-cmd = "cd apps/web && pnpm start"
+cmd = "node packages/api/dist/index.js & (cd apps/web && node_modules/.bin/next start)"
 
 [variables]
 NODE_ENV = "production"
