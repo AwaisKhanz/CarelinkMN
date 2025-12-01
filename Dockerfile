@@ -42,20 +42,17 @@ RUN pnpm install --prod
 COPY --from=base /app/apps/web/.next ./apps/web/.next
 COPY --from=base /app/packages ./packages
 COPY --from=base /app/apps/web/public ./apps/web/public
+COPY --from=base /app/node_modules ./node_modules
 
-# Copy startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Set working directory to app root
-WORKDIR /app
+# Set working directory to web app
+WORKDIR /app/apps/web
 
 # Expose ports
-EXPOSE 3000 3001
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Start the application
-CMD ["/bin/sh", "/app/start.sh"]
+# Start Next.js (which includes API routes)
+CMD ["node_modules/.bin/next", "start"]
