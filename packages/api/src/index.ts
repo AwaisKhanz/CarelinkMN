@@ -5,7 +5,7 @@ import { ScheduledJobService } from "./services/scheduled-job.service";
 import { initializeSocketServer } from "./websocket/socket.server";
 import { getJobScheduler } from "./jobs";
 
-const PORT = process.env.PORT || process.env.API_PORT || 3000;
+const PORT = process.env.API_PORT || 3001;
 const scheduledJobService = new ScheduledJobService();
 
 // Graceful shutdown handler
@@ -57,37 +57,6 @@ const startServer = async () => {
         console.error("[Cron] Error running scheduled jobs:", error);
       }
     });
-
-    // Serve Next.js static files in production
-    if (process.env.NODE_ENV === 'production') {
-      const path = require('path');
-      const express = require('express');
-      
-      // Serve Next.js static files
-      const nextStaticPath = path.join(__dirname, '../../apps/web/.next/static');
-      const nextPublicPath = path.join(__dirname, '../../apps/web/public');
-      
-      app.use('/_next/static', express.static(nextStaticPath));
-      app.use('/public', express.static(nextPublicPath));
-      
-      // Serve Next.js pages (this should be after all API routes)
-      app.get('*', (req, res) => {
-        // Skip API routes and socket.io
-        if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
-          return res.status(404).json({ error: 'Not found' });
-        }
-        
-        // Serve Next.js index.html for all other routes
-        const indexPath = path.join(__dirname, '../../apps/web/out/index.html');
-        res.sendFile(indexPath, (err) => {
-          if (err) {
-            res.status(404).send('Page not found');
-          }
-        });
-      });
-      
-      console.log('📦 Serving Next.js static files from Express');
-    }
 
     // Start placement notification jobs
     getJobScheduler().start();

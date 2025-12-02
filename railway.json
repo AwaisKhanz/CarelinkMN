@@ -14,7 +14,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "PORT=3000 node packages/api/dist/index.js",
+    "startCommand": "node packages/api/dist/index.js & (cd apps/web && node_modules/.bin/next start)",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
