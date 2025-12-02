@@ -92,7 +92,7 @@ const startServer = async () => {
     // Start placement notification jobs
     getJobScheduler().start();
 
-    console.log("✅ Scheduled jobs initialized (running every hour)\");
+    console.log("✅ Scheduled jobs initialized (running every hour)");
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     process.exit(1);
