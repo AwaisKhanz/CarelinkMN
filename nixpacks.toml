@@ -8,7 +8,7 @@ cmds = ["pnpm install"]
 cmds = ["pnpm --filter @carelink/database db:generate", "pnpm build"]
 
 [start]
-cmd = "API_PORT=3001 node packages/api/dist/index.js & (cd apps/web && node_modules/.bin/next start)"
+cmd = "API_PORT=3001 node packages/api/dist/index.js & (cd apps/web && PORT=3000 node_modules/.bin/next start)"
 
 [variables]
 NODE_ENV = "production"

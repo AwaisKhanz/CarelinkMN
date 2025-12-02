@@ -56,7 +56,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     setIsConnecting(true);
     setError(null);
 
-    const socketUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const socketUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
 
     console.log(`🔌 Connecting to WebSocket server at ${socketUrl}...`);
 
