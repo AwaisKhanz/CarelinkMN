@@ -44,7 +44,7 @@ export const ProviderSchema = z.object({
       addressLine1: z.string(),
       addressLine2: z.string().nullable().optional(),
       zipCode: z.string(),
-      website: z.string().url().nullable().optional(),
+      website: z.string().url().or(z.literal('')).nullable().optional(),
     })
     .optional(),
   licenses: z.array(z.any()).optional(),
