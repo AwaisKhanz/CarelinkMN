@@ -87,7 +87,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       
       // Show success toast only after reconnection
       if (reconnectAttempts > 0) {
-        toast.success("Reconnected to server");
+        // toast.success("Reconnected to server");
       }
     });
 
@@ -99,7 +99,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       
       // Don't show toast on initial connection failure
       if (reconnectAttempts > 0) {
-        toast.error("Connection lost. Reconnecting...");
+        // toast.error("Connection lost. Reconnecting...");
       }
     });
 
@@ -130,7 +130,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     newSocket.io.on("reconnect_failed", () => {
       console.error("❌ Reconnection failed");
       setError("Failed to reconnect to server");
-      toast.error("Unable to connect to server. Please refresh the page.");
+      // toast.error("Unable to connect to server. Please refresh the page.");
     });
 
     setSocket(newSocket);
