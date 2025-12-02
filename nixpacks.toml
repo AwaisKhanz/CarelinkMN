@@ -5,10 +5,10 @@ nixPkgs = ["nodejs_20", "pnpm"]
 cmds = ["pnpm install"]
 
 [phases.build]
-cmds = ["pnpm --filter @carelink/database db:generate", "pnpm build"]
+cmds = ["pnpm --filter @carelink/database db:generate", "pnpm build", "cd apps/web && pnpm next build"]
 
 [start]
-cmd = "API_PORT=3001 node packages/api/dist/index.js & (cd apps/web && PORT=3000 node_modules/.bin/next start)"
+cmd = "PORT=3000 node packages/api/dist/index.js"
 
 [variables]
 NODE_ENV = "production"
