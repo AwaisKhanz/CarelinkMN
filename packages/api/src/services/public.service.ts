@@ -75,8 +75,10 @@ export class PublicService {
           },
           {
             primaryLicenseType: {
-              contains: search,
-              mode: "insensitive",
+              code: {
+                contains: search,
+                mode: "insensitive",
+              },
             },
           },
           {
@@ -95,7 +97,9 @@ export class PublicService {
       // License types filter
       if (licenseTypes && licenseTypes.length > 0) {
         where.primaryLicenseType = {
-          in: licenseTypes,
+          code: {
+            in: licenseTypes,
+          },
         };
       }
 
@@ -216,6 +220,7 @@ export class PublicService {
           take: limit,
           include: {
             organization: true,
+            primaryLicenseType: true,
             homes: {
               where: {
                 isActive: true,
@@ -319,6 +324,7 @@ export class PublicService {
         },
         include: {
           organization: true,
+          primaryLicenseType: true,
           homes: {
             where: {
               isActive: true,
@@ -354,6 +360,9 @@ export class PublicService {
             licenses: {
               where: {
                 status: "ACTIVE",
+              },
+              include: {
+                licenseType: true,
               },
             },
           },
@@ -429,6 +438,9 @@ export class PublicService {
               licenses: {
                 where: {
                   status: "ACTIVE",
+                },
+                include: {
+                  licenseType: true,
                 },
               },
             },
@@ -529,6 +541,9 @@ export class PublicService {
               licenses: {
                 where: {
                   status: "ACTIVE",
+                },
+                include: {
+                  licenseType: true,
                 },
               },
             },
@@ -720,9 +735,9 @@ export class PublicService {
       subscriptionTier: provider.subscriptionTier,
       boostLevel: provider.boostLevel || 0,
       homes,
-      primaryLicenseType: provider.primaryLicenseType,
+      primaryLicenseType: provider.primaryLicenseType?.name,
       licenses: provider.licenses.map((license: any) => ({
-        licenseType: license.licenseType,
+        licenseType: license.licenseType?.code || "Unknown",
         licenseNumber: license.licenseNumber,
         expirationDate: license.expirationDate,
       })),

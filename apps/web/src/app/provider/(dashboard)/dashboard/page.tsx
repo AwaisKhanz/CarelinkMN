@@ -728,7 +728,7 @@ function ProviderDashboardContent() {
                       >
                         <div className="flex-1">
                           <p className="text-sm font-medium">
-                            {license.licenseType} - {license.licenseNumber}
+                            {license.licenseType?.name || "Unknown"} - {license.licenseNumber}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Expires in {daysUntilExpiry} day

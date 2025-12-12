@@ -8,7 +8,7 @@ import crypto from "crypto";
 
 export interface CreateProviderData {
   organizationId: string;
-  primaryLicenseType: string;
+  primaryLicenseTypeId: string;
   description?: string;
   logo?: string;
   coverImage?: string;
@@ -65,7 +65,7 @@ export class ProviderService {
       const provider = await db.provider.create({
         data: {
           organizationId: data.organizationId,
-          primaryLicenseType: data.primaryLicenseType,
+          primaryLicenseTypeId: data.primaryLicenseTypeId,
           description: data.description,
           logo: data.logo,
           coverImage: data.coverImage,
@@ -87,7 +87,7 @@ export class ProviderService {
         provider.id,
         {
           organizationId: data.organizationId,
-          primaryLicenseType: data.primaryLicenseType,
+          primaryLicenseTypeId: data.primaryLicenseTypeId,
         },
         undefined,
         undefined,
@@ -109,6 +109,7 @@ export class ProviderService {
     try {
       const include: Prisma.ProviderInclude = {
         organization: true,
+        primaryLicenseType: true,
         licenses: true,
       };
 
@@ -207,6 +208,7 @@ export class ProviderService {
         },
         select: {
           id: true,
+          primaryLicenseTypeId: true,
           primaryLicenseType: true,
           description: true,
           logo: true,
@@ -236,6 +238,7 @@ export class ProviderService {
               status: "ACTIVE",
             },
             select: {
+              licenseTypeId: true,
               licenseType: true,
               licenseNumber: true,
               expirationDate: true,
@@ -352,6 +355,7 @@ export class ProviderService {
         where: { organizationId },
         include: {
           organization: true,
+          primaryLicenseType: true,
           licenses: true,
           homes: {
             where: {
@@ -521,8 +525,10 @@ export class ProviderService {
           },
           {
             primaryLicenseType: {
-              contains: search,
-              mode: "insensitive",
+              code: {
+                contains: search,
+                mode: "insensitive",
+              },
             },
           },
         ];
@@ -564,6 +570,7 @@ export class ProviderService {
           where,
           include: {
             organization: true,
+            primaryLicenseType: true,
             licenses: true,
             homes: {
               select: {
@@ -764,7 +771,13 @@ export class ProviderService {
             id: { in: uniqueServiceIds },
             isActive: true,
           },
-          select: { id: true, licenseTypes: true, name: true },
+          include: {
+            serviceLicenseTypes: {
+              include: {
+                licenseType: true,
+              },
+            },
+          },
         });
 
         if (servicesFound.length !== uniqueServiceIds.length) {
@@ -780,14 +793,13 @@ export class ProviderService {
         const providerLicenseTypes = new Set(
           provider.licenses
             .filter((l) => l.status === "ACTIVE")
-            .map((l) => l.licenseType)
+            .map((l) => l.licenseTypeId)
         );
+        
         const invalidServices = servicesFound.filter((s) => {
-          // Use the centralized license matching utility for consistency
-          return !isServiceAllowedForProvider(
-            s.licenseTypes,
-            Array.from(providerLicenseTypes)
-          );
+          // Service must have at least one license type that matches provider's licenses
+          const serviceLicenseTypeIds = s.serviceLicenseTypes.map(slt => slt.licenseTypeId);
+          return !serviceLicenseTypeIds.some(ltId => providerLicenseTypes.has(ltId));
         });
 
         if (invalidServices.length > 0) {
@@ -799,14 +811,13 @@ export class ProviderService {
 
           // Build a more helpful error message
           const requiredLicenses = invalidServices
-            .flatMap((s) => s.licenseTypes || [])
+            .flatMap((s) => s.serviceLicenseTypes.map(slt => slt.licenseType?.name || slt.licenseTypeId))
             .filter((lt, idx, arr) => arr.indexOf(lt) === idx) // unique
-            .filter((lt) => !providerLicenseTypes.has(lt))
             .join(", ");
 
           if (providerLicenses === "none") {
             throw new Error(
-              `Selected services require licenses that your provider does not have. Services: ${serviceNames}. Required licenses: ${requiredLicenses}. Please add the required licenses to tour provider profile.`
+              `Selected services require licenses that your provider does not have. Services: ${serviceNames}. Required licenses: ${requiredLicenses}. Please add the required licenses to your provider profile.`
             );
           } else {
             throw new Error(
@@ -895,89 +906,36 @@ export class ProviderService {
     userId?: string
   ): Promise<any[]> {
     try {
-      let providerLicenseTypes: Set<string> | null = null;
-
-      // If providerId is provided, fetch provider licenses to filter services
+      // If providerId is provided, use the service service to get filtered services
       if (providerId) {
-        // Try to find provider - if userId is provided, verify access, otherwise just get provider
-        const provider = userId
-          ? await db.provider.findFirst({
-              where: {
-                id: providerId,
-                organization: {
-                  users: {
-                    some: {
-                      id: userId,
-                    },
-                  },
-                },
-              },
-              include: {
-                licenses: {
-                  // Include both ACTIVE and PENDING licenses
-                  // PENDING licenses are allowed for service selection, but services may require ACTIVE status for actual use
-                  // ACTIVE licenses are required for validation when updating services
-                  where: {
-                    status: {
-                      in: ["ACTIVE", "PENDING"],
-                    },
-                  },
-                },
-              },
-            })
-          : await db.provider.findFirst({
-              where: {
-                id: providerId,
-              },
-              include: {
-                licenses: {
-                  where: {
-                    status: {
-                      in: ["ACTIVE", "PENDING"],
-                    },
-                  },
-                },
-              },
-            });
-
-        if (provider) {
-          providerLicenseTypes = new Set(
-            provider.licenses.map((l) => l.licenseType)
-          );
-        }
+        // Import serviceService
+        const { serviceService } = await import('./service.service');
+        return serviceService.getServicesForProvider(providerId);
       }
 
+      // If no providerId, return all active services with license types
       const services = await db.service.findMany({
         where: {
           isActive: true,
         },
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          description: true,
-          category: true,
-          licenseTypes: true,
+        include: {
+          serviceLicenseTypes: {
+            include: {
+              licenseType: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
         },
-        orderBy: [{ category: "asc" }, { name: "asc" }],
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
       });
 
-      // Filter services based on provider licenses if providerId was provided
-      if (providerLicenseTypes !== null) {
-        return services.filter((service) => {
-          // Use the centralized license matching utility for consistency
-          return isServiceAllowedForProvider(
-            service.licenseTypes,
-            Array.from(providerLicenseTypes)
-          );
-        });
-      }
-
-      // If no providerId, return all services
       return services;
     } catch (error) {
-      console.error("Get available services error:", error);
-      throw new Error("Failed to retrieve available services");
+      console.error('Get available services error:', error);
+      throw new Error('Failed to retrieve available services');
     }
   }
 

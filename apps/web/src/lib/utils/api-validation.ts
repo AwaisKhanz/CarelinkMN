@@ -18,7 +18,7 @@ import type { Provider } from "@/lib/api";
 export const ProviderSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
-  primaryLicenseType: z.string(),
+  primaryLicenseTypeId: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   logo: z.string().url().nullable().optional(),
   coverImage: z.string().url().nullable().optional(),
@@ -57,9 +57,8 @@ export const ProviderSchema = z.object({
 export const LicenseSchema = z.object({
   id: z.string().uuid(),
   providerId: z.string().uuid(),
-  licenseType: z.string(),
+  licenseTypeId: z.string(),
   licenseNumber: z.string(),
-  issuingState: z.string(),
   issueDate: z.string().datetime(),
   expirationDate: z.string().datetime(),
   status: z.nativeEnum(LicenseStatus),
@@ -69,6 +68,7 @@ export const LicenseSchema = z.object({
   fileName: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  licenseType: z.object({ name: z.string() }).optional(), // Optional relation
 });
 
 /**

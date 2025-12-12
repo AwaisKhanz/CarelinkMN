@@ -1,9 +1,9 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { authService } from "@/lib/api";
+import { apiService } from "@/lib/api/config";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -146,23 +146,20 @@ export function ProfileTab() {
   useEffect(() => {
     const loadUserProfileImage = async () => {
       try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user?.profileImage) {
-            const imageUrl = data.user.profileImage.toLowerCase();
-            let imageMimeType = "image/jpeg";
-            if (imageUrl.includes(".png")) imageMimeType = "image/png";
-            else if (imageUrl.includes(".gif")) imageMimeType = "image/gif";
-            else if (imageUrl.includes(".webp")) imageMimeType = "image/webp";
+        const user = await authService.getCurrentUser();
+        if (user?.profileImage) {
+          const imageUrl = user.profileImage.toLowerCase();
+          let imageMimeType = "image/jpeg";
+          if (imageUrl.includes(".png")) imageMimeType = "image/png";
+          else if (imageUrl.includes(".gif")) imageMimeType = "image/gif";
+          else if (imageUrl.includes(".webp")) imageMimeType = "image/webp";
 
-            setProfileImageFiles([{
-              url: data.user.profileImage,
-              fileName: "profile-image",
-              isPrimary: true,
-              mimeType: imageMimeType,
-            }]);
-          }
+          setProfileImageFiles([{
+            url: user.profileImage,
+            fileName: "profile-image",
+            isPrimary: true,
+            mimeType: imageMimeType,
+          }]);
         }
       } catch (error) {
         console.error("Error loading profile image:", error);
@@ -198,10 +195,8 @@ export function ProfileTab() {
       // Update user profile image if uploaded
       if (profileImageFiles.length > 0 && profileImageFiles[0].url) {
         try {
-          await fetch('/api/users/profile', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profileImage: profileImageFiles[0].url }),
+          await apiService.put('/api/users/profile', {
+            profileImage: profileImageFiles[0].url,
           });
         } catch (profileErr) {
           console.error("Error updating profile image:", profileErr);

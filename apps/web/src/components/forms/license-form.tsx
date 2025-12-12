@@ -24,12 +24,12 @@ import {
 import { Save, Loader2 } from "lucide-react";
 import { FileUploader, UploadedFile } from "@/components/ui/file-uploader";
 import { License, CreateLicenseData, UpdateLicenseData } from "@carelink/types";
-import { LICENSE_TYPES } from "@/lib/constants";
+import { LicenseTypeSelector } from "@/components/provider/license-type-selector";
 import { cn } from "@/lib/utils";
 
 const licenseSchema = z
   .object({
-    licenseType: z.string().min(1, "License type is required"),
+    licenseTypeId: z.string().min(1, "License type is required"),
     licenseNumber: z
       .string()
       .min(1, "License number is required")
@@ -124,7 +124,7 @@ export function LicenseForm({
     mode: "onChange",
     defaultValues: initialData
       ? {
-          licenseType: initialData.licenseType || "",
+          licenseTypeId: initialData.licenseTypeId || "",
           licenseNumber: initialData.licenseNumber || "",
           issueDate: initialData.issueDate
             ? new Date(initialData.issueDate).toISOString().split("T")[0]
@@ -135,7 +135,7 @@ export function LicenseForm({
           documentUrl: initialData.documentUrl || "",
         }
       : {
-          licenseType: "",
+          licenseTypeId: "",
           licenseNumber: "",
           issueDate: "",
           expirationDate: "",
@@ -167,7 +167,7 @@ export function LicenseForm({
 
   const onFormSubmit = async (data: LicenseFormData) => {
     const submitData: CreateLicenseData | UpdateLicenseData = {
-      licenseType: data.licenseType,
+      licenseTypeId: data.licenseTypeId,
       licenseNumber: data.licenseNumber,
       issueDate: data.issueDate,
       expirationDate: data.expirationDate,
@@ -177,7 +177,7 @@ export function LicenseForm({
     await onSubmit(submitData);
   };
 
-  const licenseType = watch("licenseType");
+  const licenseTypeId = watch("licenseTypeId");
   const issueDate = watch("issueDate");
   const expirationDate = watch("expirationDate");
 
@@ -197,41 +197,16 @@ export function LicenseForm({
         <CardContent className="space-y-6">
           {/* License Type */}
           <div className="space-y-2">
-            <Label htmlFor="licenseType">
-              License Type <span className="text-destructive">*</span>
-            </Label>
-            <Controller
-              name="licenseType"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || ""}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    trigger("licenseType");
-                  }}
-                >
-                  <SelectTrigger
-                    id="licenseType"
-                    className={cn(errors.licenseType && "border-destructive")}
-                  >
-                    <SelectValue placeholder="Select license type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LICENSE_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+            <LicenseTypeSelector
+              value={watch("licenseTypeId")}
+              onChange={(value) => {
+                setValue("licenseTypeId", value, { shouldValidate: true });
+                trigger("licenseTypeId");
+              }}
+              error={errors.licenseTypeId?.message}
+              required
+              showCategoryFilter={true}
             />
-            {errors.licenseType && (
-              <p className="text-sm text-destructive">
-                {errors.licenseType.message}
-              </p>
-            )}
           </div>
 
           {/* License Number */}

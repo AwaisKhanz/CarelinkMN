@@ -55,6 +55,13 @@ export { consentService, ConsentService } from "./services/consent.service";
 export { hospitalStaffService } from "./services/hospital-staff.service";
 export type { HospitalStaffService } from "./services/hospital-staff.service";
 export { adminService, AdminService } from "./services/admin.service";
+export { serviceService, ServiceService } from "./services/service.service";
+export {
+  licenseCategoryService,
+  licenseTypeService,
+  LicenseCategoryService,
+  LicenseTypeService,
+} from "./services/license.service";
 export type {
   GetUsersParams as AdminGetUsersParams,
   UsersResponse as AdminUsersResponse,

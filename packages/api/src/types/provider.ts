@@ -28,7 +28,7 @@ export type UpdateProviderRequest = z.infer<typeof UpdateProviderSchema>;
 
 // License creation schema
 export const CreateLicenseSchema = z.object({
-  licenseType: z.string().min(1, "License type is required"),
+  licenseTypeId: z.string().min(1, "License type is required"),
   licenseNumber: z.string().min(1, "License number is required"),
   issueDate: z.string().datetime("Valid issue date is required"),
   expirationDate: z.string().datetime("Valid expiration date is required"),
@@ -91,19 +91,6 @@ export enum SubscriptionTier {
   PREMIUM = "PREMIUM",
   ENTERPRISE = "ENTERPRISE",
 }
-
-// License types (Minnesota specific)
-export const LICENSE_TYPES = [
-  "144D", // Assisted Living - Dementia Care
-  "245D_BASIC", // 245D Basic
-  "245D_INTENSIVE", // 245D Intensive
-  "CRS", // Community Residential Services
-  "ALF", // Assisted Living Facility
-  "ICF_DD", // Intermediate Care Facility for DD
-  "SIL", // Semi-Independent Living
-] as const;
-
-export type LicenseType = typeof LICENSE_TYPES[number];
 
 // Provider statistics
 export interface ProviderStats {

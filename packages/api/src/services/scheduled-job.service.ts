@@ -314,6 +314,7 @@ export class ScheduledJobService {
           },
         },
         include: {
+          licenseType: true,
           provider: {
             include: {
               organization: {
@@ -347,6 +348,7 @@ export class ScheduledJobService {
           },
         },
         include: {
+          licenseType: true,
           provider: {
             include: {
               organization: {
@@ -377,7 +379,7 @@ export class ScheduledJobService {
                 await this.emailService.sendLicenseExpiryReminder({
                   to: user.email,
                   licenseId: license.id,
-                  licenseType: license.licenseType,
+                  licenseType: license.licenseType?.name || 'Unknown',
                   licenseNumber: license.licenseNumber,
                   expirationDate: license.expirationDate,
                   daysUntilExpiry: 30,
@@ -392,7 +394,7 @@ export class ScheduledJobService {
                   userId: user.id,
                   type: NotificationType.LICENSE_EXPIRING,
                   title: "License Expiring Soon",
-                  message: `Your ${license.licenseType} license (${license.licenseNumber}) will expire in 30 days.`,
+                  message: `Your ${license.licenseType?.name || 'Unknown'} license (${license.licenseNumber}) will expire in 30 days.`,
                   channels: ["IN_APP", "EMAIL"],
                   actionUrl: `/provider/licenses`,
                 });
@@ -418,7 +420,7 @@ export class ScheduledJobService {
                 await this.emailService.sendLicenseExpiryReminder({
                   to: user.email,
                   licenseId: license.id,
-                  licenseType: license.licenseType,
+                  licenseType: license.licenseType?.name || 'Unknown',
                   licenseNumber: license.licenseNumber,
                   expirationDate: license.expirationDate,
                   daysUntilExpiry: 7,
@@ -433,7 +435,7 @@ export class ScheduledJobService {
                   userId: user.id,
                   type: NotificationType.LICENSE_EXPIRING,
                   title: "License Expiring Soon",
-                  message: `Your ${license.licenseType} license (${license.licenseNumber}) will expire in 7 days.`,
+                  message: `Your ${license.licenseType?.name || 'Unknown'} license (${license.licenseNumber}) will expire in 7 days.`,
                   channels: ["IN_APP", "EMAIL"],
                   actionUrl: `/provider/licenses`,
                 });
@@ -749,6 +751,7 @@ export class ScheduledJobService {
               name: true,
             },
           },
+          primaryLicenseType: true,
         },
       });
       const providerMap = new Map(
@@ -770,7 +773,7 @@ export class ScheduledJobService {
 
         const provider = providerMap.get(invitation.providerId);
         const providerName =
-          provider?.organization?.name || provider?.primaryLicenseType || "Provider";
+          provider?.organization?.name || provider?.primaryLicenseType?.name || "Provider";
 
         try {
           await this.emailService.sendNotificationEmail({
@@ -860,6 +863,7 @@ export class ScheduledJobService {
           organization: {
             select: { name: true },
           },
+          primaryLicenseType: true,
         },
       });
       const providerMap = new Map(
@@ -876,7 +880,7 @@ export class ScheduledJobService {
         const socialWorker = invitation.dischargeCase?.socialWorker;
         const provider = providerMap.get(invitation.providerId);
         const providerName =
-          provider?.organization?.name || provider?.primaryLicenseType || "Provider";
+          provider?.organization?.name || provider?.primaryLicenseType?.name || "Provider";
 
         await db.dischargeInvitation.update({
           where: { id: invitation.id },

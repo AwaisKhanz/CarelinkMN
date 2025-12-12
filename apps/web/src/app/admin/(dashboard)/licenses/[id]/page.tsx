@@ -264,7 +264,7 @@ function LicenseDetailPageContent() {
             <CardContent className="grid md:grid-cols-2 gap-6">
               <div>
                 <Label className="text-muted-foreground">License Type</Label>
-                <p className="font-medium text-lg">{license.licenseType}</p>
+                <p className="font-medium text-lg">{license.licenseType?.name || 'Unknown'}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground">License Number</Label>
@@ -295,12 +295,6 @@ function LicenseDetailPageContent() {
                   )}
                 </div>
               </div>
-              {license.issuingState && (
-                <div>
-                  <Label className="text-muted-foreground">Issuing State</Label>
-                  <p className="font-medium">{license.issuingState}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 

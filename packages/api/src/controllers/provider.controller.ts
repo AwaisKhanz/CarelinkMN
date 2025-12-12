@@ -58,7 +58,7 @@ export class ProviderController {
 
       const {
         organizationId,
-        primaryLicenseType,
+        primaryLicenseTypeId,
         description,
         logo,
         coverImage,
@@ -68,7 +68,7 @@ export class ProviderController {
 
       const providerData = {
         organizationId,
-        primaryLicenseType,
+        primaryLicenseTypeId,
         description,
         logo,
         coverImage,
@@ -317,7 +317,7 @@ export class ProviderController {
       }
 
       const {
-        licenseType,
+        licenseTypeId,
         licenseNumber,
         issueDate,
         expirationDate,
@@ -325,7 +325,7 @@ export class ProviderController {
       } = req.body;
 
       const licenseData = {
-        licenseType,
+        licenseTypeId,
         licenseNumber,
         issueDate: new Date(issueDate),
         expirationDate: new Date(expirationDate),
@@ -493,7 +493,7 @@ export class ProviderController {
       }
 
       const {
-        licenseType,
+        licenseTypeId,
         licenseNumber,
         issueDate,
         expirationDate,
@@ -501,7 +501,7 @@ export class ProviderController {
       } = req.body;
 
       const updateData: any = {};
-      if (licenseType) updateData.licenseType = licenseType;
+      if (licenseTypeId) updateData.licenseTypeId = licenseTypeId;
       if (licenseNumber) updateData.licenseNumber = licenseNumber;
       if (issueDate) updateData.issueDate = new Date(issueDate);
       if (expirationDate) updateData.expirationDate = new Date(expirationDate);

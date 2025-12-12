@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { onboardingService } from "@/lib/api/services/onboarding.service";
-import { LICENSE_TYPES } from "@/lib/constants";
+import { SimpleLicenseTypeSelector } from "@/components/provider/license-type-selector";
 
 interface LicenseUploadProps {
   data: any;
@@ -31,7 +31,7 @@ interface LicenseUploadProps {
 
 interface License {
   id?: string;
-  licenseType: string;
+  licenseTypeId: string;
   licenseNumber: string;
   issueDate: string;
   expirationDate: string;
@@ -42,7 +42,7 @@ interface License {
 
 export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadProps) {
   const [licenses, setLicenses] = useState<License[]>(data?.licenses || []);
-  const [primaryLicenseType, setPrimaryLicenseType] = useState<string>(data?.primaryLicenseType || "");
+  const [primaryLicenseTypeId, setPrimaryLicenseTypeId] = useState<string>(data?.primaryLicenseTypeId || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isInitialMount = useRef(true);
   const isSyncingFromProps = useRef(false);
@@ -54,8 +54,8 @@ export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadPro
       if (data.licenses) {
         setLicenses(data.licenses);
       }
-      if (data.primaryLicenseType) {
-        setPrimaryLicenseType(data.primaryLicenseType);
+      if (data.primaryLicenseTypeId) {
+        setPrimaryLicenseTypeId(data.primaryLicenseTypeId);
       }
       // Reset flag after sync
       setTimeout(() => {
@@ -73,18 +73,18 @@ export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadPro
       const validateAndComplete = async () => {
         const isValid = validateLicenses();
         if (isValid) {
-          await onComplete({ licenses, primaryLicenseType });
+          await onComplete({ licenses, primaryLicenseTypeId });
         }
         return isValid;
       };
       onValidate(validateAndComplete);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [licenses, primaryLicenseType, onComplete]);
+  }, [licenses, primaryLicenseTypeId, onComplete]);
 
   const addNewLicense = () => {
     const newLicense: License = {
-      licenseType: "",
+      licenseTypeId: "",
       licenseNumber: "",
       issueDate: "",
       expirationDate: "",
@@ -169,13 +169,13 @@ export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadPro
     }
 
     // Validate primary license type
-    if (!primaryLicenseType.trim()) {
-      newErrors.primaryLicenseType = "Primary license type is required";
+    if (!primaryLicenseTypeId.trim()) {
+      newErrors.primaryLicenseTypeId = "Primary license type is required";
     }
 
     licenses.forEach((license, index) => {
-      if (!license.licenseType) {
-        newErrors[`${index}_licenseType`] = "License type is required";
+      if (!license.licenseTypeId) {
+        newErrors[`${index}_licenseTypeId`] = "License type is required";
       }
       if (!license.licenseNumber.trim()) {
         newErrors[`${index}_licenseNumber`] = "License number is required";
@@ -253,25 +253,12 @@ export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadPro
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>License Type *</Label>
-                      <Select
-                        value={license.licenseType}
-                        onValueChange={(value) => updateLicense(index, 'licenseType', value)}
-                      >
-                        <SelectTrigger className={errors[`${index}_licenseType`] ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Select license type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LICENSE_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors[`${index}_licenseType`] && (
-                        <p className="text-sm text-destructive">{errors[`${index}_licenseType`]}</p>
-                      )}
+                      <SimpleLicenseTypeSelector
+                        value={license.licenseTypeId}
+                        onChange={(value) => updateLicense(index, 'licenseTypeId', value)}
+                        error={errors[`${index}_licenseTypeId`]}
+                        required
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -402,31 +389,18 @@ export function LicenseUpload({ data, onComplete, onValidate }: LicenseUploadPro
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="primaryLicenseType">Primary License Type *</Label>
-            <Select
-              value={primaryLicenseType}
-              onValueChange={(value) => {
-                setPrimaryLicenseType(value);
+            <SimpleLicenseTypeSelector
+              value={primaryLicenseTypeId}
+              onChange={(value) => {
+                setPrimaryLicenseTypeId(value);
                 // Clear error when user selects
-                if (errors.primaryLicenseType) {
-                  setErrors(prev => ({ ...prev, primaryLicenseType: "" }));
+                if (errors.primaryLicenseTypeId) {
+                  setErrors(prev => ({ ...prev, primaryLicenseTypeId: "" }));
                 }
               }}
-            >
-              <SelectTrigger className={errors.primaryLicenseType ? "border-destructive" : ""}>
-                <SelectValue placeholder="Select primary license type" />
-              </SelectTrigger>
-              <SelectContent>
-                {LICENSE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.primaryLicenseType && (
-              <p className="text-sm text-destructive">{errors.primaryLicenseType}</p>
-            )}
+              error={errors.primaryLicenseTypeId}
+              required
+            />
             <p className="text-xs text-muted-foreground">
               This should match one of the license types you've uploaded above, or be your primary operating license type.
             </p>

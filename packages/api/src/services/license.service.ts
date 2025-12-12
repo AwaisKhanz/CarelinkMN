@@ -4,7 +4,7 @@ import { auditService } from "./audit.service";
 import { AuditResult } from "@prisma/client";
 
 export interface CreateLicenseData {
-  licenseType: string;
+  licenseTypeId: string;
   licenseNumber: string;
   issueDate: Date;
   expirationDate: Date;
@@ -43,7 +43,7 @@ export class LicenseService {
       const license = await db.license.create({
         data: {
           providerId,
-          licenseType: data.licenseType,
+          licenseTypeId: data.licenseTypeId,
           licenseNumber: data.licenseNumber,
           issueDate: data.issueDate,
           expirationDate: data.expirationDate,
@@ -68,7 +68,7 @@ export class LicenseService {
         license.id,
         {
           providerId,
-          licenseType: data.licenseType,
+          licenseTypeId: data.licenseTypeId,
           licenseNumber: data.licenseNumber,
         },
         undefined,
@@ -114,7 +114,12 @@ export class LicenseService {
       const license = await db.license.update({
         where: { id },
         data: {
-          ...data,
+          ...(data.licenseTypeId && { licenseTypeId: data.licenseTypeId }),
+          ...(data.licenseNumber && { licenseNumber: data.licenseNumber }),
+          ...(data.issueDate && { issueDate: data.issueDate }),
+          ...(data.expirationDate && { expirationDate: data.expirationDate }),
+          ...(data.documentUrl && { documentUrl: data.documentUrl }),
+          ...(data.fileName !== undefined && { fileName: data.fileName }),
           updatedAt: new Date(),
         },
         include: {
@@ -209,6 +214,13 @@ export class LicenseService {
 
       const licenses = await db.license.findMany({
         where,
+        include: {
+          licenseType: {
+            include: {
+              category: true,
+            },
+          },
+        },
         orderBy: {
           createdAt: "desc",
         },

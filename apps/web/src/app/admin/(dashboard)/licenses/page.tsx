@@ -238,7 +238,7 @@ function AdminLicensesPageContent() {
             <div>
               <div className="font-medium">{license.licenseNumber}</div>
               <div className="text-sm text-muted-foreground">
-                {license.licenseType} • {license.issuingState}
+                {license.licenseType?.name || 'Unknown'}
               </div>
             </div>
           );
@@ -439,7 +439,7 @@ function AdminLicensesPageContent() {
               </div>
               <div>
                 <Label>License Type</Label>
-                <p className="text-sm">{selectedLicense.licenseType}</p>
+                <p className="text-sm">{selectedLicense.licenseType?.name || 'Unknown'}</p>
               </div>
               <div>
                 <Label>Status</Label>

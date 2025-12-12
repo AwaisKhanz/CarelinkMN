@@ -181,7 +181,7 @@ router.post(
   "/providers/:providerId/licenses",
   param("providerId").isUUID().withMessage("Invalid provider ID"),
   [
-    body("licenseType").notEmpty().withMessage("License type is required"),
+    body("licenseTypeId").notEmpty().withMessage("License type is required"),
     body("licenseNumber").notEmpty().withMessage("License number is required"),
     body("issueDate").isISO8601().withMessage("Valid issue date is required"),
     body("expirationDate")

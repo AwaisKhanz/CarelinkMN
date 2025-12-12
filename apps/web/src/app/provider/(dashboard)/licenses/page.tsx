@@ -32,16 +32,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
-import { providerService } from "@/lib/api";
-import { License, LicenseStatus, UpdateLicenseData } from "@carelink/types";
+import { providerService, licenseTypeService } from "@/lib/api";
+import { License, LicenseStatus, UpdateLicenseData, LicenseType } from "@carelink/types";
 import { usePageMetadata } from "../use-page-metadata";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useProviderId } from "@/hooks/use-provider-data";
 import { format } from "date-fns";
 import {
-  LICENSE_TYPES_MAP,
   STATES_MAP,
-  LICENSE_TYPES,
   US_STATES,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -102,9 +100,8 @@ function ProviderLicensesPageContent() {
     Array<{
       file: File;
       id: string;
-      licenseType: string;
+      licenseTypeId: string;
       licenseNumber: string;
-      issuingState: string;
       issueDate: string;
       expirationDate: string;
       documentUrl?: string;
@@ -120,6 +117,7 @@ function ProviderLicensesPageContent() {
   const [bulkStatusValue, setBulkStatusValue] = useState<LicenseStatus | "">(
     ""
   );
+  const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
   const [isUpdatingBulkStatus, setIsUpdatingBulkStatus] = useState(false);
 
   useEffect(() => {
@@ -142,6 +140,21 @@ function ProviderLicensesPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchQuery]);
+
+  // Fetch license types on mount
+  useEffect(() => {
+    const fetchLicenseTypes = async () => {
+      try {
+        const response = await licenseTypeService.getAllLicenseTypes();
+        if (response.success && response.data) {
+          setLicenseTypes(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching license types:', error);
+      }
+    };
+    fetchLicenseTypes();
+  }, []);
 
   const fetchLicenses = async () => {
     if (!providerId) return;
@@ -188,10 +201,7 @@ function ProviderLicensesPageContent() {
         filteredLicenses = filteredLicenses.filter(
           (license) =>
             license.licenseNumber?.toLowerCase().includes(query) ||
-            LICENSE_TYPES_MAP[license.licenseType]
-              ?.toLowerCase()
-              .includes(query) ||
-            license.issuingState?.toLowerCase().includes(query)
+            license.licenseType?.name?.toLowerCase().includes(query)
         );
       }
 
@@ -275,9 +285,8 @@ function ProviderLicensesPageContent() {
 
           // Create license with uploaded document URL
           const licenseData: CreateLicenseData = {
-            licenseType: item.licenseType,
+            licenseTypeId: item.licenseTypeId,
             licenseNumber: item.licenseNumber,
-            issuingState: item.issuingState,
             issueDate: item.issueDate,
             expirationDate: item.expirationDate,
             documentUrl: uploadResponse.url,
@@ -485,9 +494,8 @@ function ProviderLicensesPageContent() {
                               files.map((file) => ({
                                 file,
                                 id: Math.random().toString(36).substring(7),
-                                licenseType: "",
+                                licenseTypeId: "",
                                 licenseNumber: "",
-                                issuingState: "MN",
                                 issueDate: "",
                                 expirationDate: "",
                               }))
@@ -531,12 +539,12 @@ function ProviderLicensesPageContent() {
                             <div>
                               <Label>License Type *</Label>
                               <Select
-                                value={item.licenseType}
+                                value={item.licenseTypeId}
                                 onValueChange={(value) => {
                                   setBulkUploadFiles((prev) =>
                                     prev.map((f) =>
                                       f.id === item.id
-                                        ? { ...f, licenseType: value }
+                                        ? { ...f, licenseTypeId: value }
                                         : f
                                     )
                                   );
@@ -546,12 +554,12 @@ function ProviderLicensesPageContent() {
                                   <SelectValue placeholder="Select license type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {LICENSE_TYPES.map((type) => (
+                                  {licenseTypes.map((type) => (
                                     <SelectItem
-                                      key={type.value}
-                                      value={type.value}
+                                      key={type.id}
+                                      value={type.id}
                                     >
-                                      {type.label}
+                                      {type.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -576,36 +584,6 @@ function ProviderLicensesPageContent() {
                                 }}
                                 placeholder="Enter license number"
                               />
-                            </div>
-
-                            <div>
-                              <Label>Issuing State *</Label>
-                              <Select
-                                value={item.issuingState}
-                                onValueChange={(value) => {
-                                  setBulkUploadFiles((prev) =>
-                                    prev.map((f) =>
-                                      f.id === item.id
-                                        ? { ...f, issuingState: value }
-                                        : f
-                                    )
-                                  );
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {US_STATES.map((state) => (
-                                    <SelectItem
-                                      key={state.value}
-                                      value={state.value}
-                                    >
-                                      {state.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
                             </div>
 
                             <div>
@@ -674,9 +652,8 @@ function ProviderLicensesPageContent() {
                       bulkUploadFiles.length === 0 ||
                       bulkUploadFiles.some(
                         (f) =>
-                          !f.licenseType ||
+                          !f.licenseTypeId ||
                           !f.licenseNumber ||
-                          !f.issuingState ||
                           !f.issueDate ||
                           !f.expirationDate
                       )
@@ -851,10 +828,9 @@ function ProviderLicensesPageContent() {
                       )}
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-lg font-semibold">
-                            {LICENSE_TYPES_MAP[license.licenseType] ||
-                              license.licenseType}
-                          </h3>
+                          <div className="text-sm text-muted-foreground">
+                            {license.licenseType?.name || "Unknown"}
+                          </div>
                           <LicenseStatusBadge
                             status={license.status}
                             className="whitespace-nowrap"
@@ -889,15 +865,6 @@ function ProviderLicensesPageContent() {
                             <span className="font-medium">License #:</span>
                             <span>{license.licenseNumber}</span>
                           </div>
-                          {license.issuingState && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">State:</span>
-                              <span>
-                                {STATES_MAP[license.issuingState] ||
-                                  license.issuingState}
-                              </span>
-                            </div>
-                          )}
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
                             <span className="font-medium">Issue Date:</span>
@@ -1040,8 +1007,7 @@ function ProviderLicensesPageContent() {
           licenseToDelete ? (
             <>
               <strong>
-                {LICENSE_TYPES_MAP[licenseToDelete.licenseType || ""] ||
-                  licenseToDelete.licenseType}
+                {licenseToDelete.licenseType?.name || "Unknown"}
               </strong>
               <br />
               License #: {licenseToDelete.licenseNumber}
@@ -1134,11 +1100,12 @@ function ProviderLicensesPageContent() {
           </DialogHeader>
           {licenseToRenew && (
             <div className="space-y-4">
-              <div>
-                <Label>License Type</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {LICENSE_TYPES_MAP[licenseToRenew.licenseType] ||
-                    licenseToRenew.licenseType}
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  License Type:{" "}
+                  <span className="font-medium text-foreground">
+                    {licenseToRenew.licenseType?.name || "Unknown"}
+                  </span>
                 </p>
               </div>
               <div>

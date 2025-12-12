@@ -119,6 +119,21 @@ const getNavItems = (
           icon: ShieldCheck,
         },
         {
+          title: "License Categories",
+          href: "/admin/license-categories",
+          icon: FileText,
+        },
+        {
+          title: "License Types",
+          href: "/admin/license-types",
+          icon: ClipboardList,
+        },
+        {
+          title: "Services",
+          href: "/admin/services",
+          icon: Package,
+        },
+        {
           title: "Compliance",
           href: "/admin/compliance",
           icon: CheckCircle,

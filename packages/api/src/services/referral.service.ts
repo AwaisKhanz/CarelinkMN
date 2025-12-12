@@ -937,6 +937,7 @@ export class ReferralService {
               name: true,
             },
           },
+          primaryLicenseType: true,
           homes: {
             where: { isActive: true },
             select: {

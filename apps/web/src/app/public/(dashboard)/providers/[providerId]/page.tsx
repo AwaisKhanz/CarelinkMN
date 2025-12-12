@@ -42,7 +42,6 @@ import {
   formatAvailability,
   getProviderBadges,
 } from "@/lib/utils/public";
-import { getLicenseTypeLabel } from "@/lib/constants";
 import { PAYER_LABELS } from "@/lib/constants";
 import { Payer } from "@carelink/types";
 
@@ -281,9 +280,7 @@ export default function ProviderDetailPage() {
                 </span>
               </div>
               {provider.primaryLicenseType && (
-                <Badge variant="outline">
-                  {getLicenseTypeLabel(provider.primaryLicenseType)}
-                </Badge>
+                <Badge variant="outline">{provider.primaryLicenseType}</Badge>
               )}
             </div>
           </CardContent>
@@ -352,7 +349,7 @@ export default function ProviderDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <Badge variant="outline" className="text-base">
-                    {getLicenseTypeLabel(provider.primaryLicenseType)}
+                    {provider.primaryLicenseType}
                   </Badge>
                 </CardContent>
               </Card>

@@ -396,7 +396,7 @@ export class AdminService {
     if (search) {
       where.OR = [
         { licenseNumber: { contains: search, mode: "insensitive" } },
-        { licenseType: { contains: search, mode: "insensitive" } },
+        { licenseType: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 

@@ -36,14 +36,14 @@ import {
   OrganizationStatus,
 } from "@carelink/types";
 import {
-  LICENSE_TYPES,
   MINNESOTA_COUNTIES,
   PAYER_OPTIONS,
   CARE_LEVELS,
   SUPPORTED_NEEDS,
   PAYER_LABELS,
 } from "@/lib/constants";
-import { useDebounce } from "@/hooks/use-debounce";
+import { licenseTypeService } from "@/lib/api";
+import { LicenseType } from "@carelink/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,6 +79,7 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { CASE_MANAGER_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { useDebounce } from "@/hooks/use-debounce";
 
 function CaseManagerSearchPageContent() {
   const router = useRouter();
@@ -123,6 +124,22 @@ function CaseManagerSearchPageContent() {
     useState(false);
   const [shortlistNotes, setShortlistNotes] = useState("");
   const [isAddingToShortlist, setIsAddingToShortlist] = useState(false);
+  const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
+
+  // Fetch license types on mount
+  useEffect(() => {
+    const fetchLicenseTypes = async () => {
+      try {
+        const response = await licenseTypeService.getAllLicenseTypes(false);
+        if (response.success && response.data) {
+          setLicenseTypes(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching license types:", error);
+      }
+    };
+    fetchLicenseTypes();
+  }, []);
 
   useEffect(() => {
     setTitle("Search Providers");
@@ -252,6 +269,10 @@ function CaseManagerSearchPageContent() {
                   county: provider.organization.county,
                 }
               : undefined,
+            licenses: provider.licenses?.map((license) => ({
+              id: license.id,
+              licenseType: license.licenseTypeId, // Map licenseTypeId to licenseType for filtering
+            })),
             homes: provider.homes?.map((home) => ({
               id: home.id,
               name: home.name,
@@ -436,9 +457,9 @@ function CaseManagerSearchPageContent() {
     value: county,
   }));
 
-  const licenseOptions = LICENSE_TYPES.map((type) => ({
-    label: type.label,
-    value: type.value,
+  const licenseOptions = licenseTypes.map((type) => ({
+    label: type.name,
+    value: type.id,
   }));
 
   const serviceOptions = SUPPORTED_NEEDS.map((service) => ({

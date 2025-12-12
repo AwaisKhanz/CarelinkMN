@@ -82,7 +82,7 @@ function ProviderServicesPageContent() {
             l.status === LicenseStatus.ACTIVE ||
             l.status === LicenseStatus.PENDING
         )
-        .map((l) => l.licenseType);
+        .map((l) => l.licenseTypeId);
       setProviderLicenses(licenses);
 
       // Check if any licenses are PENDING

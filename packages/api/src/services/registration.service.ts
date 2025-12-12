@@ -363,7 +363,7 @@ export class RegistrationService {
     const provider = await tx.provider.create({
       data: {
         organizationId,
-        primaryLicenseType: data.primaryLicenseType || "UNKNOWN", // Will be updated in onboarding
+        // primaryLicenseTypeId will be set during onboarding
         description: data.description || "",
         subscriptionTier: SubscriptionTier.FREE,
         verified: false,

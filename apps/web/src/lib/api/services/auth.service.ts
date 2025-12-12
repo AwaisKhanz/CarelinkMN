@@ -11,6 +11,7 @@ export interface User {
   status: string;
   emailVerified: boolean;
   organizationId?: string;
+  profileImage?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

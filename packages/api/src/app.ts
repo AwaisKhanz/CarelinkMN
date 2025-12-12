@@ -44,6 +44,9 @@ import publicRoutes from "./routes/public.routes";
 import contactRoutes from "./routes/contact.routes";
 import publicReferralRequestRoutes from "./routes/public-referral-request.routes";
 import boostRoutes from "./routes/boost.routes";
+import licenseCategoryRoutes from "./routes/license-category.routes";
+import licenseTypeRoutes from "./routes/license-type.routes";
+
 
 // Import middleware
 import {
@@ -183,7 +186,7 @@ app.use("/api", placementFamilyRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/billing", billingRoutes);
-app.use("/api", serviceRoutes);
+app.use("/api/services", serviceRoutes);
 app.use("/api", analyticsRoutes);
 app.use("/api", messagingRoutes);
 app.use("/api", referralRoutes);
@@ -194,6 +197,9 @@ app.use("/api", dischargeCaseRoutes);
 app.use("/api/contact", contactRoutes); // Public contact form
 app.use("/api/public-requests", publicReferralRequestRoutes); // Public referral requests
 app.use("/api/boost", boostRoutes); // Boost management
+app.use("/api/license-categories", licenseCategoryRoutes); // License categories
+app.use("/api/license-types", licenseTypeRoutes); // License types
+
 
 // 404 handler
 app.use(notFoundHandler);

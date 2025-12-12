@@ -123,63 +123,6 @@ export const PAYER_OPTIONS: readonly PayerOption[] = [
 export const PAYER_TYPES = PAYER_OPTIONS;
 
 // ============================================
-// LICENSE TYPES
-// ============================================
-
-export interface LicenseTypeOption {
-  value: string;
-  label: string;
-  category?: string;
-}
-
-/**
- * License types for providers
- * Types of licenses providers can hold
- */
-export const LICENSE_TYPES: readonly LicenseTypeOption[] = [
-  {
-    value: "144D",
-    label: "144D - Assisted Living (Dementia Care)",
-    category: "Assisted Living",
-  },
-  {
-    value: "245D_BASIC",
-    label: "245D Basic",
-    category: "Community Residential",
-  },
-  {
-    value: "245D_INTENSIVE",
-    label: "245D Intensive",
-    category: "Community Residential",
-  },
-  {
-    value: "CRS",
-    label: "CRS - Community Residential Services",
-    category: "Community Residential",
-  },
-  {
-    value: "ALF",
-    label: "ALF - Assisted Living Facility",
-    category: "Assisted Living",
-  },
-  {
-    value: "ICF_DD",
-    label: "ICF/DD - Intermediate Care Facility",
-    category: "Residential",
-  },
-  {
-    value: "SIL",
-    label: "SIL - Semi-Independent Living",
-    category: "Independent Living",
-  },
-  {
-    value: "OTHER",
-    label: "Other",
-    category: "Other",
-  },
-] as const;
-
-// ============================================
 // GENDER OPTIONS
 // ============================================
 

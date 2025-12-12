@@ -90,9 +90,9 @@ export class OnboardingService {
       for (const lic of data.licenses) {
         if (lic && typeof lic === "object") {
           // Required fields
-          if (lic.licenseType != null && typeof lic.licenseType !== "string") {
+          if (lic.licenseTypeId != null && typeof lic.licenseTypeId !== "string") {
             throw new Error(
-              "Invalid license data: licenseType must be a string"
+              "Invalid license data: licenseTypeId must be a string"
             );
           }
           if (
@@ -301,6 +301,12 @@ export class OnboardingService {
    */
   async completeOnboarding(providerId: string): Promise<OnboardingState> {
     try {
+      // Get current state to access license data
+      const currentState = await this.getOnboardingState(providerId);
+      if (!currentState) {
+        throw new Error("Onboarding state not found");
+      }
+
       const updatedState = await this.prisma.providerOnboardingState.update({
         where: { providerId },
         data: {
@@ -310,6 +316,17 @@ export class OnboardingService {
           updatedAt: new Date(),
         },
       });
+
+      // Update provider's primaryLicenseTypeId immediately so dashboard doesn't error
+      const licenseData = currentState.licenseData as any;
+      if (licenseData && licenseData.primaryLicenseTypeId) {
+        await this.prisma.provider.update({
+          where: { id: providerId },
+          data: {
+            primaryLicenseTypeId: licenseData.primaryLicenseTypeId,
+          },
+        });
+      }
 
       return {
         id: updatedState.id,
@@ -486,7 +503,7 @@ export class OnboardingService {
           for (const license of licenseData.licenses) {
             // Only create licenses that have ALL required fields (including dates)
             if (
-              license.licenseType && 
+              license.licenseTypeId && 
               license.licenseNumber && 
               license.issueDate && 
               license.expirationDate
@@ -494,7 +511,7 @@ export class OnboardingService {
               await this.prisma.license.create({
                 data: {
                   providerId,
-                  licenseType: license.licenseType,
+                  licenseTypeId: license.licenseTypeId,
                   licenseNumber: license.licenseNumber,
                   issueDate: new Date(license.issueDate),
                   expirationDate: new Date(license.expirationDate),
@@ -508,11 +525,11 @@ export class OnboardingService {
         }
 
         // Also update primary license type if provided
-        if (licenseData && licenseData.primaryLicenseType) {
+        if (licenseData && licenseData.primaryLicenseTypeId) {
           await this.prisma.provider.update({
             where: { id: providerId },
             data: {
-              primaryLicenseType: licenseData.primaryLicenseType,
+              primaryLicenseTypeId: licenseData.primaryLicenseTypeId,
             },
           });
         }

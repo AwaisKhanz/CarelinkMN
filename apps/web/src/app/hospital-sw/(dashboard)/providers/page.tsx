@@ -38,7 +38,6 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { HOSPITAL_SW_CAPABILITIES } from "@/lib/permissions/capabilities";
 import { LoadingState, ErrorState, StatsGrid } from "@/components/shared";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import { getLicenseTypeLabel } from "@/lib/constants";
 
 interface ProviderListItem {
   id: string;
@@ -48,7 +47,11 @@ interface ProviderListItem {
     state?: string;
     county?: string;
   };
-  primaryLicenseType?: string;
+  primaryLicenseType?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
   verified?: boolean;
   acceptsReferrals?: boolean;
   responseTimeHours?: number;
@@ -188,9 +191,7 @@ function HospitalSWProvidersPageContent() {
           const provider = row.original;
           return (
             <Badge variant="outline">
-              {provider.primaryLicenseType
-                ? getLicenseTypeLabel(provider.primaryLicenseType)
-                : "N/A"}
+              {provider.primaryLicenseType?.name || "Healthcare Provider"}
             </Badge>
           );
         },

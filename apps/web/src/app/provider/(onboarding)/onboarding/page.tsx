@@ -281,6 +281,7 @@ export default function ProviderOnboardingPage() {
         return (
           <ServiceSelection
             data={onboardingState.serviceData || {}}
+            licenseData={onboardingState.licenseData || {}}
             onComplete={handleStepComplete}
             onValidate={(validateFn) => {
               validateStepRef.current = validateFn;

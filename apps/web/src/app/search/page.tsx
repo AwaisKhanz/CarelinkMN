@@ -287,7 +287,7 @@ export default function PublicSearchPage() {
                           <div className="flex flex-wrap gap-2 mb-4">
                             {provider.licenses.slice(0, 3).map((license) => (
                               <Badge key={license.id} variant="outline" className="text-xs font-normal">
-                                {license.licenseType}
+                                {license.licenseTypeId || 'N/A'}
                               </Badge>
                             ))}
                             {provider.licenses.length > 3 && (

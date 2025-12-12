@@ -262,6 +262,7 @@ export class ReferralScoringService {
               email: true,
             },
           },
+          primaryLicenseType: true,
           services: {
             include: {
               service: {

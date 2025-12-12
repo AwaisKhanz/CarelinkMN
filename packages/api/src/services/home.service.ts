@@ -504,7 +504,13 @@ export class HomeService {
             id: { in: uniqueServiceIds },
             isActive: true,
           },
-          select: { id: true, licenseTypes: true, name: true },
+          include: {
+            serviceLicenseTypes: {
+              include: {
+                licenseType: true,
+              },
+            },
+          },
         });
         if (servicesFound.length !== uniqueServiceIds.length) {
           const foundIds = new Set(servicesFound.map((s) => s.id));
@@ -520,13 +526,19 @@ export class HomeService {
       if (uniqueServiceIds.length > 0) {
         const services = await db.service.findMany({
           where: { id: { in: uniqueServiceIds } },
-          select: { id: true, licenseTypes: true, name: true },
+          include: {
+            serviceLicenseTypes: {
+              include: {
+                licenseType: true,
+              },
+            },
+          },
         });
         const activeLicenses = (existingHome.provider?.licenses || []).filter(
           (l) => l.status === "ACTIVE"
         );
         const providerLicenseTypes = new Set(
-          activeLicenses.map((l) => l.licenseType)
+          activeLicenses.map((l) => l.licenseTypeId)
         );
         
         // Check if provider has any active licenses
@@ -537,11 +549,9 @@ export class HomeService {
         }
         
         const invalidServices = services.filter((s) => {
-          // Use the centralized license matching utility for consistency
-          return !isServiceAllowedForProvider(
-            s.licenseTypes,
-            Array.from(providerLicenseTypes)
-          );
+          // Service must have at least one license type that matches provider's licenses
+          const serviceLicenseTypeIds = s.serviceLicenseTypes.map(slt => slt.licenseTypeId);
+          return !serviceLicenseTypeIds.some(ltId => providerLicenseTypes.has(ltId));
         });
         if (invalidServices.length > 0) {
           const names = invalidServices.map((s) => s.name || s.id).join(", ");

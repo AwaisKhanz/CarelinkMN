@@ -29,10 +29,11 @@ import {
 } from "@/lib/constants/public";
 import {
   MINNESOTA_COUNTIES,
-  LICENSE_TYPES,
   PAYER_OPTIONS,
 } from "@/lib/constants";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { licenseTypeService } from "@/lib/api";
+import { LicenseType } from "@carelink/types";
 
 interface SearchFiltersProps {
   filters: PublicSearchFilters;
@@ -54,6 +55,22 @@ export function SearchFilters({
   const [radius, setRadius] = useState<number | undefined>(
     filters.location?.radius
   );
+  const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
+
+  // Fetch license types on mount
+  useEffect(() => {
+    const fetchLicenseTypes = async () => {
+      try {
+        const response = await licenseTypeService.getAllLicenseTypes(false);
+        if (response.success && response.data) {
+          setLicenseTypes(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching license types:", error);
+      }
+    };
+    fetchLicenseTypes();
+  }, []);
 
   const updateLocation = (
     type?: LocationType,
@@ -204,18 +221,18 @@ export function SearchFilters({
         <div className="space-y-3">
           <Label>License Types</Label>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {LICENSE_TYPES.map((license) => (
-              <div key={license.value} className="flex items-center space-x-2">
+            {licenseTypes.map((license) => (
+              <div key={license.id} className="flex items-center space-x-2">
                 <Checkbox
-                  id={`license-${license.value}`}
+                  id={`license-${license.id}`}
                   checked={
-                    filters.licenseTypes?.includes(license.value) || false
+                    filters.licenseTypes?.includes(license.id) || false
                   }
                   onCheckedChange={(checked) => {
                     const current = filters.licenseTypes || [];
                     const updated = checked
-                      ? [...current, license.value]
-                      : current.filter((l) => l !== license.value);
+                      ? [...current, license.id]
+                      : current.filter((l) => l !== license.id);
                     onFiltersChange({
                       ...filters,
                       licenseTypes: updated.length > 0 ? updated : undefined,
@@ -223,10 +240,10 @@ export function SearchFilters({
                   }}
                 />
                 <Label
-                  htmlFor={`license-${license.value}`}
+                  htmlFor={`license-${license.id}`}
                   className="text-sm font-normal cursor-pointer"
                 >
-                  {license.label}
+                  {license.name}
                 </Label>
               </div>
             ))}

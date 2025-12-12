@@ -32,7 +32,6 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/shared";
 import { HospitalSWDetailHeader } from "@/components/hospital-sw";
 import { format } from "date-fns";
 import { useRolePermissions } from "@/hooks/use-role-permissions";
-import { getLicenseTypeLabel } from "@/lib/constants";
 import { LicenseStatus } from "@carelink/types";
 
 function ProviderProfilePageContent() {
@@ -122,11 +121,6 @@ function ProviderProfilePageContent() {
   // Prepare badges for header
   const headerBadges = (
     <>
-      {provider.primaryLicenseType && (
-        <Badge variant="outline">
-          {getLicenseTypeLabel(provider.primaryLicenseType)}
-        </Badge>
-      )}
       {provider.verified && (
         <Badge variant="healthcareInfo">
           <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -159,11 +153,6 @@ function ProviderProfilePageContent() {
             <div>
               <CardTitle>{provider.organization?.name}</CardTitle>
               <CardDescription className="mt-2">
-                {provider.primaryLicenseType && (
-                  <Badge variant="outline" className="mr-2">
-                    {getLicenseTypeLabel(provider.primaryLicenseType)}
-                  </Badge>
-                )}
                 {provider.verified && (
                   <Badge variant="healthcareInfo">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -399,7 +388,7 @@ function ProviderProfilePageContent() {
                     >
                       <div>
                         <div className="font-medium">
-                          {getLicenseTypeLabel(license.licenseType)}
+                          License ID: {license.licenseTypeId || 'N/A'}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           License #: {license.licenseNumber}

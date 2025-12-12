@@ -286,7 +286,7 @@ function ProviderProfilePageContent() {
               {provider.organization?.name || "Provider Profile"}
             </h1>
             <p className="text-muted-foreground mt-1">
-              {provider.primaryLicenseType} Provider
+              {provider.primaryLicenseType?.name || "Healthcare Provider"}
             </p>
           </div>
         </div>
@@ -328,7 +328,7 @@ function ProviderProfilePageContent() {
                   {provider.organization?.name}
                 </CardTitle>
                 <CardDescription className="mt-2">
-                  {provider.primaryLicenseType} Provider
+                  {provider.primaryLicenseType?.name || "Healthcare Provider"}
                 </CardDescription>
               </div>
               <div className="flex flex-col gap-2">
@@ -545,7 +545,7 @@ function ProviderProfilePageContent() {
                   {provider.licenses.map((license, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">
-                        {license.licenseType}
+                        {license.licenseTypeId || 'N/A'}
                       </TableCell>
                       <TableCell>{license.licenseNumber}</TableCell>
                       <TableCell>

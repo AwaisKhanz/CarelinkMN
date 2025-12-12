@@ -118,7 +118,7 @@ export class OrganizationService {
           await tx.provider.create({
             data: {
               organizationId: organization.id,
-              primaryLicenseType: "UNKNOWN", // Will be updated in onboarding
+              primaryLicenseTypeId: "", // Placeholder - will be set during onboarding
               description: "",
               subscriptionTier: "FREE",
               verified: false,

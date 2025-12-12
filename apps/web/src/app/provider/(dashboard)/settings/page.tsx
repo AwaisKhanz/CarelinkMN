@@ -6,8 +6,6 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { PROVIDER_CAPABILITIES } from "@/lib/permissions/provider-capabilities";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileTab } from "./components/profile-tab";
-import { ServicesTab } from "./components/services-tab";
-import { LicensesTab } from "./components/licenses-tab";
 import { SubscriptionTab } from "./components/subscription-tab";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -23,7 +21,7 @@ function ProviderSettingsPageContent() {
 
   useEffect(() => {
     setTitle("Provider Settings");
-    setDescription("Manage your provider profile, services, and settings");
+    setDescription("Manage your provider profile and settings");
   }, [setTitle, setDescription]);
 
   const handleTabChange = (value: string) => {
@@ -46,8 +44,6 @@ function ProviderSettingsPageContent() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="licenses">Licenses</TabsTrigger>
           {canManageSubscription && (
             <TabsTrigger value="subscription">Subscription</TabsTrigger>
           )}
@@ -55,14 +51,6 @@ function ProviderSettingsPageContent() {
 
         <TabsContent value="profile" className="space-y-6">
           <ProfileTab />
-        </TabsContent>
-
-        <TabsContent value="services" className="space-y-6">
-          <ServicesTab />
-        </TabsContent>
-
-        <TabsContent value="licenses" className="space-y-6">
-          <LicensesTab />
         </TabsContent>
 
         {canManageSubscription && (

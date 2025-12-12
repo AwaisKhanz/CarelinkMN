@@ -18,10 +18,9 @@ import {
 } from "lucide-react";
 import { OnboardingState } from "@/lib/api/services/onboarding.service";
 import {
-  LICENSE_TYPES_MAP,
   SUBSCRIPTION_PLANS_MAP,
 } from "@/lib/constants";
-import { homeService, Service } from "@/lib/api";
+import { homeService, Service, licenseTypeService } from "@/lib/api";
 
 interface ReviewAndSubmitProps {
   onboardingState: OnboardingState;
@@ -38,6 +37,7 @@ export function ReviewAndSubmit({ onboardingState, onSubmit, isSubmitting, onAck
     licenseValidityConfirmed: false,
   });
   const [services, setServices] = useState<Service[]>([]);
+  const [licenseTypeNames, setLicenseTypeNames] = useState<Record<string, string>>({});
 
   const orgData = onboardingState.organizationData || {};
   const licenseData = onboardingState.licenseData || {};
@@ -65,6 +65,29 @@ export function ReviewAndSubmit({ onboardingState, onSubmit, isSubmitting, onAck
     const service = services.find((s) => s.id === serviceId);
     return service ? service.name : serviceId;
   };
+
+  const getLicenseTypeName = (licenseTypeId: string) => {
+    return licenseTypeNames[licenseTypeId] || licenseTypeId;
+  };
+
+  // Fetch license type names
+  useEffect(() => {
+    const fetchLicenseTypeNames = async () => {
+      try {
+        const response = await licenseTypeService.getAllLicenseTypes(false);
+        if (response.success && response.data) {
+          const names: Record<string, string> = {};
+          response.data.forEach(type => {
+            names[type.id] = type.name;
+          });
+          setLicenseTypeNames(names);
+        }
+      } catch (error) {
+        console.error("Error fetching license types:", error);
+      }
+    };
+    fetchLicenseTypeNames();
+  }, []);
 
   const handleAcknowledgmentChange = (key: keyof typeof acknowledgments) => {
     setAcknowledgments(prev => {
@@ -137,13 +160,13 @@ export function ReviewAndSubmit({ onboardingState, onSubmit, isSubmitting, onAck
         <CardContent>
           <div className="space-y-4">
             {/* Primary License Type */}
-            {licenseData.primaryLicenseType && (
+            {licenseData.primaryLicenseTypeId && (
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg mb-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="font-medium text-sm">Primary License Type:</span>
                     <p className="text-muted-foreground mt-1">
-                      {LICENSE_TYPES_MAP[licenseData.primaryLicenseType] || licenseData.primaryLicenseType}
+                      {getLicenseTypeName(licenseData.primaryLicenseTypeId)}
                     </p>
                   </div>
                   <Badge variant="healthcarePrimary">Primary</Badge>
@@ -160,7 +183,7 @@ export function ReviewAndSubmit({ onboardingState, onSubmit, isSubmitting, onAck
                     <div>
                       <span className="font-medium">License Type:</span>
                       <p className="text-muted-foreground">
-                        {LICENSE_TYPES_MAP[license.licenseType] || license.licenseType}
+                        {getLicenseTypeName(license.licenseTypeId)}
                       </p>
                     </div>
                     <div>

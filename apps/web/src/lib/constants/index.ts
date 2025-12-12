@@ -30,9 +30,6 @@ export {
   type MedicalNeedOption,
   // Payers (PAYER_OPTIONS not re-exported - web app has its own version with Payer enum)
   PAYER_TYPES,
-  // License types
-  LICENSE_TYPES,
-  type LicenseTypeOption,
   // Gender options
   GENDER_OPTIONS,
   GENDER_PREFERENCES,
@@ -133,7 +130,6 @@ import {
   SubscriptionTier,
 } from "@carelink/types";
 import type { BadgeProps } from "@/components/ui/badge";
-import { LICENSE_TYPES } from "@carelink/utils";
 import {
   BookingStatus,
   ConsentType,
@@ -178,17 +174,6 @@ export const CAPTURE_METHODS = [
   { value: CaptureMethod.WRITTEN_SCAN, label: "Written Scan" },
 ];
 
-// ============================================
-// LICENSE TYPES MAP (UI-specific helper)
-// ============================================
-// Create a map for quick lookups (UI-specific helper, stays in web app)
-export const LICENSE_TYPES_MAP: Record<string, string> = LICENSE_TYPES.reduce(
-  (acc, type) => {
-    acc[type.value] = type.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
 
 // ============================================
 // ORGANIZATION TYPES
@@ -502,12 +487,6 @@ export const STANDARD_AMENITIES = [
 // HELPER FUNCTIONS
 // ============================================
 
-/**
- * Get license type label by value
- */
-export function getLicenseTypeLabel(value: string): string {
-  return LICENSE_TYPES_MAP[value] || value;
-}
 
 /**
  * Get organization type label by value

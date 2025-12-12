@@ -328,6 +328,7 @@ export class DischargeMatchingService {
               email: true,
             },
           },
+          primaryLicenseType: true,
           services: {
             include: {
               service: {

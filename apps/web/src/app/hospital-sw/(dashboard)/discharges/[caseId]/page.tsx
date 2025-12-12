@@ -246,7 +246,11 @@ function DischargeCaseDetailPageContent() {
     Array<{
       id: string;
       organization?: { name: string };
-      primaryLicenseType?: string;
+      primaryLicenseType?: {
+        id: string;
+        name: string;
+        code?: string;
+      };
     }>
   >([]);
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
@@ -1158,7 +1162,7 @@ function DischargeCaseDetailPageContent() {
                       </p>
                       {provider.primaryLicenseType && (
                         <p className="text-sm text-muted-foreground">
-                          {provider.primaryLicenseType}
+                          {provider.primaryLicenseType.name}
                         </p>
                       )}
                     </div>

@@ -16,7 +16,7 @@ import { Home, ProviderHomesResponse } from './home.service';
 export interface Provider {
   id: string;
   organizationId: string;
-  primaryLicenseType: string;
+  primaryLicenseTypeId: string;
   description?: string;
   logo?: string;
   coverImage?: string;
@@ -43,6 +43,11 @@ export interface Provider {
     zipCode: string;
     website?: string;
   };
+  primaryLicenseType?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
   licenses?: ProviderLicense[];
   homes?: Home[];
 }
@@ -50,7 +55,7 @@ export interface Provider {
 export interface ProviderLicense {
   id: string;
   providerId: string;
-  licenseType: string;
+  licenseTypeId: string;
   licenseNumber: string;
   issueDate: string;
   expirationDate: string;
@@ -65,7 +70,7 @@ export interface ProviderLicense {
 
 export interface CreateProviderData {
   organizationId: string;
-  primaryLicenseType: string;
+  primaryLicenseTypeId: string;
   description: string;
   acceptsReferrals?: boolean;
   responseTimeHours?: number;
@@ -76,7 +81,7 @@ export interface UpdateProviderData extends Partial<CreateProviderData> {
 }
 
 export interface CreateProviderLicenseData {
-  licenseType: string;
+  licenseTypeId: string;
   licenseNumber: string;
   issueDate: string;
   expirationDate: string;
@@ -279,7 +284,7 @@ export class ProviderService {
   // If providerId is provided, filters services based on provider's active licenses
   async getAvailableServices(providerId?: string): Promise<ApiResponse<Service[]>> {
     const url = providerId 
-      ? `/api/services?providerId=${providerId}`
+      ? `/api/services/provider/${providerId}`
       : '/api/services';
     return await apiService.get<Service[]>(url);
   }

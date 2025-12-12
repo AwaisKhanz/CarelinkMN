@@ -34,6 +34,7 @@ export class ComplianceService {
         },
       },
       include: {
+        licenseType: true,
         provider: {
           include: {
             organization: true,
@@ -48,10 +49,10 @@ export class ComplianceService {
         type: "EXPIRED_LICENSE",
         severity: "HIGH",
         title: "Expired License",
-        description: `License ${license.licenseType} (${license.licenseNumber}) has expired`,
+        description: `License ${license.licenseType?.name || 'Unknown'} (${license.licenseNumber}) has expired`,
         resourceType: "License",
         resourceId: license.id,
-        resourceName: `${license.licenseType} - ${license.licenseNumber}`,
+        resourceName: `${license.licenseType?.name || 'Unknown'} - ${license.licenseNumber}`,
         organizationId: license.provider.organizationId,
         organizationName: license.provider.organization.name,
         dueDate: license.expirationDate,
@@ -72,6 +73,7 @@ export class ComplianceService {
         status: LicenseStatus.ACTIVE,
       },
       include: {
+        licenseType: true,
         provider: {
           include: {
             organization: true,
@@ -86,10 +88,10 @@ export class ComplianceService {
         type: "EXPIRING_LICENSE",
         severity: "MEDIUM",
         title: "License Expiring Soon",
-        description: `License ${license.licenseType} (${license.licenseNumber}) expires soon`,
+        description: `License ${license.licenseType?.name || 'Unknown'} (${license.licenseNumber}) expires soon`,
         resourceType: "License",
         resourceId: license.id,
-        resourceName: `${license.licenseType} - ${license.licenseNumber}`,
+        resourceName: `${license.licenseType?.name || 'Unknown'} - ${license.licenseNumber}`,
         organizationId: license.provider.organizationId,
         organizationName: license.provider.organization.name,
         dueDate: license.expirationDate,
@@ -103,6 +105,7 @@ export class ComplianceService {
         status: LicenseStatus.PENDING,
       },
       include: {
+        licenseType: true,
         provider: {
           include: {
             organization: true,
@@ -117,10 +120,10 @@ export class ComplianceService {
         type: "PENDING_VERIFICATION",
         severity: "MEDIUM",
         title: "Pending License Verification",
-        description: `License ${license.licenseType} (${license.licenseNumber}) awaiting verification`,
+        description: `License ${license.licenseType?.name || 'Unknown'} (${license.licenseNumber}) awaiting verification`,
         resourceType: "License",
         resourceId: license.id,
-        resourceName: `${license.licenseType} - ${license.licenseNumber}`,
+        resourceName: `${license.licenseType?.name || 'Unknown'} - ${license.licenseNumber}`,
         organizationId: license.provider.organizationId,
         organizationName: license.provider.organization.name,
         createdAt: license.createdAt,

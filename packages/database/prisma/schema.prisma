@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["app_auth", "core", "messaging", "analytics", "billing", "audit", "vrs", "marketplace"]
+  schemas  = ["app_auth", "auth", "core", "messaging", "analytics", "billing", "audit", "vrs", "marketplace"]
 }
 
 // ============================================
@@ -53,7 +53,7 @@ model User {
   @@index([email])
   @@index([organizationId])
   @@index([role])
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 enum UserRole {
@@ -67,7 +67,7 @@ enum UserRole {
   VENDOR
   PUBLIC
 
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 enum UserStatus {
@@ -76,7 +76,7 @@ enum UserStatus {
   SUSPENDED
   DEACTIVATED
 
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 model PasswordResetToken {
@@ -91,7 +91,7 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 model EmailVerificationToken {
@@ -106,7 +106,7 @@ model EmailVerificationToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 model Organization {
@@ -154,7 +154,7 @@ model Organization {
 
   @@index([type])
   @@index([status])
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 model CaseManager {
@@ -228,7 +228,7 @@ enum OrganizationType {
   VRS
   VENDOR
 
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 enum OrganizationStatus {
@@ -237,7 +237,7 @@ enum OrganizationStatus {
   SUSPENDED
   DEACTIVATED
 
-  @@schema("app_auth")
+  @@schema("auth")
 }
 
 // ============================================
@@ -250,8 +250,9 @@ model Provider {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Licensing
-  licenses           License[]
-  primaryLicenseType String
+  licenses              License[]
+  primaryLicenseTypeId  String?
+  primaryLicenseType    LicenseType? @relation(fields: [primaryLicenseTypeId], references: [id], onDelete: Restrict)
 
   // Subscription
   subscriptionTier SubscriptionTier @default(FREE)
@@ -315,12 +316,79 @@ enum SubscriptionTier {
   @@schema("core")
 }
 
+// ============================================
+// LICENSE CATEGORY & TYPE MODELS
+// ============================================
+
+model LicenseCategory {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "ASSISTED_LIVING", "COMMUNITY_RESIDENTIAL"
+  name        String   // e.g., "Assisted Living", "Community Residential"
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  order       Int      @default(0) // For display ordering
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  licenseTypes LicenseType[]
+
+  @@index([isActive])
+  @@index([order])
+  @@schema("core")
+}
+
+model LicenseType {
+  id          String          @id @default(uuid())
+  categoryId  String
+  category    LicenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  code        String  @unique // e.g., "144D", "245D_BASIC"
+  name        String  // e.g., "144D - Assisted Living (Dementia Care)"
+  description String? @db.Text
+  isActive    Boolean @default(true)
+  order       Int     @default(0) // For display ordering within category
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  licenses             License[]
+  primaryForProviders  Provider[]
+  serviceLicenseTypes  ServiceLicenseType[]
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([order])
+  @@schema("core")
+}
+
+// Junction table for Service-LicenseType many-to-many relationship
+model ServiceLicenseType {
+  id            String      @id @default(uuid())
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  licenseTypeId String
+  licenseType   LicenseType @relation(fields: [licenseTypeId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([serviceId, licenseTypeId])
+  @@index([serviceId])
+  @@index([licenseTypeId])
+  @@schema("core")
+}
+
 model License {
   id         String   @id @default(uuid())
   providerId String
   provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  licenseType   String // e.g., "144D", "245D", "CRS", "ALF"
+  // License Type (relation to LicenseType model)
+  licenseTypeId String
+  licenseType   LicenseType @relation(fields: [licenseTypeId], references: [id], onDelete: Restrict)
+
   licenseNumber String
 
   issueDate      DateTime
@@ -339,6 +407,7 @@ model License {
 
   @@unique([licenseNumber])
   @@index([providerId])
+  @@index([licenseTypeId])
   @@index([expirationDate])
   @@index([status])
   @@schema("core")
@@ -475,15 +544,15 @@ model Service {
   name         String
   description  String?
   category     String // e.g., "Daily Living", "Medical"
-  licenseTypes String[] // Which licenses can offer this
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  providerServices ProviderService[]
-  homeServices     HomeService[]
+  providerServices    ProviderService[]
+  homeServices        HomeService[]
+  serviceLicenseTypes ServiceLicenseType[]
 
   @@index([category])
   @@index([isActive])

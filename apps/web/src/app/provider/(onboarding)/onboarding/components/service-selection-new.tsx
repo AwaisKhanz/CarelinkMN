@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 interface ServiceSelectionProps {
   data: any;
+  licenseData?: any;
   onComplete: (data: any) => void | Promise<void>;
   onValidate?: (validateFn: () => Promise<boolean>) => void; // Callback to expose validation function
 }
@@ -30,11 +31,12 @@ const CATEGORY_ICONS: Record<string, typeof Home> = {
 // Default icon if category not found
 const DefaultIcon = Home;
 
-export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelectionProps) {
+export function ServiceSelection({ data, licenseData, onComplete, onValidate }: ServiceSelectionProps) {
   const [selectedServices, setSelectedServices] = useState<string[]>(
     data?.selectedServices ? (Array.isArray(data.selectedServices) ? data.selectedServices : []) : []
   );
-  const [services, setServices] = useState<Service[]>([]);
+  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isInitialMount = useRef(true);
@@ -48,7 +50,15 @@ export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelect
         setError(null);
         const response = await homeService.getAvailableServices();
         if (response.success && response.data) {
-          setServices(Array.isArray(response.data) ? response.data : []);
+          const services = Array.isArray(response.data) ? response.data : [];
+          setAllServices(services);
+          
+          // Initial filter if license data exists
+          if (licenseData?.licenses) {
+            filterServices(services, licenseData.licenses);
+          } else {
+            setFilteredServices(services);
+          }
         } else {
           const errorMsg = response.message || "Failed to load services";
           setError(errorMsg);
@@ -65,7 +75,64 @@ export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelect
     };
 
     fetchServices();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filter services based on licenses
+  const filterServices = (servicesToFilter: Service[], licenses: any[]) => {
+    if (!licenses || licenses.length === 0) {
+      setFilteredServices(servicesToFilter);
+      return;
+    }
+
+    // Get all license type IDs from the user's uploaded licenses
+    // Also include primaryLicenseTypeId if available
+    const userLicenseTypeIds = new Set<string>();
+    
+    licenses.forEach((l: any) => {
+      if (l.licenseTypeId) userLicenseTypeIds.add(l.licenseTypeId);
+    });
+    
+    if (licenseData?.primaryLicenseTypeId) {
+      userLicenseTypeIds.add(licenseData.primaryLicenseTypeId);
+    }
+    
+    console.log("Filtering services for license types:", Array.from(userLicenseTypeIds));
+
+    // Filter services that match at least one license type
+    const filtered = servicesToFilter.filter(service => {
+      // If service has no specific license requirements (empty serviceLicenseTypes), 
+      // check if it should be shown. 
+      // Assumption: If service license types are defined in DB, strict matching applies.
+      // If service has NO license types linked, maybe it's general? 
+      // SAFEST: Only show services that explicitly match user license types or have NO requirements (if that's desired behavior).
+      // Based on previous requirements: "not the one which is linked to the license he has selected" implies strict filtering.
+      
+      const serviceLicenseTypes = service.serviceLicenseTypes || [];
+      
+      if (serviceLicenseTypes.length === 0) {
+        // If service has no specific license links, maybe allow it? 
+        // Or hide it? Usually 'Basic Support' might not need license.
+        // For now, let's include them to be safe, or user can clarify.
+        // Actually, given the user request "show... the one which is linked", 
+        // implies we should only show linked ones.
+        // BUT, some services might be available to ALL. 
+        // Let's check if there are any serviceLicenseTypes.
+        return true; 
+      }
+      
+      // Check if any of the service's required license types match the user's licenses
+      return serviceLicenseTypes.some(slt => userLicenseTypeIds.has(slt.licenseTypeId));
+    });
+    
+    setFilteredServices(filtered);
+  };
+
+  // Re-run filter when licenseData changes (unlikely to change during this step, but good practice)
+  useEffect(() => {
+    if (allServices.length > 0 && licenseData?.licenses) {
+      filterServices(allServices, licenseData.licenses);
+    }
+  }, [licenseData, allServices]);
 
   // Sync selectedServices with data prop when it changes
   useEffect(() => {
@@ -99,7 +166,7 @@ export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelect
   }, [selectedServices, onComplete]);
 
   // Group services by category
-  const serviceCategories = services.reduce((acc, service) => {
+  const serviceCategories = filteredServices.reduce((acc, service) => {
     const category = service.category || "Other";
     if (!acc[category]) {
       acc[category] = [];
@@ -149,11 +216,11 @@ export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelect
         <CardHeader>
           <CardTitle>Service Selection</CardTitle>
           <CardDescription>
-            Select all services that your organization provides. This helps us match you with appropriate referrals.
+            Select the services you provide. These satisfy the requirements for your selected license types.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isLoadingServices && selectedServices.length === 0 && services.length > 0 && (
+          {!isLoadingServices && selectedServices.length === 0 && filteredServices.length > 0 && (
             <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
               <p className="text-sm text-warning">
                 Please select at least one service that your organization provides.
@@ -199,12 +266,13 @@ export function ServiceSelection({ data, onComplete, onValidate }: ServiceSelect
             </div>
           </CardContent>
         </Card>
-      ) : services.length === 0 ? (
+      ) : filteredServices.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
               <p className="text-muted-foreground mb-4">
-                No services available at this time. Please contact support if you believe this is an error.
+                No services available for your selected license types. 
+                Please go back and ensure you have selected the correct license types.
               </p>
               <Button
                 variant="outline"

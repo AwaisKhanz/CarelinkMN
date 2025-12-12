@@ -111,10 +111,19 @@ export interface Service {
   name: string;
   description?: string;
   category: string;
-  licenseTypes?: string[];
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
+  serviceLicenseTypes?: ServiceLicenseType[];
+}
+
+// ServiceLicenseType (junction table) type
+export interface ServiceLicenseType {
+  id: string;
+  serviceId: string;
+  licenseTypeId: string;
+  licenseType?: LicenseType;
+  createdAt?: string;
 }
 
 // HomeService (join table) type
@@ -455,9 +464,9 @@ export enum LicenseStatus {
 export interface License {
   id: string;
   providerId: string;
-  licenseType: string;
+  licenseTypeId: string; // CHANGED: now references LicenseType model
+  licenseType?: LicenseType; // Optional relation
   licenseNumber: string;
-  issuingState: string;
   issueDate: string;
   expirationDate: string;
   status: LicenseStatus;
@@ -470,9 +479,8 @@ export interface License {
 }
 
 export interface CreateLicenseData {
-  licenseType: string;
+  licenseTypeId: string; // CHANGED: now references LicenseType model
   licenseNumber: string;
-  issuingState: string;
   issueDate: string | Date;
   expirationDate: string | Date;
   documentUrl: string;
@@ -481,6 +489,87 @@ export interface CreateLicenseData {
 
 export interface UpdateLicenseData extends Partial<CreateLicenseData> {
   id?: string;
+}
+
+// ============================================
+// LICENSE CATEGORY & TYPE TYPES
+// ============================================
+
+export interface LicenseCategory {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  licenseTypes?: LicenseType[];
+}
+
+export interface CreateLicenseCategoryData {
+  code: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  order?: number;
+}
+
+export interface UpdateLicenseCategoryData extends Partial<CreateLicenseCategoryData> {
+  id?: string;
+}
+
+export interface LicenseType {
+  id: string;
+  categoryId: string;
+  category?: LicenseCategory;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLicenseTypeData {
+  categoryId: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  order?: number;
+}
+
+export interface UpdateLicenseTypeData extends Partial<CreateLicenseTypeData> {
+  id?: string;
+}
+
+// Grouped license types by category
+export interface LicenseTypesByCategory {
+  [categoryId: string]: {
+    category: LicenseCategory;
+    types: LicenseType[];
+  };
+}
+
+// License category statistics
+export interface LicenseCategoryStats {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+// License type statistics
+export interface LicenseTypeStats {
+  total: number;
+  active: number;
+  inactive: number;
+  byCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    count: number;
+  }>;
 }
 
 // ============================================
@@ -1572,7 +1661,7 @@ export interface CaseManagerClientSummary {
 export interface ProviderWithAvailability {
   id: string;
   organizationId: string;
-  primaryLicenseType: string;
+  primaryLicenseTypeId: string;
   description?: string;
   logo?: string;
   coverImage?: string;
@@ -1596,9 +1685,14 @@ export interface ProviderWithAvailability {
     state: string;
     county?: string;
   };
+  primaryLicenseType?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
   licenses?: Array<{
     id: string;
-    licenseType: string;
+    licenseType: string; // Simplified - just the ID string for filtering
   }>;
   homes?: Array<{
     id: string;
@@ -1875,7 +1969,7 @@ export interface ProviderPublicProfile {
   subscriptionTier: SubscriptionTier;
   boostLevel?: number; // 0 = no boost, 1-3 = boost levels
   homes: HomePublicProfile[];
-  primaryLicenseType: string;
+  primaryLicenseType?: string; // License type name/code
   licenses: Array<{
     licenseType: string;
     licenseNumber: string;
