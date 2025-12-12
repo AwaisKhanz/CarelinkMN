@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["app_auth", "auth", "core", "messaging", "analytics", "billing", "audit", "vrs", "marketplace"]
+  schemas  = ["app_auth", "core", "messaging", "analytics", "billing", "audit", "vrs", "marketplace"]
 }
 
 // ============================================
@@ -53,7 +53,7 @@ model User {
   @@index([email])
   @@index([organizationId])
   @@index([role])
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 enum UserRole {
@@ -67,7 +67,7 @@ enum UserRole {
   VENDOR
   PUBLIC
 
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 enum UserStatus {
@@ -76,7 +76,7 @@ enum UserStatus {
   SUSPENDED
   DEACTIVATED
 
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model PasswordResetToken {
@@ -91,7 +91,7 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model EmailVerificationToken {
@@ -106,7 +106,7 @@ model EmailVerificationToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model Organization {
@@ -154,7 +154,7 @@ model Organization {
 
   @@index([type])
   @@index([status])
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model CaseManager {
@@ -228,7 +228,7 @@ enum OrganizationType {
   VRS
   VENDOR
 
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 enum OrganizationStatus {
@@ -237,7 +237,7 @@ enum OrganizationStatus {
   SUSPENDED
   DEACTIVATED
 
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 // ============================================
