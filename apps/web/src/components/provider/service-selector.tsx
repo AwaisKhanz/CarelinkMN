@@ -169,11 +169,11 @@ export function ServiceSelector({
                               {service.description}
                             </p>
                           )}
-                          {service.licenseTypes && service.licenseTypes.length > 0 && (
+                          {service.serviceLicenseTypes && service.serviceLicenseTypes.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              {service.licenseTypes.map((licenseType) => (
-                                <Badge key={licenseType} variant="outline" className="text-xs">
-                                  {licenseType}
+                              {service.serviceLicenseTypes.map((slt) => (
+                                <Badge key={slt.licenseTypeId} variant="outline" className="text-xs">
+                                  {slt.licenseType?.name || 'Unknown'}
                                 </Badge>
                               ))}
                             </div>
