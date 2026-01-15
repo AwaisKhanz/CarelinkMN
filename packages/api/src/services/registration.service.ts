@@ -212,6 +212,9 @@ export class RegistrationService {
       });
 
       return { user: userWithOrg || user };
+    }, {
+      maxWait: 5000, // Wait for transaction to start
+      timeout: 20000, // Transaction timeout (20s)
     });
 
     // 4. Generate token

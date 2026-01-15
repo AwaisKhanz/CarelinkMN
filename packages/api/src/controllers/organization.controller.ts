@@ -3,6 +3,7 @@ import { OrganizationService } from "../services/organization.service";
 import { CaseManagerService } from "../services/case-manager.service";
 import { ApiResponse } from "../types";
 import { AuthenticatedRequest } from "../types/auth";
+import { UserRole } from "@carelink/types";
 
 export class OrganizationController {
   private organizationService: OrganizationService;
@@ -157,7 +158,10 @@ export class OrganizationController {
       }
 
       // Verify user has access to this organization
-      let hasAccess = user.organizationId === id || user.role === "ADMIN";
+      let hasAccess = 
+        user.organizationId === id || 
+        user.role === UserRole.ADMIN || 
+        user.role === UserRole.SUPER_ADMIN;
       
       // For case managers, also check if the organization belongs to their case manager record
       if (!hasAccess && user.role === "CASE_MANAGER") {

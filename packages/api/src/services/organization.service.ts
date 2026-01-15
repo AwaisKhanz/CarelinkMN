@@ -28,6 +28,7 @@ interface CreateOrganizationData {
   npi?: string;
   website?: string;
   fax?: string;
+  status?: OrganizationStatus;
 }
 
 export class OrganizationService {
@@ -55,6 +56,7 @@ export class OrganizationService {
           ...(data.npi !== undefined && { npi: data.npi }),
           ...(data.website !== undefined && { website: data.website }),
           ...(data.fax !== undefined && { fax: data.fax }),
+          ...(data.status && { status: data.status }),
           ...((data as any).logo !== undefined && { logo: (data as any).logo }),
           ...((data as any).coverImage !== undefined && { coverImage: (data as any).coverImage }),
         },

@@ -174,6 +174,10 @@ router.put(
         }
         return true;
       }),
+    body("status")
+      .optional()
+      .isIn(["PENDING", "VERIFIED", "SUSPENDED", "DEACTIVATED"])
+      .withMessage("Invalid organization status"),
     body("fax").optional().trim(),
   ],
   validate([]),

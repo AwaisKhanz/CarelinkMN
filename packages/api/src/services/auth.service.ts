@@ -56,9 +56,11 @@ export class AuthService {
         userAgent
       );
 
-      // Generate email verification token and send email
+      // Generate email verification token and send email (async)
       const verificationToken = await this.authRepository.createEmailVerificationToken(result.user.id);
-      await this.emailService.sendVerificationEmail(result.user, verificationToken);
+      this.emailService.sendVerificationEmail(result.user, verificationToken).catch(err => {
+        console.error("Failed to send verification email (background):", err);
+      });
 
       // Log registration event
       await auditService.logAuth(
@@ -108,9 +110,11 @@ export class AuthService {
     // Generate token
     const token = this.generateToken(user);
 
-    // Generate email verification token and send email
+    // Generate email verification token and send email (async)
     const verificationToken = await this.authRepository.createEmailVerificationToken(user.id);
-    await this.emailService.sendVerificationEmail(user, verificationToken);
+    this.emailService.sendVerificationEmail(user, verificationToken).catch(err => {
+      console.error("Failed to send verification email (background):", err);
+    });
 
     // Log registration event
     await auditService.logAuth(

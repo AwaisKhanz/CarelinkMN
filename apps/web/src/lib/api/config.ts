@@ -8,7 +8,7 @@ import { ApiResponse } from "@carelink/types";
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_TIMEOUT = 10000; // 10 seconds
+const API_TIMEOUT = 30000; // 30 seconds
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
