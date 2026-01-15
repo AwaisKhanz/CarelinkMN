@@ -57,6 +57,10 @@ import { AuthMiddleware } from "./middleware/auth.middleware";
 import { performanceMiddleware } from "./middleware/performance.middleware";
 
 const app: express.Application = express();
+
+// Trust proxy (required for Railway/Heroku/Vercel)
+app.set("trust proxy", 1);
+
 // Performance Monitoring (Should be early in the chain)
 app.use(performanceMiddleware);
 const authMiddleware = new AuthMiddleware();
